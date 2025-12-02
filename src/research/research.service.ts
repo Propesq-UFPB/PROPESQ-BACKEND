@@ -3,9 +3,12 @@ import { CreateResearchDto } from './dto/create-research.dto';
 import { UpdateResearchDto } from './dto/update-research.dto';
 import { researchData } from './data';
 import { Research } from './entities/research.entity';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class ResearchService {
+  constructor(private prisma: PrismaService) {}
+
   private researchData: Research[] = researchData as Research[];
   private nextId: number =
     this.researchData.length > 0

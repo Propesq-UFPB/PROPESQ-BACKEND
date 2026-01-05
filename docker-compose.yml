@@ -32,3 +32,13 @@ services:
         condition: service_healthy
     volumes:
       - .:/usr/src/app
+  frontend:
+    container_name: 'propesq_frontend'
+    build:
+      context: ../PROPESQ-PROTOTIPO
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - '3100:3100'
+    volumes:
+      - ../PROPESQ-PROTOTIPO:/usr/src/app

@@ -37,7 +37,6 @@ services:
     build:
       context: ../PROPESQ-PROTOTIPO
       dockerfile: Dockerfile
-      target: dev
     ports:
       - '3100:3100'
     volumes:

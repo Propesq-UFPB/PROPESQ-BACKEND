@@ -27,21 +27,25 @@
 
 ## Project setup
 
+Copiar `.env` (ou ajustar `DATABASE_URL`).  
+- `DATABASE_URL=postgres://user:password@localhost:5432/propesq`
+
+
 ```bash
+# Instalar dependências
 $ npm install
-```
 
-## Compile and run the project
+# Criar/migrar schema
+$ npx prisma migrate dev
 
-```bash
-# development
-$ npm run start
+# Gerar client
+$ npx prisma generate
 
-# watch mode
+# Popular dados iniciais
+$ npx prisma db seed
+
+# Subir a API
 $ npm run start:dev
-
-# production mode
-$ npm run start:prod
 ```
 
 ## Run tests

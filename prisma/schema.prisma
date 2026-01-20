@@ -8,8 +8,8 @@ datasource db {
 }
 
 model anexo {
-  id            BigInt   @id @default(autoincrement())
-  usuario_id    BigInt
+  id            Int      @id @default(autoincrement())
+  usuario_id    Int
   arquivo       Bytes
   tipo          String   @db.VarChar(255)
   criado_em     DateTime @db.Timestamp(6)
@@ -18,15 +18,15 @@ model anexo {
 }
 
 model anexo_projeto_pesquisa {
-  id                  BigInt            @id @default(autoincrement())
-  projeto_pesquisa_id BigInt            @unique
+  id                  Int               @id @default(autoincrement())
+  projeto_pesquisa_id Int               @unique
   arquivo             Bytes
   tipo                String            @db.VarChar(255)
   projeto_pesquisa    projeto_pesquisa? @relation(fields: [projeto_pesquisa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model area_conhecimento {
-  id               BigInt             @id @default(autoincrement())
+  id               Int                @id @default(autoincrement())
   grande_area      String
   area             String
   sub_area         String
@@ -35,15 +35,15 @@ model area_conhecimento {
 }
 
 model atividade {
-  id         BigInt       @id @default(autoincrement())
-  atividade  BigInt
-  mes_id     BigInt
+  id         Int          @id @default(autoincrement())
+  atividade  Int
+  mes_id     Int
   mes        mes          @relation(fields: [mes_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   cronograma cronograma[]
 }
 
 model corpo_plano_trabalho {
-  id             BigInt           @id @default(autoincrement())
+  id             Int              @id @default(autoincrement())
   titulo         String
   introducao     String
   objetivos      String
@@ -53,7 +53,7 @@ model corpo_plano_trabalho {
 }
 
 model corpo_projeto {
-  id               BigInt             @id @default(autoincrement())
+  id               Int                @id @default(autoincrement())
   resumo           String
   introducao       String
   objetivos        String
@@ -63,51 +63,51 @@ model corpo_projeto {
 }
 
 model cronograma {
-  id                     BigInt             @id @default(autoincrement())
+  id                     Int                @id @default(autoincrement())
   data_inicio            DateTime           @db.Date
   data_fim               DateTime           @db.Date
-  atividade_id           BigInt
+  atividade_id           Int
   atividade              atividade          @relation(fields: [atividade_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   plano_trabalho_items   plano_trabalho[]   @relation("plano_trabalho_cronograma")
   projeto_pesquisa_items projeto_pesquisa[] @relation("projeto_pesquisa_cronograma")
 }
 
 model discente {
-  id             BigInt           @id @default(autoincrement())
-  usuario_id     BigInt
+  id             Int              @id @default(autoincrement())
+  usuario_id     Int
   usuario        usuario          @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   plano_trabalho plano_trabalho[]
 }
 
 model docente {
-  id         BigInt  @id @default(autoincrement())
-  usuario_id BigInt
+  id         Int     @id @default(autoincrement())
+  usuario_id Int
   usuario    usuario @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model localidade {
-  id                          BigInt             @id @default(autoincrement())
+  id                          Int                @id @default(autoincrement())
   departamento                String
   centro                      String
-  unidade                     BigInt
+  unidade                     Int
   projeto_pesquisa_localidade projeto_pesquisa[] @relation("projeto_pesquisa_localidade")
 }
 
 model mes {
-  id        BigInt      @id @default(autoincrement())
+  id        Int         @id @default(autoincrement())
   data      DateTime    @db.Date
   atividade atividade[]
 }
 
 model palavra_chave {
-  id               BigInt             @id @default(autoincrement())
+  id               Int                @id @default(autoincrement())
   palavra_chave    String
   lingua           String             @db.VarChar(255)
   projeto_pesquisa projeto_pesquisa[]
 }
 
 model permissao {
-  id               BigInt             @id @default(autoincrement())
+  id               Int                @id @default(autoincrement())
   nome             String             @unique
   descricao        String?
   criado_em        DateTime           @default(now()) @db.Timestamp(6)
@@ -116,15 +116,15 @@ model permissao {
 }
 
 model plano_trabalho {
-  id                   BigInt               @id @default(autoincrement())
-  discente_id          BigInt
-  usuario_id           BigInt
+  id                   Int                  @id @default(autoincrement())
+  discente_id          Int
+  usuario_id           Int
   modalidade           String               @db.VarChar(255)
   status               String
   tipo_bolsa           String               @db.VarChar(255)
-  cronograma_id        BigInt
+  cronograma_id        Int
   direcionamento_plano String
-  corpo_id             BigInt
+  corpo_id             Int
   corpo_plano_trabalho corpo_plano_trabalho @relation(fields: [corpo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   cronograma           cronograma           @relation("plano_trabalho_cronograma", fields: [cronograma_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   discente             discente             @relation(fields: [discente_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -133,21 +133,21 @@ model plano_trabalho {
 }
 
 model projeto_pesquisa {
-  id                     BigInt                  @id @default(autoincrement())
+  id                     Int                     @id @default(autoincrement())
   codigo                 String
   tipo                   String                  @db.VarChar(255)
   titulo                 String
   categoria              String
   situacao               String                  @map("situação")
-  localidade_id          BigInt
-  area_conhecimento_id   BigInt
-  palavra_chave_id       BigInt
+  localidade_id          Int
+  area_conhecimento_id   Int
+  palavra_chave_id       Int
   vigencia               DateTime                @db.Timestamp(6)
-  plano_trabalho_id      BigInt
-  corpo_id               BigInt
+  plano_trabalho_id      Int
+  corpo_id               Int
   edital                 String
   cota                   String
-  cronograma_id          BigInt
+  cronograma_id          Int
   area_conhecimento      area_conhecimento       @relation(fields: [area_conhecimento_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   corpo_projeto          corpo_projeto           @relation(fields: [corpo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   cronograma             cronograma              @relation("projeto_pesquisa_cronograma", fields: [cronograma_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -158,7 +158,7 @@ model projeto_pesquisa {
 }
 
 model funcao {
-  id               BigInt             @id @default(autoincrement())
+  id               Int                @id @default(autoincrement())
   nome             String             @unique
   descricao        String?
   criado_em        DateTime           @default(now()) @db.Timestamp(6)
@@ -168,8 +168,8 @@ model funcao {
 }
 
 model funcao_permissao {
-  funcao_id    BigInt
-  permissao_id BigInt
+  funcao_id    Int
+  permissao_id Int
   permissao    permissao @relation(fields: [permissao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   funcao       funcao    @relation(fields: [funcao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
@@ -177,13 +177,13 @@ model funcao_permissao {
 }
 
 model usuario {
-  id             BigInt           @id @default(autoincrement())
+  id             Int              @id @default(autoincrement())
   nome           String
   email          String
   senha          String
   criado_em      DateTime         @db.Timestamp(6)
   atualizado_em  DateTime         @db.Timestamp(6)
-  funcao_id      BigInt
+  funcao_id      Int
   anexo          anexo[]
   discente       discente[]
   docente        docente[]

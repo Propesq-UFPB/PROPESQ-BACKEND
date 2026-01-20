@@ -25,8 +25,9 @@
     "@nestjs/mapped-types": "*",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/swagger": "^11.2.1",
-    "@prisma/adapter-pg": "^7.0.1",
+    "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
+    "pg": "^8.17.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "swagger-themes": "^1.4.3"
@@ -77,5 +78,8 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   }
 }

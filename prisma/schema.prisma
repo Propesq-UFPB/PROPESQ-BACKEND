@@ -8,21 +8,21 @@ datasource db {
 }
 
 model anexo {
-  id            BigInt   @id
-  user_id       BigInt
+  id            BigInt   @id @default(autoincrement())
+  usuario_id    BigInt
   arquivo       Bytes
   tipo          String   @db.VarChar(255)
   criado_em     DateTime @db.Timestamp(6)
   atualizado_em DateTime @db.Timestamp(6)
-  usuario       usuario  @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuario       usuario  @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model anexo_projeto_pesquisa {
-  id               BigInt            @id
-  projeto_id       BigInt
-  arquivo          Bytes
-  tipo             String            @db.VarChar(255)
-  projeto_pesquisa projeto_pesquisa?
+  id                  BigInt            @id @default(autoincrement())
+  projeto_pesquisa_id BigInt            @unique
+  arquivo             Bytes
+  tipo                String            @db.VarChar(255)
+  projeto_pesquisa    projeto_pesquisa? @relation(fields: [projeto_pesquisa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model area_conhecimento {
@@ -35,17 +35,16 @@ model area_conhecimento {
 }
 
 model atividade {
-  id         BigInt       @id
+  id         BigInt       @id @default(autoincrement())
   atividade  BigInt
-  meses      BigInt
-  mes        mes          @relation(fields: [meses], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  mes_id     BigInt
+  mes        mes          @relation(fields: [mes_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   cronograma cronograma[]
 }
 
 model corpo_plano_trabalho {
-  id             BigInt           @id
+  id             BigInt           @id @default(autoincrement())
   titulo         String
-  title          String
   introducao     String
   objetivos      String
   metodologia    String
@@ -54,9 +53,8 @@ model corpo_plano_trabalho {
 }
 
 model corpo_projeto {
-  id               BigInt             @id
+  id               BigInt             @id @default(autoincrement())
   resumo           String
-  abstract         String
   introducao       String
   objetivos        String
   metodologia      String
@@ -65,39 +63,39 @@ model corpo_projeto {
 }
 
 model cronograma {
-  id                                                       BigInt             @id
-  data_inicio                                              DateTime           @db.Date
-  data_fim                                                 DateTime           @db.Date
-  atividades                                               BigInt
-  atividade                                                atividade          @relation(fields: [atividades], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  plano_trabalho_plano_trabalho_cronogramaTocronograma     plano_trabalho[]   @relation("plano_trabalho_cronogramaTocronograma")
-  projeto_pesquisa_projeto_pesquisa_cronogramaTocronograma projeto_pesquisa[] @relation("projeto_pesquisa_cronogramaTocronograma")
+  id                     BigInt             @id @default(autoincrement())
+  data_inicio            DateTime           @db.Date
+  data_fim               DateTime           @db.Date
+  atividade_id           BigInt
+  atividade              atividade          @relation(fields: [atividade_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  plano_trabalho_items   plano_trabalho[]   @relation("plano_trabalho_cronograma")
+  projeto_pesquisa_items projeto_pesquisa[] @relation("projeto_pesquisa_cronograma")
 }
 
 model discente {
-  id             BigInt           @id
-  user_id        BigInt
-  usuario        usuario          @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id             BigInt           @id @default(autoincrement())
+  usuario_id     BigInt
+  usuario        usuario          @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   plano_trabalho plano_trabalho[]
 }
 
 model docente {
-  id      BigInt  @id
-  user_id BigInt
-  usuario usuario @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id         BigInt  @id @default(autoincrement())
+  usuario_id BigInt
+  usuario    usuario @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model localidade {
-  id                                                       BigInt             @id
-  departamento                                             String
-  centro                                                   String
-  unidade                                                  BigInt
-  projeto_pesquisa_projeto_pesquisa_localidadeTolocalidade projeto_pesquisa[] @relation("projeto_pesquisa_localidadeTolocalidade")
+  id                          BigInt             @id @default(autoincrement())
+  departamento                String
+  centro                      String
+  unidade                     BigInt
+  projeto_pesquisa_localidade projeto_pesquisa[] @relation("projeto_pesquisa_localidade")
 }
 
 model mes {
-  id        BigInt      @id
-  date      DateTime    @db.Date
+  id        BigInt      @id @default(autoincrement())
+  data      DateTime    @db.Date
   atividade atividade[]
 }
 
@@ -108,76 +106,74 @@ model palavra_chave {
   projeto_pesquisa projeto_pesquisa[]
 }
 
-model permission {
-  id              BigInt            @id @default(autoincrement())
-  name            String            @unique
-  descricao       String?
-  criado_em       DateTime          @default(now()) @db.Timestamp(6)
-  atualizado_em   DateTime          @default(now()) @db.Timestamp(6)
-  role_permission role_permission[]
+model permissao {
+  id               BigInt             @id @default(autoincrement())
+  nome             String             @unique
+  descricao        String?
+  criado_em        DateTime           @default(now()) @db.Timestamp(6)
+  atualizado_em    DateTime           @default(now()) @db.Timestamp(6)
+  funcao_permissao funcao_permissao[]
 }
 
 model plano_trabalho {
-  id                                               BigInt               @id
-  discent_id                                       BigInt
-  user_id                                          BigInt
-  modalidade                                       String               @db.VarChar(255)
-  status                                           String
-  tipo_de_bolsa                                    String               @db.VarChar(255)
-  cronograma                                       BigInt
-  direcionamento_do_plano                          String
-  corpo                                            BigInt
-  corpo_plano_trabalho                             corpo_plano_trabalho @relation(fields: [corpo], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  cronograma_plano_trabalho_cronogramaTocronograma cronograma           @relation("plano_trabalho_cronogramaTocronograma", fields: [cronograma], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  discente                                         discente             @relation(fields: [discent_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  usuario                                          usuario              @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  projeto_pesquisa                                 projeto_pesquisa[]
+  id                   BigInt               @id @default(autoincrement())
+  discente_id          BigInt
+  usuario_id           BigInt
+  modalidade           String               @db.VarChar(255)
+  status               String
+  tipo_bolsa           String               @db.VarChar(255)
+  cronograma_id        BigInt
+  direcionamento_plano String
+  corpo_id             BigInt
+  corpo_plano_trabalho corpo_plano_trabalho @relation(fields: [corpo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  cronograma           cronograma           @relation("plano_trabalho_cronograma", fields: [cronograma_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  discente             discente             @relation(fields: [discente_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuario              usuario              @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  projeto_pesquisa     projeto_pesquisa[]
 }
 
 model projeto_pesquisa {
-  id                                                 BigInt                 @id @default(autoincrement())
-  codigo                                             String
-  tipo                                               String                 @db.VarChar(255)
-  titulo                                             String
-  title                                              String
-  categoria                                          String
-  situa__o                                           String                 @map("situação")
-  localidade                                         BigInt
-  area_do_conhecimentoID                             BigInt                 @default(autoincrement())
-  palavras_chave                                     BigInt                 @default(autoincrement())
-  keywords                                           BigInt                 @default(autoincrement())
-  vigencia                                           DateTime               @db.Timestamp(6)
-  plano_de_trabalho                                  BigInt
-  corpo                                              BigInt
-  edital                                             String
-  cota                                               String
-  cronograma                                         BigInt
-  area_conhecimento                                  area_conhecimento      @relation(fields: [area_do_conhecimentoID], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  corpo_projeto                                      corpo_projeto          @relation(fields: [corpo], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  cronograma_projeto_pesquisa_cronogramaTocronograma cronograma             @relation("projeto_pesquisa_cronogramaTocronograma", fields: [cronograma], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  anexo_projeto_pesquisa                             anexo_projeto_pesquisa @relation(fields: [id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  localidade_projeto_pesquisa_localidadeTolocalidade localidade             @relation("projeto_pesquisa_localidadeTolocalidade", fields: [localidade], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  palavra_chave                                      palavra_chave          @relation(fields: [palavras_chave], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  plano_trabalho                                     plano_trabalho         @relation(fields: [plano_de_trabalho], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                     BigInt                  @id @default(autoincrement())
+  codigo                 String
+  tipo                   String                  @db.VarChar(255)
+  titulo                 String
+  categoria              String
+  situacao               String                  @map("situação")
+  localidade_id          BigInt
+  area_conhecimento_id   BigInt
+  palavra_chave_id       BigInt
+  vigencia               DateTime                @db.Timestamp(6)
+  plano_trabalho_id      BigInt
+  corpo_id               BigInt
+  edital                 String
+  cota                   String
+  cronograma_id          BigInt
+  area_conhecimento      area_conhecimento       @relation(fields: [area_conhecimento_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  corpo_projeto          corpo_projeto           @relation(fields: [corpo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  cronograma             cronograma              @relation("projeto_pesquisa_cronograma", fields: [cronograma_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  anexo_projeto_pesquisa anexo_projeto_pesquisa?
+  localidade             localidade              @relation("projeto_pesquisa_localidade", fields: [localidade_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  palavra_chave          palavra_chave           @relation(fields: [palavra_chave_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  plano_trabalho         plano_trabalho          @relation(fields: [plano_trabalho_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
-model role {
-  id              BigInt            @id @default(autoincrement())
-  name            String            @unique
-  descricao       String?
-  criado_em       DateTime          @default(now()) @db.Timestamp(6)
-  atualizado_em   DateTime          @default(now()) @db.Timestamp(6)
-  role_permission role_permission[]
-  usuario         usuario[]
+model funcao {
+  id               BigInt             @id @default(autoincrement())
+  nome             String             @unique
+  descricao        String?
+  criado_em        DateTime           @default(now()) @db.Timestamp(6)
+  atualizado_em    DateTime           @default(now()) @db.Timestamp(6)
+  funcao_permissao funcao_permissao[]
+  usuario          usuario[]
 }
 
-model role_permission {
-  role_id       BigInt
-  permission_id BigInt
-  permission    permission @relation(fields: [permission_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  role          role       @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+model funcao_permissao {
+  funcao_id    BigInt
+  permissao_id BigInt
+  permissao    permissao @relation(fields: [permissao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  funcao       funcao    @relation(fields: [funcao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@id([role_id, permission_id])
+  @@id([funcao_id, permissao_id])
 }
 
 model usuario {
@@ -187,10 +183,10 @@ model usuario {
   senha          String
   criado_em      DateTime         @db.Timestamp(6)
   atualizado_em  DateTime         @db.Timestamp(6)
-  role_id        BigInt
+  funcao_id      BigInt
   anexo          anexo[]
   discente       discente[]
   docente        docente[]
   plano_trabalho plano_trabalho[]
-  role           role             @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  funcao         funcao           @relation(fields: [funcao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }

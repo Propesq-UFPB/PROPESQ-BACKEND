@@ -5,3 +5,187 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model anexo {
+  id            Int      @id @default(autoincrement())
+  usuario_id    Int
+  arquivo       Bytes
+  tipo          String   @db.VarChar(255)
+  criado_em     DateTime @db.Timestamp(6)
+  atualizado_em DateTime @db.Timestamp(6)
+  usuario       usuario  @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model anexo_projeto_pesquisa {
+  id                  Int               @id @default(autoincrement())
+  projeto_pesquisa_id Int               @unique
+  arquivo             Bytes
+  tipo                String            @db.VarChar(255)
+  projeto_pesquisa    projeto_pesquisa? @relation(fields: [projeto_pesquisa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model area_conhecimento {
+  id               Int                @id @default(autoincrement())
+  grande_area      String
+  area             String
+  sub_area         String
+  especialidade    String
+  projeto_pesquisa projeto_pesquisa[]
+}
+
+model atividade {
+  id         Int          @id @default(autoincrement())
+  atividade  Int
+  mes_id     Int
+  mes        mes          @relation(fields: [mes_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  cronograma cronograma[]
+}
+
+model corpo_plano_trabalho {
+  id             Int              @id @default(autoincrement())
+  titulo         String
+  introducao     String
+  objetivos      String
+  metodologia    String
+  referencias    String
+  plano_trabalho plano_trabalho[]
+}
+
+model corpo_projeto {
+  id               Int                @id @default(autoincrement())
+  resumo           String
+  introducao       String
+  objetivos        String
+  metodologia      String
+  referencias      String
+  projeto_pesquisa projeto_pesquisa[]
+}
+
+model cronograma {
+  id                     Int                @id @default(autoincrement())
+  data_inicio            DateTime           @db.Date
+  data_fim               DateTime           @db.Date
+  atividade_id           Int
+  atividade              atividade          @relation(fields: [atividade_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  plano_trabalho_items   plano_trabalho[]   @relation("plano_trabalho_cronograma")
+  projeto_pesquisa_items projeto_pesquisa[] @relation("projeto_pesquisa_cronograma")
+}
+
+model discente {
+  id             Int              @id @default(autoincrement())
+  usuario_id     Int
+  usuario        usuario          @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  plano_trabalho plano_trabalho[]
+}
+
+model docente {
+  id         Int     @id @default(autoincrement())
+  usuario_id Int
+  usuario    usuario @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model localidade {
+  id                          Int                @id @default(autoincrement())
+  departamento                String
+  centro                      String
+  unidade                     Int
+  projeto_pesquisa_localidade projeto_pesquisa[] @relation("projeto_pesquisa_localidade")
+}
+
+model mes {
+  id        Int         @id @default(autoincrement())
+  data      DateTime    @db.Date
+  atividade atividade[]
+}
+
+model palavra_chave {
+  id               Int                @id @default(autoincrement())
+  palavra_chave    String
+  lingua           String             @db.VarChar(255)
+  projeto_pesquisa projeto_pesquisa[]
+}
+
+model permissao {
+  id               Int                @id @default(autoincrement())
+  nome             String             @unique
+  descricao        String?
+  criado_em        DateTime           @default(now()) @db.Timestamp(6)
+  atualizado_em    DateTime           @default(now()) @db.Timestamp(6)
+  funcao_permissao funcao_permissao[]
+}
+
+model plano_trabalho {
+  id                   Int                  @id @default(autoincrement())
+  discente_id          Int
+  usuario_id           Int
+  modalidade           String               @db.VarChar(255)
+  status               String
+  tipo_bolsa           String               @db.VarChar(255)
+  cronograma_id        Int
+  direcionamento_plano String
+  corpo_id             Int
+  corpo_plano_trabalho corpo_plano_trabalho @relation(fields: [corpo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  cronograma           cronograma           @relation("plano_trabalho_cronograma", fields: [cronograma_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  discente             discente             @relation(fields: [discente_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuario              usuario              @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  projeto_pesquisa     projeto_pesquisa[]
+}
+
+model projeto_pesquisa {
+  id                     Int                     @id @default(autoincrement())
+  codigo                 String
+  tipo                   String                  @db.VarChar(255)
+  titulo                 String
+  categoria              String
+  situacao               String                  @map("situação")
+  localidade_id          Int
+  area_conhecimento_id   Int
+  palavra_chave_id       Int
+  vigencia               DateTime                @db.Timestamp(6)
+  plano_trabalho_id      Int
+  corpo_id               Int
+  edital                 String
+  cota                   String
+  cronograma_id          Int
+  area_conhecimento      area_conhecimento       @relation(fields: [area_conhecimento_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  corpo_projeto          corpo_projeto           @relation(fields: [corpo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  cronograma             cronograma              @relation("projeto_pesquisa_cronograma", fields: [cronograma_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  anexo_projeto_pesquisa anexo_projeto_pesquisa?
+  localidade             localidade              @relation("projeto_pesquisa_localidade", fields: [localidade_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  palavra_chave          palavra_chave           @relation(fields: [palavra_chave_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  plano_trabalho         plano_trabalho          @relation(fields: [plano_trabalho_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model funcao {
+  id               Int                @id @default(autoincrement())
+  nome             String             @unique
+  descricao        String?
+  criado_em        DateTime           @default(now()) @db.Timestamp(6)
+  atualizado_em    DateTime           @default(now()) @db.Timestamp(6)
+  funcao_permissao funcao_permissao[]
+  usuario          usuario[]
+}
+
+model funcao_permissao {
+  funcao_id    Int
+  permissao_id Int
+  permissao    permissao @relation(fields: [permissao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  funcao       funcao    @relation(fields: [funcao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([funcao_id, permissao_id])
+}
+
+model usuario {
+  id             Int              @id @default(autoincrement())
+  nome           String
+  email          String
+  senha          String
+  criado_em      DateTime         @db.Timestamp(6)
+  atualizado_em  DateTime         @db.Timestamp(6)
+  funcao_id      Int
+  anexo          anexo[]
+  discente       discente[]
+  docente        docente[]
+  plano_trabalho plano_trabalho[]
+  funcao         funcao           @relation(fields: [funcao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}

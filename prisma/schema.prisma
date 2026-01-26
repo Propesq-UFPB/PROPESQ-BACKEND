@@ -147,6 +147,7 @@ model projeto_pesquisa {
   edital                 String
   cota                   String
   cronograma_id          Int
+  pesquisa_objetivo      pesquisa_objetivo[]
   area_conhecimento      area_conhecimento       @relation(fields: [area_conhecimento_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   corpo_projeto          corpo_projeto           @relation(fields: [corpo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   cronograma             cronograma              @relation("projeto_pesquisa_cronograma", fields: [cronograma_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -154,6 +155,21 @@ model projeto_pesquisa {
   localidade             localidade              @relation("projeto_pesquisa_localidade", fields: [localidade_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   palavra_chave          palavra_chave           @relation(fields: [palavra_chave_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   plano_trabalho         plano_trabalho          @relation(fields: [plano_trabalho_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model objetivo_desenvolvimento_sustentavel {
+  id                Int                 @id @default(autoincrement())
+  tipo              String              @unique
+  pesquisa_objetivo pesquisa_objetivo[]
+}
+
+model pesquisa_objetivo {
+  pesquisa_id Int
+  objetivo_id Int
+  pesquisa    projeto_pesquisa                     @relation(fields: [pesquisa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  objetivo    objetivo_desenvolvimento_sustentavel @relation(fields: [objetivo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([pesquisa_id, objetivo_id])
 }
 
 model funcao {

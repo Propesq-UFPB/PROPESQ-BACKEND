@@ -78,4 +78,14 @@ export class UsersService {
       include: { funcao: true },
     });
   }
+
+  async findByEmail(email: string) {
+    const usuario = await this.prisma.usuario.findFirst({
+      where: { email },
+    });
+
+    if (!usuario)
+      throw new NotFoundException(`Usuário com email ${email} não encontrado`);
+    return usuario;
+  }
 }

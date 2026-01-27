@@ -38,6 +38,39 @@ async function main() {
   }
 
   console.log('Seed de funções finalizado com sucesso!');
+
+  console.log('Iniciando seed do usuario admin...');
+
+  const adminRole = await prisma.funcao.findUnique({
+    where: { nome: 'ADMIN' },
+  });
+
+  if (!adminRole) {
+    throw new Error(
+      'Função ADMIN não encontrada; execute o seed de funções primeiro.',
+    );
+  }
+
+  const existingAdmin = await prisma.usuario.findFirst({
+    where: { email: 'dev@example.com' },
+  });
+
+  if (!existingAdmin) {
+    await prisma.usuario.create({
+      data: {
+        nome: 'Dev Admin',
+        email: 'dev@example.com',
+        senha: 'changeme',
+        funcao_id: adminRole.id,
+        criado_em: new Date(),
+        atualizado_em: new Date(),
+      },
+    });
+
+    console.log('Usuario admin criado com sucesso!');
+  } else {
+    console.log('Usuario admin ja existe, nada a fazer.');
+  }
 }
 
 main()

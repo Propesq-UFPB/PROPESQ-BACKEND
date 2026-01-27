@@ -12,9 +12,15 @@ import { CreateResearchDto } from './dto/create-research.dto';
 import { UpdateResearchDto } from './dto/update-research.dto';
 import { Research } from './entities/research.entity';
 
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
 @ApiTags('research')
+@ApiBearerAuth('bearer')
 @Controller('research')
 export class ResearchController {
   constructor(private readonly researchService: ResearchService) {}

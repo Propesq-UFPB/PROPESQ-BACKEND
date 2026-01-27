@@ -12,6 +12,15 @@ async function bootstrap() {
     .setDescription('The researchs API description')
     .setVersion('1.0')
     .addTag('research')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'Insira o token JWT retornado pelo login',
+      },
+      'bearer',
+    )
     .build();
   const document = SwaggerModule.createDocument(app, config);
   const theme = new SwaggerTheme();

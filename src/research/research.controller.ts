@@ -1,72 +1,40 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-} from '@nestjs/common';
-import { ResearchService } from './research.service';
+import { Controller, Post, Body, Get, Query } from '@nestjs/common';
 import { CreateResearchDto } from './dto/create-research.dto';
-import { UpdateResearchDto } from './dto/update-research.dto';
-import { Research } from './entities/research.entity';
+import { ResearchService } from './research.service';
+import { PaginatedDto } from 'src/common/dto/paginated.dto';
+import { findOneResearchDto } from './dto/find-one-research.dto';
+import { projeto_pesquisa } from '@prisma/client';
+import {
+  ApiOkResponse,
+  ApiOperation,
+  ApiProperty,
+  ApiQuery,
+  ApiResponse,
+} from '@nestjs/swagger';
 
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-
-@ApiTags('research')
 @Controller('research')
 export class ResearchController {
   constructor(private readonly researchService: ResearchService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Cria um novo projeto.' })
-  @ApiResponse({ status: 201, description: 'Projeto criado com sucesso.' })
-  @ApiResponse({ status: 400, description: 'Requisição inválida.' })
-  create(@Body() createResearchDto: CreateResearchDto) {
+  @ApiOperation({ summary: 'Cria um novo projeto de pesquisa' })
+  create(
+    @Body() createResearchDto: CreateResearchDto,
+  ): Promise<projeto_pesquisa> {
     return this.researchService.create(createResearchDto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Lista todos os projetos.' })
-  @ApiResponse({
-    status: 200,
-    description: 'Lista de projetos.',
-    type: [Research],
+  @ApiOperation({
+    summary: 'Retorna todos os projetos de pesquisa com paginação',
   })
-  findAll() {
-    return this.researchService.findAll();
-  }
-
-  @Get(':id')
-  @ApiOperation({ summary: 'Pesquisa um projeto pelo seu id.' })
-  @ApiResponse({
-    status: 200,
-    description: 'Objeto com o projeto.',
-    type: Research,
-  })
-  findOne(@Param('id') id: string) {
-    return this.researchService.findOne(+id);
-  }
-
-  @Patch(':id')
-  @ApiOperation({ summary: 'Atualiza os dados de um projeto.' })
-  @ApiResponse({
-    status: 200,
-    description: 'Projeto atualizado',
-    type: Research,
-  })
-  update(
-    @Param('id') id: string,
-    @Body() updateResearchDto: UpdateResearchDto,
-  ) {
-    return this.researchService.update(+id, updateResearchDto);
-  }
-
-  @Delete(':id')
-  @ApiOperation({ summary: 'Exclui um projeto a partir do seu id.' })
-  @ApiResponse({ status: 200, description: 'Projeto excluído.' })
-  remove(@Param('id') id: string) {
-    return this.researchService.remove(+id);
+  @ApiOkResponse({ type: findOneResearchDto })
+  @ApiQuery({ name: 'limit', required: false, type: Number, default: 10 })
+  @ApiQuery({ name: 'offset', required: false, type: Number, default: 0 })
+  findAll(
+    @Query('limit') limit: string = '10',
+    @Query('offset') offset: string = '0',
+  ): Promise<PaginatedDto<findOneResearchDto>> {
+    return this.researchService.findAll(+limit, +offset);
   }
 }

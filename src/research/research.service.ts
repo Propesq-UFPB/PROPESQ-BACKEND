@@ -1,67 +1,90 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { CreateResearchDto } from './dto/create-research.dto';
-import { UpdateResearchDto } from './dto/update-research.dto';
-import { researchData } from './data';
-import { Research } from './entities/research.entity';
+import { Injectable } from '@nestjs/common';
+import { CreateResearchDto } from '../research/dto/create-research.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { Idioma, SituacaoProjeto } from '@prisma/client';
+import { PaginatedDto } from 'src/common/dto/paginated.dto';
+import { findOneResearchDto } from './dto/find-one-research.dto';
+import { CategoriaProjetoMapper } from 'src/common/mapper/categoria-projeto.mapper';
+import { SituacaoProjetoMapper } from 'src/common/mapper/situacao-projeto.mapper';
+import { TipoProjetoMapper } from 'src/common/mapper/tipo-projeto.mapper';
 
 @Injectable()
 export class ResearchService {
   constructor(private prisma: PrismaService) {}
 
-  private researchData: Research[] = researchData as Research[];
-  private nextId: number =
-    this.researchData.length > 0
-      ? Math.max(...this.researchData.map((r) => r.id)) + 1
-      : 1;
+  async create(createResearchDto: CreateResearchDto): Promise<any> {
+    return this.prisma.projeto_pesquisa.create({
+      data: {
+        tipo: createResearchDto.tipo,
+        codigo: 'DEFAULT_CODE',
+        data_cadastro: new Date(),
+        titulo: createResearchDto.titulo,
+        title: createResearchDto.title,
+        categoria: createResearchDto.categoria,
+        email: createResearchDto.email,
+        situacao: SituacaoProjeto.SUBMETIDO,
+        vigencia: createResearchDto.vigencia,
+        palavra_chave: {
+          create: [
+            ...createResearchDto.palavras_chave,
+            ...createResearchDto.key_words,
+          ],
+        },
+        corpoProjeto: {
+          create: createResearchDto.corpo_projeto,
+        },
+      },
+      include: { corpoProjeto: true, palavra_chave: true },
+    });
+  }
 
-  create(createResearchDto: CreateResearchDto): Research {
-    const newResearch: Research = {
-      id: this.nextId++,
-      ...createResearchDto,
+  async findAll(
+    limit: number,
+    offset: number,
+  ): Promise<PaginatedDto<findOneResearchDto>> {
+    const [data, total] = await Promise.all([
+      (
+        await this.prisma.projeto_pesquisa.findMany({
+          include: { corpoProjeto: true, palavra_chave: true },
+          take: limit,
+          skip: offset,
+          orderBy: { data_cadastro: 'desc' },
+        })
+      ).map((research) => {
+        return this.formatResearch(research);
+      }),
+      this.prisma.projeto_pesquisa.count(),
+    ]);
+
+    return {
+      total,
+      limit,
+      offset,
+      results: data,
     };
-
-    this.researchData.push(newResearch);
-    return newResearch;
   }
 
-  findAll(): Research[] {
-    return this.researchData;
-  }
-
-  findOne(id: number): Research {
-    const research = this.researchData.find((r) => r.id === id);
-    if (!research) {
-      // Exceção padrão do NestJS para indicar que o recurso não foi encontrado
-      throw new NotFoundException(`Pesquisa com ID #${id} não encontrada.`);
-    }
-    return research;
-  }
-
-  update(id: number, updateResearchDto: UpdateResearchDto): Research {
-    const existingResearch = this.findOne(id); // Usa findOne para verificar e obter
-
-    // Encontra o índice e substitui/atualiza as propriedades
-    const researchIndex = this.researchData.findIndex((r) => r.id === id);
-
-    // Sobrescreve as propriedades com as do DTO
-    this.researchData[researchIndex] = {
-      ...existingResearch,
-      ...updateResearchDto, // O PartialType permite a atualização parcial
+  private formatResearch(research): findOneResearchDto {
+    return {
+      id: research.id,
+      tipo: TipoProjetoMapper[research.tipo],
+      titulo: research.titulo,
+      title: research.title,
+      categoria: CategoriaProjetoMapper[research.categoria],
+      codigo: research.codigo,
+      email: research.email,
+      situacao: SituacaoProjetoMapper[research.situacao],
+      data_cadastro: research.data_cadastro.toLocaleDateString('pt-br'),
+      key_words: research.palavra_chave
+        .filter((_) => _.lingua === Idioma.EN)
+        .map((_) => {
+          return _.palavra_chave;
+        }),
+      palavras_chave: research.palavra_chave
+        .filter((_) => _.lingua === Idioma.PT)
+        .map((_) => {
+          return _.palavra_chave;
+        }),
     };
-
-    return this.researchData[researchIndex];
-  }
-
-  remove(id: number): void {
-    const initialLength = this.researchData.length;
-
-    // Filtra para remover o item com o ID especificado
-    this.researchData = this.researchData.filter((r) => r.id !== id);
-
-    // Se o tamanho do array não mudou, significa que o ID não foi encontrado
-    if (this.researchData.length === initialLength) {
-      throw new NotFoundException(`Pesquisa com ID #${id} não encontrada.`);
-    }
   }
 }

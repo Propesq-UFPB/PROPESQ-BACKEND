@@ -12,8 +12,8 @@ import { ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { PaginatedDto } from './dto/paginated.dto';
-import { usuario } from 'generated/prisma/client';
+import { PaginatedDto } from 'src/common/dto/paginated.dto';
+import { usuario } from '@prisma/client';
 
 @Controller('users')
 export class UsersController {

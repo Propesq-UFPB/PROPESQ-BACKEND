@@ -132,4 +132,8 @@ export class CreateResearchDto {
   @ValidateNested()
   @Type(() => ResearchBody)
   corpo_projeto: ResearchBody;
+
+  @IsNotEmpty()
+  @IsInt()
+  unidade_id: number;
 }

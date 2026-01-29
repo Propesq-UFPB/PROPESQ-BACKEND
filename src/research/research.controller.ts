@@ -7,11 +7,11 @@ import { projeto_pesquisa } from '@prisma/client';
 import {
   ApiOkResponse,
   ApiOperation,
-  ApiProperty,
   ApiQuery,
-  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 
+@ApiTags('Projeto de pesquisa')
 @Controller('research')
 export class ResearchController {
   constructor(private readonly researchService: ResearchService) {}

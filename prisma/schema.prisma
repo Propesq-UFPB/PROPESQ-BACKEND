@@ -87,12 +87,13 @@ model docente {
   usuario    usuario @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
-model localidade {
-  id           Int    @id @default(autoincrement())
-  departamento String
-  centro       String
-  unidade      Int
+model unidade_academica {
+  id               Int                @id @default(autoincrement())
+  sigla            String             @unique @db.VarChar(15)
+  nome             String             @unique @db.VarChar(255)
+  ativo            Boolean            @default(true)
   //projeto_pesquisa_localidade projeto_pesquisa[] @relation("projeto_pesquisa_localidade")
+  projetoPesquisas projeto_pesquisa[]
 }
 
 model mes {
@@ -143,7 +144,7 @@ model projeto_pesquisa {
   categoria              CategoriaProjeto
   situacao               SituacaoProjeto         @map("situação")
   email                  String
-  //localidade_id          Int
+  unidade_id             Int
   //area_conhecimento_id   Int
   vigencia               DateTime                @db.Timestamp(6)
   data_cadastro          DateTime
@@ -154,7 +155,7 @@ model projeto_pesquisa {
   //area_conhecimento      area_conhecimento       @relation(fields: [area_conhecimento_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   // cronograma             cronograma              @relation("projeto_pesquisa_cronograma", fields: [cronograma_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   anexo_projeto_pesquisa anexo_projeto_pesquisa?
-  // localidade             localidade              @relation("projeto_pesquisa_localidade", fields: [localidade_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  unidade_academica      unidade_academica       @relation(fields: [unidade_id], references: [id], onDelete: Cascade)
   palavra_chave          palavra_chave[]
   corpoProjeto           corpo_projeto?
 }

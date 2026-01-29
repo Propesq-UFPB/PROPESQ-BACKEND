@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateResearchDto } from '../research/dto/create-research.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Idioma, SituacaoProjeto } from '@prisma/client';
@@ -13,6 +13,12 @@ export class ResearchService {
   constructor(private prisma: PrismaService) {}
 
   async create(createResearchDto: CreateResearchDto): Promise<any> {
+    const academic_unit = await this.prisma.unidade_academica.findUnique({where: {id: createResearchDto.unidade_id}})
+    
+    if (!academic_unit) {
+      throw new NotFoundException(`Unidade acadêmica com id ${createResearchDto.unidade_id} não encontrada`)
+    }
+
     return this.prisma.projeto_pesquisa.create({
       data: {
         tipo: createResearchDto.tipo,
@@ -33,6 +39,7 @@ export class ResearchService {
         corpoProjeto: {
           create: createResearchDto.corpo_projeto,
         },
+        unidade_id: createResearchDto.unidade_id
       },
       include: { corpoProjeto: true, palavra_chave: true },
     });

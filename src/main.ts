@@ -10,10 +10,9 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
 
   const config = new DocumentBuilder()
-    .setTitle('Researchs example')
-    .setDescription('The researchs API description')
+    .setTitle('Propesq Documentation')
+    .setDescription('Propesq API description')
     .setVersion('1.0')
-    .addTag('research')
     .build();
   const document = SwaggerModule.createDocument(app, config);
   const theme = new SwaggerTheme();

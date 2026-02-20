@@ -24,6 +24,26 @@ async function main() {
     },
   ];
 
+  const objetivos_sustentavel = [
+    { tipo: 'Erradicação da Pobreza' },
+    { tipo: 'Fome Zero e Agricultura Sustentável' },
+    { tipo: 'Saúde e Bem-Estar' },
+    { tipo: 'Educação de Qualidade' },
+    { tipo: 'Igualdade de Gênero' },
+    { tipo: 'Água Potável e Saneamento' },
+    { tipo: 'Energia Limpa e Acessível' },
+    { tipo: 'Trabalho Decente e Crescimento Econômico' },
+    { tipo: 'Indústria, Inovação e Infraestrutura' },
+    { tipo: 'Redução das Desigualdades' },
+    { tipo: 'Cidades e Comunidades Sustentáveis' },
+    { tipo: 'Consumo e Produção Responsáveis' },
+    { tipo: 'Ação Contra a Mudança Global do Clima' },
+    { tipo: 'Vida na Água' },
+    { tipo: 'Vida Terrestre' },
+    { tipo: 'Paz, Justiça e Instituições Eficazes' },
+    { tipo: 'Parcerias e Meios de Implementação' },
+  ];
+
   console.log('Iniciando seed de funções...');
 
   for (const f of funcoes) {
@@ -33,6 +53,16 @@ async function main() {
       create: {
         nome: f.nome,
         descricao: f.descricao,
+      },
+    });
+  }
+
+  for (const obj of objetivos_sustentavel) {
+    await prisma.objetivo_desenvolvimento_sustentavel.upsert({
+      where: { tipo: obj.tipo },
+      update: {},
+      create: {
+        tipo: obj.tipo,
       },
     });
   }

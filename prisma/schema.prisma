@@ -151,13 +151,13 @@ model projeto_pesquisa {
   // edital                 String
   // cota                   String
   // cronograma_id          Int
-  pesquisa_objetivo      pesquisa_objetivo[]
+  objetivos      pesquisa_objetivo[]
   //area_conhecimento      area_conhecimento       @relation(fields: [area_conhecimento_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   // cronograma             cronograma              @relation("projeto_pesquisa_cronograma", fields: [cronograma_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   anexo_projeto_pesquisa anexo_projeto_pesquisa?
   unidade_academica      unidade_academica       @relation(fields: [unidade_id], references: [id], onDelete: Cascade)
   palavra_chave          palavra_chave[]
-  corpoProjeto           corpo_projeto?
+  corpo_projeto           corpo_projeto?
 }
 
 model objetivo_desenvolvimento_sustentavel {

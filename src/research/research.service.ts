@@ -1,22 +1,27 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateResearchDto } from '../research/dto/create-research.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { Idioma, SituacaoProjeto } from '@prisma/client';
+import { Idioma, SituacaoProjeto, type projeto_pesquisa } from '@prisma/client';
 import { PaginatedDto } from 'src/common/dto/paginated.dto';
 import { findOneResearchDto } from './dto/find-one-research.dto';
 import { CategoriaProjetoMapper } from 'src/common/mapper/categoria-projeto.mapper';
 import { SituacaoProjetoMapper } from 'src/common/mapper/situacao-projeto.mapper';
 import { TipoProjetoMapper } from 'src/common/mapper/tipo-projeto.mapper';
+import { updateResearchDto } from './dto/update-research.dto';
 
 @Injectable()
 export class ResearchService {
   constructor(private prisma: PrismaService) {}
 
   async create(createResearchDto: CreateResearchDto): Promise<any> {
-    const academic_unit = await this.prisma.unidade_academica.findUnique({where: {id: createResearchDto.unidade_id}})
-    
+    const academic_unit = await this.prisma.unidade_academica.findUnique({
+      where: { id: createResearchDto.unidade_id },
+    });
+
     if (!academic_unit) {
-      throw new NotFoundException(`Unidade acadêmica com id ${createResearchDto.unidade_id} não encontrada`)
+      throw new NotFoundException(
+        `Unidade acadêmica com id ${createResearchDto.unidade_id} não encontrada`,
+      );
     }
 
     return this.prisma.projeto_pesquisa.create({
@@ -31,17 +36,23 @@ export class ResearchService {
         situacao: SituacaoProjeto.SUBMETIDO,
         vigencia: createResearchDto.vigencia,
         palavra_chave: {
-          create: [
-            ...createResearchDto.palavras_chave,
-            ...createResearchDto.key_words,
-          ],
+          create: [...createResearchDto.palavras_chave],
         },
-        corpoProjeto: {
+        objetivos: {
+          create: createResearchDto.objetivos.map((objetivo_id: number) => {
+            return {
+              objetivo: {
+                connect: { id: objetivo_id },
+              },
+            };
+          }),
+        },
+        corpo_projeto: {
           create: createResearchDto.corpo_projeto,
         },
-        unidade_id: createResearchDto.unidade_id
+        unidade_id: createResearchDto.unidade_id,
       },
-      include: { corpoProjeto: true, palavra_chave: true },
+      include: { corpo_projeto: true, palavra_chave: true },
     });
   }
 
@@ -52,7 +63,7 @@ export class ResearchService {
     const [data, total] = await Promise.all([
       (
         await this.prisma.projeto_pesquisa.findMany({
-          include: { corpoProjeto: true, palavra_chave: true },
+          include: { corpo_projeto: true, palavra_chave: true },
           take: limit,
           skip: offset,
           orderBy: { data_cadastro: 'desc' },
@@ -71,8 +82,73 @@ export class ResearchService {
     };
   }
 
-  private formatResearch(research): findOneResearchDto {
-    return {
+  async findOne(id: number): Promise<findOneResearchDto> {
+    const data = await this.prisma.projeto_pesquisa.findUnique({
+      where: { id: id },
+      include: {
+        objetivos: {
+          include: {
+            objetivo: true,
+          },
+        },
+        unidade_academica: true,
+        palavra_chave: true,
+        corpo_projeto: true,
+        anexo_projeto_pesquisa: true,
+      },
+    });
+
+    if (!data) {
+      throw new NotFoundException(
+        `Projeto de pesquisa Id ${id} não encontrado`,
+      );
+    }
+
+    return this.formatResearch(data, true);
+  }
+
+  async update(id: number, updateResearchDto: updateResearchDto) {
+    await this.findOne(id);
+
+    return this.prisma.projeto_pesquisa.update({
+      where: { id: id },
+      data: {
+        tipo: updateResearchDto.tipo,
+        codigo: 'DEFAULT_CODE',
+        data_cadastro: new Date(),
+        titulo: updateResearchDto.titulo,
+        title: updateResearchDto.title,
+        categoria: updateResearchDto.categoria,
+        email: updateResearchDto.email,
+        situacao: SituacaoProjeto.SUBMETIDO,
+        vigencia: updateResearchDto.vigencia,
+        ...(Array.isArray(updateResearchDto.palavras_chave) && {
+          palavra_chave: {
+            deleteMany: {},
+            create: updateResearchDto.palavras_chave,
+          },
+        }),
+        ...(Array.isArray(updateResearchDto.objetivos) && {
+          objetivos: {
+            deleteMany: {},
+            create: updateResearchDto.objetivos.map((objetivo_id: number) => ({
+              objetivo: {
+                connect: { id: objetivo_id },
+              },
+            })),
+          },
+        }),
+        corpo_projeto: {
+          create: updateResearchDto.corpo_projeto,
+        },
+        unidade_id: updateResearchDto.unidade_id,
+      },
+      include: { corpo_projeto: true, palavra_chave: true },
+    });
+  }
+
+  private formatResearch(research, full: boolean = false): findOneResearchDto {
+    const formatted_research: findOneResearchDto = {
       id: research.id,
       tipo: TipoProjetoMapper[research.tipo],
       titulo: research.titulo,
@@ -92,6 +168,23 @@ export class ResearchService {
         .map((_) => {
           return _.palavra_chave;
         }),
+      objetivos: research.objetivos.map((objetivo) => {
+        return objetivo.objetivo;
+      }),
     };
+
+    if (full) {
+      formatted_research.corpo = {
+        resumo: research.corpo_projeto.resumo,
+        abstract: research.corpo_projeto.abstract,
+        introducao: research.corpo_projeto.introducao,
+        objetivos: research.corpo_projeto.objetivos,
+        metodologia: research.corpo_projeto.metodologia,
+        referencias: research.corpo_projeto.referencias,
+        resultados_esperados: research.corpo_projeto.resultados_esperados,
+      };
+    }
+
+    return formatted_research;
   }
 }

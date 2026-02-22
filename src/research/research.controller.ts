@@ -1,4 +1,14 @@
-import { Controller, Post, Body, Get, Query } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Query,
+  Param,
+  Patch,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { CreateResearchDto } from './dto/create-research.dto';
 import { ResearchService } from './research.service';
 import { PaginatedDto } from 'src/common/dto/paginated.dto';
@@ -10,6 +20,7 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { updateResearchDto } from './dto/update-research.dto';
 
 @ApiTags('Projeto de pesquisa')
 @Controller('research')
@@ -36,5 +47,21 @@ export class ResearchController {
     @Query('offset') offset: string = '0',
   ): Promise<PaginatedDto<findOneResearchDto>> {
     return this.researchService.findAll(+limit, +offset);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Retorna dados de um projeto de pesquisa pelo ID' })
+  findOne(@Param('id') id: number): Promise<findOneResearchDto> {
+    return this.researchService.findOne(id);
+  }
+
+  @Patch(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Atualiza registro de um projeto de pesquisa' })
+  update(
+    @Param('id') id: number,
+    @Body() updateResearchDto: updateResearchDto,
+  ) {
+    return this.researchService.update(id, updateResearchDto);
   }
 }

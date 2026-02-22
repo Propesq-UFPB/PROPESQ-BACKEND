@@ -49,32 +49,32 @@ class PalavraChaveBody {
   lingua: Idioma;
 }
 
-export class CreateResearchDto {
+export class updateResearchDto {
   @ApiProperty({
-    required: true,
+    required: false,
     enum: TipoProjeto,
   })
   @IsEnum(TipoProjeto)
   tipo: TipoProjeto;
 
-  @ApiProperty({ required: true })
-  @IsNotEmpty()
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
   titulo: string;
 
-  @ApiProperty({ required: true })
-  @IsNotEmpty()
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
   title: string;
 
-  @ApiProperty({ required: true, enum: CategoriaProjeto })
-  @IsNotEmpty()
+  @ApiProperty({ required: false, enum: CategoriaProjeto })
+  @IsOptional()
   @IsString()
   @IsEnum(CategoriaProjeto)
   categoria: CategoriaProjeto;
 
-  @ApiProperty({ required: true })
-  @IsNotEmpty()
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsDateString()
   vigencia: Date;
 
@@ -93,13 +93,13 @@ export class CreateResearchDto {
     isArray: true,
     minLength: 3,
   })
-  @IsNotEmpty()
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => PalavraChaveBody)
   palavras_chave: PalavraChaveBody[];
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsEmail()
   email: string;
 
@@ -109,13 +109,13 @@ export class CreateResearchDto {
   @IsInt({ each: true })
   objetivos: Number[];
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsObject()
   @ValidateNested()
   @Type(() => ResearchBody)
   corpo_projeto: ResearchBody;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsInt()
   unidade_id: number;
 }

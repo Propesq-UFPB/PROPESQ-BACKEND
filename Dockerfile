@@ -1,26 +1,21 @@
-# Configuração descrita na documentação do NestJs
+FROM oven/bun:1-alpine AS base
 
-# Use the official Node.js image as the base image
-FROM node:24-alpine 
-
-# Set the working directory inside the container
 WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json to the working directory
-COPY package*.json ./
+COPY bun.lock package.json ./
 
-# Install the application dependencies
-RUN npm install
+# Install dependencies
+RUN bun install --frozen-lockfile
 
+# Copy Prisma schema and generate client
 COPY prisma ./prisma
-RUN npx prisma generate
+RUN bunx prisma generate
 
-# Copy the rest of the application files
+# Copy the rest of the application
 COPY . .
 
-# Expose the application port 
+# Expose port
 EXPOSE 3000
 
-# Command to run the application
-CMD ["npm", "run", "start:migrate:dev"]
-
+# For development: migrate + start
+CMD ["bun", "run", "start:migrate:dev"]

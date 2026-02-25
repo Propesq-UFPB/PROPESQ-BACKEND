@@ -187,4 +187,26 @@ export class ResearchService {
 
     return formatted_research;
   }
+
+  async delete(id: number) {
+    const research_exists = await this.prisma.projeto_pesquisa.findUnique({
+      where: { id },
+    });
+
+    if (!research_exists) {
+      throw new NotFoundException(
+        `Projeto de pesquisa Id ${id} não encontrado`,
+      );
+    }
+
+    return this.prisma.projeto_pesquisa.delete({
+      where: { id },
+      include: {
+        anexo_projeto_pesquisa: true,
+        objetivos: true,
+        palavra_chave: true,
+        corpo_projeto: true,
+      },
+    });
+  }
 }

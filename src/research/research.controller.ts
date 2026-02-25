@@ -8,6 +8,7 @@ import {
   Patch,
   HttpCode,
   HttpStatus,
+  Delete,
 } from '@nestjs/common';
 import { CreateResearchDto } from './dto/create-research.dto';
 import { ResearchService } from './research.service';
@@ -63,5 +64,11 @@ export class ResearchController {
     @Body() updateResearchDto: updateResearchDto,
   ) {
     return this.researchService.update(id, updateResearchDto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Exclui registro de um projeto de pesquisa' })
+  delete(@Param('id') id: number) {
+    return this.researchService.delete(id);
   }
 }

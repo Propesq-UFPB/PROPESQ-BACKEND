@@ -1,14 +1,28 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ResearchModule } from './research/research.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
-import { AcademicUnitController } from './academic-unit/academic-unit.controller';
-import { AcademicUnitService } from './academic-unit/academic-unit.service';
-import { AcademicUnitModule } from './academic-unit/academic-unit.module';
+import { AuthModule } from './auth/auth.module';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { SchedulesModule } from './schedules/schedules.module';
+import { WorkPlanModule } from './work-plan/work-plan.module';
 
 @Module({
-  imports: [ResearchModule, PrismaModule, UsersModule, AcademicUnitModule],
-  controllers: [AcademicUnitController],
-  providers: [AcademicUnitService],
+  imports: [
+    ResearchModule,
+    PrismaModule,
+    UsersModule,
+    AuthModule,
+    SchedulesModule,
+    WorkPlanModule,
+    ResearchModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+  ],
 })
 export class AppModule {}

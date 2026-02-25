@@ -8,7 +8,7 @@ import {
   Delete,
   Query,
 } from '@nestjs/common';
-import { ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { ApiOperation, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -16,6 +16,7 @@ import { PaginatedDto } from 'src/common/dto/paginated.dto';
 import { usuario } from '@prisma/client';
 
 @Controller('users')
+@ApiBearerAuth('bearer')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 

@@ -12,10 +12,12 @@ import {
 } from '@nestjs/common';
 import { CreateResearchDto } from './dto/create-research.dto';
 import { ResearchService } from './research.service';
-import { PaginatedDto } from 'src/common/dto/paginated.dto';
+import { PaginatedDto } from '../common/dto/paginated.dto';
 import { findOneResearchDto } from './dto/find-one-research.dto';
 import { projeto_pesquisa } from '@prisma/client';
 import {
+  ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
@@ -30,6 +32,7 @@ export class ResearchController {
 
   @Post()
   @ApiOperation({ summary: 'Cria um novo projeto de pesquisa' })
+  @ApiCreatedResponse({ description: 'Projeto criado com sucesso' })
   create(
     @Body() createResearchDto: CreateResearchDto,
   ): Promise<projeto_pesquisa> {
@@ -40,7 +43,7 @@ export class ResearchController {
   @ApiOperation({
     summary: 'Retorna todos os projetos de pesquisa com paginação',
   })
-  @ApiOkResponse({ type: findOneResearchDto })
+  @ApiOkResponse({ type: PaginatedDto<findOneResearchDto> })
   @ApiQuery({ name: 'limit', required: false, type: Number, default: 10 })
   @ApiQuery({ name: 'offset', required: false, type: Number, default: 0 })
   findAll(
@@ -52,6 +55,10 @@ export class ResearchController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Retorna dados de um projeto de pesquisa pelo ID' })
+  @ApiOkResponse({
+    description: 'Projeto de pesquisa retornado com sucesso',
+    type: findOneResearchDto,
+  })
   findOne(@Param('id') id: number): Promise<findOneResearchDto> {
     return this.researchService.findOne(id);
   }
@@ -59,6 +66,9 @@ export class ResearchController {
   @Patch(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Atualiza registro de um projeto de pesquisa' })
+  @ApiNoContentResponse({
+    description: 'Projeto de pesquisa atualizado com sucesso',
+  })
   update(
     @Param('id') id: number,
     @Body() updateResearchDto: updateResearchDto,
@@ -67,7 +77,11 @@ export class ResearchController {
   }
 
   @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Exclui registro de um projeto de pesquisa' })
+  @ApiNoContentResponse({
+    description: 'Projeto de pesquisa deletado com sucesso',
+  })
   delete(@Param('id') id: number) {
     return this.researchService.delete(id);
   }

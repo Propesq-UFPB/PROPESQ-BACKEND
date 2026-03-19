@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateResearchDto } from '../research/dto/create-research.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { Idioma, SituacaoProjeto, type projeto_pesquisa } from '@prisma/client';
-import { PaginatedDto } from 'src/common/dto/paginated.dto';
+import { PaginatedDto } from '../common/dto/paginated.dto';
 import { findOneResearchDto } from './dto/find-one-research.dto';
-import { CategoriaProjetoMapper } from 'src/common/mapper/categoria-projeto.mapper';
-import { SituacaoProjetoMapper } from 'src/common/mapper/situacao-projeto.mapper';
-import { TipoProjetoMapper } from 'src/common/mapper/tipo-projeto.mapper';
+import { CategoriaProjetoMapper } from '../common/mapper/categoria-projeto.mapper';
+import { SituacaoProjetoMapper } from '../common/mapper/situacao-projeto.mapper';
+import { TipoProjetoMapper } from '../common/mapper/tipo-projeto.mapper';
 import { updateResearchDto } from './dto/update-research.dto';
 
 @Injectable()
@@ -47,12 +47,32 @@ export class ResearchService {
             };
           }),
         },
+        atividades: {
+          create: createResearchDto.atividades.map((atividade) => {
+            return {
+              descricao: atividade.descricao,
+              meses: {
+                create: atividade.meses.map((mes) => {
+                  return {
+                    data: mes,
+                  };
+                }),
+              },
+            };
+          }),
+        },
         corpo_projeto: {
           create: createResearchDto.corpo_projeto,
         },
-        unidade_id: createResearchDto.unidade_id,
+        unidade_academica: {
+          connect: { id: createResearchDto.unidade_id },
+        },
       },
-      include: { corpo_projeto: true, palavra_chave: true },
+      include: {
+        corpo_projeto: true,
+        palavra_chave: true,
+        atividades: { include: { meses: true } },
+      },
     });
   }
 
@@ -63,7 +83,11 @@ export class ResearchService {
     const [data, total] = await Promise.all([
       (
         await this.prisma.projeto_pesquisa.findMany({
-          include: { corpo_projeto: true, palavra_chave: true },
+          include: {
+            corpo_projeto: true,
+            palavra_chave: true,
+            objetivos: true,
+          },
           take: limit,
           skip: offset,
           orderBy: { data_cadastro: 'desc' },
@@ -95,6 +119,11 @@ export class ResearchService {
         palavra_chave: true,
         corpo_projeto: true,
         anexo_projeto_pesquisa: true,
+        atividades: {
+          include: {
+            meses: true,
+          },
+        },
       },
     });
 
@@ -131,16 +160,34 @@ export class ResearchService {
         ...(Array.isArray(updateResearchDto.objetivos) && {
           objetivos: {
             deleteMany: {},
-            create: updateResearchDto.objetivos.map((objetivo_id: number) => ({
+            create: updateResearchDto?.objetivos.map((objetivo_id: number) => ({
               objetivo: {
                 connect: { id: objetivo_id },
               },
             })),
           },
         }),
+        ...(Array.isArray(updateResearchDto.atividades) && {
+          atividades: {
+            deleteMany: {},
+            create: updateResearchDto.atividades.map((atividade) => {
+              return {
+                descricao: atividade.descricao,
+                meses: {
+                  create: atividade.meses.map((mes) => {
+                    return {
+                      data: mes,
+                    };
+                  }),
+                },
+              };
+            }),
+          },
+        }),
         corpo_projeto: {
           create: updateResearchDto.corpo_projeto,
         },
+
         unidade_id: updateResearchDto.unidade_id,
       },
       include: { corpo_projeto: true, palavra_chave: true },
@@ -168,8 +215,16 @@ export class ResearchService {
         .map((_) => {
           return _.palavra_chave;
         }),
-      objetivos: research.objetivos.map((objetivo) => {
+      objetivos: research?.objetivos?.map((objetivo) => {
         return objetivo.objetivo;
+      }),
+      atividades: research?.atividades?.map((atividade) => {
+        return {
+          descricao: atividade.descricao,
+          meses: atividade.meses.map((mes) => {
+            return mes.data;
+          }),
+        };
       }),
     };
 

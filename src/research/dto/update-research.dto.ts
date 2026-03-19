@@ -49,6 +49,25 @@ class PalavraChaveBody {
   lingua: Idioma;
 }
 
+class AtividadesBody {
+  @ApiProperty({
+    required: true,
+  })
+  @IsNotEmpty()
+  @IsString()
+  descricao: string;
+
+  @ApiProperty({
+    isArray: true,
+    type: 'string',
+    format: 'date',
+    required: true,
+  })
+  @IsArray()
+  @IsDateString({}, { each: true })
+  meses: Array<Date>;
+}
+
 export class updateResearchDto {
   @ApiProperty({
     required: false,
@@ -114,6 +133,12 @@ export class updateResearchDto {
   @ValidateNested()
   @Type(() => ResearchBody)
   corpo_projeto: ResearchBody;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AtividadesBody)
+  atividades: AtividadesBody[];
 
   @IsOptional()
   @IsInt()

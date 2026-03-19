@@ -2,6 +2,8 @@ import { CategoriaProjeto, Idioma, TipoProjeto } from '@prisma/client';
 import {
   ArrayMinSize,
   IsArray,
+  IsDate,
+  isDateString,
   IsDateString,
   IsEmail,
   IsEnum,
@@ -12,7 +14,7 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 class ResearchBody {
@@ -47,6 +49,25 @@ class PalavraChaveBody {
   @IsNotEmpty()
   @IsEnum(Idioma)
   lingua: Idioma;
+}
+
+class AtividadesBody {
+  @ApiProperty({
+    required: true,
+  })
+  @IsNotEmpty()
+  @IsString()
+  descricao: string;
+
+  @ApiProperty({
+    isArray: true,
+    type: 'string',
+    format: 'date',
+    required: true,
+  })
+  @IsArray()
+  @IsDateString({}, { each: true })
+  meses: Array<Date>;
 }
 
 export class CreateResearchDto {
@@ -114,6 +135,11 @@ export class CreateResearchDto {
   @ValidateNested()
   @Type(() => ResearchBody)
   corpo_projeto: ResearchBody;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AtividadesBody)
+  atividades: AtividadesBody[];
 
   @IsNotEmpty()
   @IsInt()

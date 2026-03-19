@@ -12,6 +12,12 @@ export class findOneResearchDto {
   palavras_chave: string[];
   key_words: string[];
   corpo?: CorpoProjeto;
+  atividades: Atividade[];
+}
+
+export class Atividade {
+  descricao: string;
+  meses: Date[];
 }
 
 export class CorpoProjeto {

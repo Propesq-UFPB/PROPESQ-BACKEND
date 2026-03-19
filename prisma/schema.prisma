@@ -38,14 +38,14 @@ model atividade_projeto_pesquisa {
   descricao           String                 @db.Text
   meses               mes_projeto_pesquisa[]
   projeto_pesquisa_id Int?
-  projeto_pesquisa    projeto_pesquisa?      @relation(fields: [projeto_pesquisa_id], references: [id])
+  projeto_pesquisa    projeto_pesquisa?      @relation(fields: [projeto_pesquisa_id], references: [id], onDelete: Cascade)
 }
 
 model mes_projeto_pesquisa {
   id           Int                        @id @default(autoincrement())
   data         DateTime                   @db.Date
   atividade_id Int
-  atividade    atividade_projeto_pesquisa @relation(fields: [atividade_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  atividade    atividade_projeto_pesquisa @relation(fields: [atividade_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model atividade_plano_trabalho {
@@ -53,14 +53,14 @@ model atividade_plano_trabalho {
   descricao         String               @db.Text
   meses             mes_plano_trabalho[]
   plano_trabalho_id Int?
-  plano_trabalho    plano_trabalho?      @relation(fields: [plano_trabalho_id], references: [id])
+  plano_trabalho    plano_trabalho?      @relation(fields: [plano_trabalho_id], references: [id], onDelete: Cascade)
 }
 
 model mes_plano_trabalho {
   id                         Int                       @id @default(autoincrement())
   data                       DateTime                  @db.Date
   atividade_id               Int
-  atividadePlanoTrabalho     atividade_plano_trabalho? @relation(fields: [atividade_plano_trabalhoId], references: [id])
+  atividadePlanoTrabalho     atividade_plano_trabalho? @relation(fields: [atividade_plano_trabalhoId], references: [id], onDelete: Cascade)
   atividade_plano_trabalhoId Int?
 }
 
@@ -178,8 +178,8 @@ model objetivo_desenvolvimento_sustentavel {
 model pesquisa_objetivo {
   pesquisa_id Int
   objetivo_id Int
-  pesquisa    projeto_pesquisa                     @relation(fields: [pesquisa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  objetivo    objetivo_desenvolvimento_sustentavel @relation(fields: [objetivo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  pesquisa    projeto_pesquisa                     @relation(fields: [pesquisa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  objetivo    objetivo_desenvolvimento_sustentavel @relation(fields: [objetivo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([pesquisa_id, objetivo_id])
 }

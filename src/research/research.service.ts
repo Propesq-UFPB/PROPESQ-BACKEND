@@ -14,13 +14,17 @@ export class ResearchService {
   constructor(private prisma: PrismaService) {}
 
   async create(createResearchDto: CreateResearchDto): Promise<any> {
-    const academic_unit = await this.prisma.unidade_academica.findUnique({
-      where: { id: createResearchDto.unidade_id },
-    });
+    await this.assertAcademicUnitExists(createResearchDto.unidade_id);
+    await this.assertCorpoProjetoExists(createResearchDto.corpo_projeto_id);
+    await this.assertPalavrasChaveExist(createResearchDto.palavras_chave_ids);
 
-    if (!academic_unit) {
-      throw new NotFoundException(
-        `Unidade acadêmica com id ${createResearchDto.unidade_id} não encontrada`,
+    if (Array.isArray(createResearchDto.pesquisa_objetivo_ids)) {
+      await this.assertObjetivosSustentavelExist(createResearchDto.pesquisa_objetivo_ids);
+    }
+
+    if (Array.isArray(createResearchDto.atividade_projeto_pesquisa_ids)) {
+      await this.assertAtividadesProjetoPesquisaExist(
+        createResearchDto.atividade_projeto_pesquisa_ids,
       );
     }
 
@@ -40,31 +44,24 @@ export class ResearchService {
             connect: createResearchDto.palavras_chave_ids.map((id: number) => ({ id })),
           },
         }),
-        objetivos: {
-          create: createResearchDto.objetivos.map((objetivo_id: number) => {
-            return {
-              objetivo: {
-                connect: { id: objetivo_id },
-              },
-            };
-          }),
-        },
-        atividades: {
-          create: createResearchDto.atividades.map(atividade => {
-            return {
-              descricao: atividade.descricao,
-              meses: {
-                create: atividade.meses.map(mes => {
-                  return {
-                    data: mes,
-                  };
-                }),
-              },
-            };
-          }),
-        },
+        ...(Array.isArray(createResearchDto.pesquisa_objetivo_ids) && {
+          objetivos: {
+            create: createResearchDto.pesquisa_objetivo_ids.map((objetivo_id: number) => {
+              return {
+                objetivo: {
+                  connect: { id: objetivo_id },
+                },
+              };
+            }),
+          },
+        }),
+        ...(Array.isArray(createResearchDto.atividade_projeto_pesquisa_ids) && {
+          atividades: {
+            connect: createResearchDto.atividade_projeto_pesquisa_ids.map((id: number) => ({ id })),
+          },
+        }),
         corpo_projeto: {
-          create: createResearchDto.corpo_projeto,
+          connect: { id: createResearchDto.corpo_projeto_id },
         },
         unidade_academica: {
           connect: { id: createResearchDto.unidade_id },
@@ -136,6 +133,28 @@ export class ResearchService {
   async update(id: number, updateResearchDto: updateResearchDto) {
     await this.findOne(id);
 
+    if (updateResearchDto.unidade_id !== undefined) {
+      await this.assertAcademicUnitExists(updateResearchDto.unidade_id);
+    }
+
+    if (updateResearchDto.corpo_projeto_id !== undefined) {
+      await this.assertCorpoProjetoExists(updateResearchDto.corpo_projeto_id);
+    }
+
+    if (Array.isArray(updateResearchDto.palavras_chave_ids)) {
+      await this.assertPalavrasChaveExist(updateResearchDto.palavras_chave_ids);
+    }
+
+    if (Array.isArray(updateResearchDto.pesquisa_objetivo_ids)) {
+      await this.assertObjetivosSustentavelExist(updateResearchDto.pesquisa_objetivo_ids);
+    }
+
+    if (Array.isArray(updateResearchDto.atividade_projeto_pesquisa_ids)) {
+      await this.assertAtividadesProjetoPesquisaExist(
+        updateResearchDto.atividade_projeto_pesquisa_ids,
+      );
+    }
+
     return this.prisma.projeto_pesquisa.update({
       where: { id: id },
       data: {
@@ -153,36 +172,26 @@ export class ResearchService {
             set: updateResearchDto.palavras_chave_ids.map((id: number) => ({ id })),
           },
         }),
-        ...(Array.isArray(updateResearchDto.objetivos) && {
+        ...(Array.isArray(updateResearchDto.pesquisa_objetivo_ids) && {
           objetivos: {
             deleteMany: {},
-            create: updateResearchDto?.objetivos.map((objetivo_id: number) => ({
+            create: updateResearchDto.pesquisa_objetivo_ids.map((objetivo_id: number) => ({
               objetivo: {
                 connect: { id: objetivo_id },
               },
             })),
           },
         }),
-        ...(Array.isArray(updateResearchDto.atividades) && {
+        ...(Array.isArray(updateResearchDto.atividade_projeto_pesquisa_ids) && {
           atividades: {
-            deleteMany: {},
-            create: updateResearchDto.atividades.map(atividade => {
-              return {
-                descricao: atividade.descricao,
-                meses: {
-                  create: atividade.meses.map(mes => {
-                    return {
-                      data: mes,
-                    };
-                  }),
-                },
-              };
-            }),
+            set: updateResearchDto.atividade_projeto_pesquisa_ids.map((id: number) => ({ id })),
           },
         }),
-        corpo_projeto: {
-          create: updateResearchDto.corpo_projeto,
-        },
+        ...(updateResearchDto.corpo_projeto_id !== undefined && {
+          corpo_projeto: {
+            connect: { id: updateResearchDto.corpo_projeto_id },
+          },
+        }),
 
         unidade_id: updateResearchDto.unidade_id,
       },
@@ -257,5 +266,78 @@ export class ResearchService {
         corpo_projeto: true,
       },
     });
+  }
+
+  private async assertAcademicUnitExists(unidadeId: number): Promise<void> {
+    const academicUnit = await this.prisma.unidade_academica.findUnique({
+      where: { id: unidadeId },
+      select: { id: true },
+    });
+
+    if (!academicUnit) {
+      throw new NotFoundException(`Unidade acadêmica com id ${unidadeId} não encontrada`);
+    }
+  }
+
+  private async assertCorpoProjetoExists(corpoProjetoId: number): Promise<void> {
+    const corpoProjeto = await this.prisma.corpo_projeto.findUnique({
+      where: { id: corpoProjetoId },
+      select: { id: true },
+    });
+
+    if (!corpoProjeto) {
+      throw new NotFoundException(`Corpo de projeto com id ${corpoProjetoId} não encontrado`);
+    }
+  }
+
+  private async assertPalavrasChaveExist(ids: number[]): Promise<void> {
+    const uniqueIds = [...new Set(ids)];
+    const found = await this.prisma.palavra_chave.findMany({
+      where: { id: { in: uniqueIds } },
+      select: { id: true },
+    });
+
+    const foundIds = new Set(found.map(item => item.id));
+    const missingIds = uniqueIds.filter(id => !foundIds.has(id));
+
+    if (missingIds.length > 0) {
+      throw new NotFoundException(
+        `Palavra(s)-chave não encontrada(s) para os ids: ${missingIds.join(', ')}`,
+      );
+    }
+  }
+
+  private async assertObjetivosSustentavelExist(ids: number[]): Promise<void> {
+    const uniqueIds = [...new Set(ids)];
+    const found = await this.prisma.objetivo_desenvolvimento_sustentavel.findMany({
+      where: { id: { in: uniqueIds } },
+      select: { id: true },
+    });
+
+    const foundIds = new Set(found.map(item => item.id));
+    const missingIds = uniqueIds.filter(id => !foundIds.has(id));
+
+    if (missingIds.length > 0) {
+      throw new NotFoundException(
+        `Objetivo(s) de desenvolvimento sustentável não encontrado(s) para os ids: ${missingIds.join(', ')}`,
+      );
+    }
+  }
+
+  private async assertAtividadesProjetoPesquisaExist(ids: number[]): Promise<void> {
+    const uniqueIds = [...new Set(ids)];
+    const found = await this.prisma.atividade_projeto_pesquisa.findMany({
+      where: { id: { in: uniqueIds } },
+      select: { id: true },
+    });
+
+    const foundIds = new Set(found.map(item => item.id));
+    const missingIds = uniqueIds.filter(id => !foundIds.has(id));
+
+    if (missingIds.length > 0) {
+      throw new NotFoundException(
+        `Atividade(s) de projeto de pesquisa não encontrada(s) para os ids: ${missingIds.join(', ')}`,
+      );
+    }
   }
 }

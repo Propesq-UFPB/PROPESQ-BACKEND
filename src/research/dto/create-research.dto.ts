@@ -6,55 +6,11 @@ import {
   IsEnum,
   IsInt,
   IsNotEmpty,
-  IsObject,
   IsOptional,
   IsString,
-  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
-
-class ResearchBody {
-  @IsString({ message: 'O resumo deve ser um texto' })
-  resumo!: string;
-
-  @IsString({ message: 'O abstract deve ser um texto' })
-  abstract!: string;
-
-  @IsString({ message: 'A introdução deve ser um texto' })
-  introducao!: string;
-
-  @IsString({ message: 'Os objetivos devem ser um texto' })
-  objetivos!: string;
-
-  @IsString({ message: 'A metodologia deve ser um texto' })
-  metodologia!: string;
-
-  @IsString({ message: 'Os resultados esperados devem ser um texto' })
-  resultados_esperados!: string;
-
-  @IsString({ message: 'As referências devem ser um texto' })
-  referencias!: string;
-}
-
-class AtividadesBody {
-  @ApiProperty({
-    required: true,
-  })
-  @IsNotEmpty({ message: 'A descrição da atividade é obrigatória' })
-  @IsString({ message: 'A descrição da atividade deve ser um texto' })
-  descricao!: string;
-
-  @ApiProperty({
-    isArray: true,
-    type: 'string',
-    format: 'date',
-    required: true,
-  })
-  @IsArray()
-  @IsDateString({}, { each: true, message: 'Cada mês deve estar no formato de data válido' })
-  meses!: Array<Date>;
-}
 
 export class CreateResearchDto {
   @ApiProperty({
@@ -95,6 +51,11 @@ export class CreateResearchDto {
   @IsDateString({}, { message: 'A data de fim deve estar no formato de data válido' })
   data_fim!: Date;
 
+  @ApiProperty({ required: true, description: 'E-mail para contato do projeto' })
+  @IsNotEmpty({ message: 'O e-mail é obrigatório' })
+  @IsEmail({}, { message: 'O e-mail informado é inválido' })
+  email!: string;
+
   @ApiProperty({
     required: true,
     isArray: true,
@@ -107,29 +68,39 @@ export class CreateResearchDto {
   @IsInt({ each: true, message: 'Cada palavra-chave deve ser um ID numérico válido' })
   palavras_chave_ids!: number[];
 
-  @ApiProperty({ required: true, description: 'E-mail para contato do projeto' })
-  @IsNotEmpty({ message: 'O e-mail é obrigatório' })
-  @IsEmail({}, { message: 'O e-mail informado é inválido' })
-  email!: string;
-
-  @ApiProperty({ isArray: true, type: 'number' })
+  @ApiProperty({
+    isArray: true,
+    type: Number,
+    required: false,
+    description: 'IDs de objetivo_desenvolvimento_sustentavel para a tabela pesquisa_objetivo',
+  })
   @IsOptional()
-  @IsArray({ message: 'Os objetivos devem ser um array de IDs' })
-  @IsInt({ each: true, message: 'Cada objetivo deve ser um número inteiro' })
-  objetivos!: number[];
+  @IsArray({ message: 'Os IDs de pesquisa_objetivo devem ser um array' })
+  @Type(() => Number)
+  @IsInt({ each: true, message: 'Cada ID de pesquisa_objetivo deve ser um número inteiro' })
+  pesquisa_objetivo_ids!: number[];
 
-  @ApiProperty({ required: true, description: 'Corpo textual do projeto' })
-  @IsNotEmpty()
-  @IsObject({ message: 'O corpo do projeto deve ser um objeto' })
-  @ValidateNested()
-  @Type(() => ResearchBody)
-  corpo_projeto!: ResearchBody;
+  @ApiProperty({
+    required: true,
+    type: Number,
+    description: 'ID do corpo do projeto já cadastrado',
+  })
+  @Type(() => Number)
+  @IsNotEmpty({ message: 'O ID do corpo do projeto é obrigatório' })
+  @IsInt({ message: 'O ID do corpo do projeto deve ser um número inteiro' })
+  corpo_projeto_id!: number;
 
-  @ApiProperty({ type: [AtividadesBody], description: 'Atividades do projeto' })
-  @IsArray({ message: 'As atividades devem ser um array' })
-  @ValidateNested({ each: true })
-  @Type(() => AtividadesBody)
-  atividades!: AtividadesBody[];
+  @ApiProperty({
+    isArray: true,
+    type: Number,
+    required: false,
+    description: 'IDs de atividade_projeto_pesquisa já cadastradas',
+  })
+  @IsOptional()
+  @IsArray({ message: 'Os IDs das atividades devem ser um array' })
+  @Type(() => Number)
+  @IsInt({ each: true, message: 'Cada ID de atividade deve ser um número inteiro' })
+  atividade_projeto_pesquisa_ids!: number[];
 
   @ApiProperty({ required: true, type: Number, description: 'ID da unidade acadêmica' })
   @IsNotEmpty()

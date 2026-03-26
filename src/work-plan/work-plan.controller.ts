@@ -24,8 +24,8 @@ import { CreateWorkPlanDto } from './dto/create-work-plan.dto';
 import { UpdateWorkPlanDto } from './dto/update-work-plan.dto';
 import { WorkPlanService } from './work-plan.service';
 
-@ApiTags('Planos de trabalho')
 @ApiBearerAuth('bearer')
+@ApiTags('Planos de trabalho')
 @Controller('work-plans')
 export class WorkPlanController {
   constructor(private readonly workPlanService: WorkPlanService) {}

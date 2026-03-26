@@ -14,9 +14,10 @@ import { CreateAcademicUnit } from './dto/create-academic-unit.dto';
 import { AcademicUnitService } from './academic-unit.service';
 import { UpdateAcademicUnit } from './dto/update-academic-unit.dto';
 import { unidade_academica } from '@prisma/client';
-import { ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { PaginatedDto } from '../common/dto/paginated.dto';
 
+@ApiBearerAuth('bearer')
 @ApiTags('Unidades acadêmicas')
 @Controller('academic-units')
 export class AcademicUnitController {

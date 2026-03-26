@@ -5,12 +5,12 @@ import { Public } from './decorators/public.decorator';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 
+@Public()
 @ApiTags('Autenticações')
 @Controller('authentications')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Public()
   @ApiOperation({ summary: 'Cria uma sessão de autenticação' })
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -25,7 +25,6 @@ export class AuthController {
     return this.authService.login(loginDto);
   }
 
-  @Public()
   @ApiOperation({ summary: 'Cria um novo usuário para autenticação' })
   @ApiResponse({
     status: HttpStatus.CREATED,

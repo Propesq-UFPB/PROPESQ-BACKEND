@@ -25,9 +25,9 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { usuario } from '@prisma/client';
 import { PaginatedDto } from '../common/dto/paginated.dto';
 
-@Controller('users')
 @ApiBearerAuth('bearer')
 @ApiTags('Usuários')
+@Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 

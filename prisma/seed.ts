@@ -76,9 +76,7 @@ async function main() {
   });
 
   if (!adminRole) {
-    throw new Error(
-      'Função ADMIN não encontrada; execute o seed de funções primeiro.',
-    );
+    throw new Error('Função ADMIN não encontrada; execute o seed de funções primeiro.');
   }
 
   const existingAdmin = await prisma.usuario.findFirst({
@@ -99,12 +97,23 @@ async function main() {
 
     console.log('Usuario admin criado com sucesso!');
   } else {
-    console.log('Usuario admin ja existe, nada a fazer.');
+    await prisma.usuario.update({
+      where: { id: existingAdmin.id },
+      data: {
+        nome: 'Dev Admin',
+        email: 'dev@example.com',
+        senha: 'changeme',
+        funcao_id: adminRole.id,
+        atualizado_em: new Date(),
+      },
+    });
+
+    console.log('Usuario admin existente atualizado com sucesso!');
   }
 }
 
 main()
-  .catch((e) => {
+  .catch(e => {
     console.error(e);
     process.exit(1);
   })

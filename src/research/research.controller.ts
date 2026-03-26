@@ -16,7 +16,14 @@ import { ResearchService } from './research.service';
 import { PaginatedDto } from '../common/dto/paginated.dto';
 import { findOneResearchDto } from './dto/find-one-research.dto';
 import { projeto_pesquisa } from '@prisma/client';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { updateResearchDto } from './dto/update-research.dto';
 
 @ApiBearerAuth('bearer')

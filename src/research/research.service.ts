@@ -35,9 +35,11 @@ export class ResearchService {
         email: createResearchDto.email,
         situacao: SituacaoProjeto.SUBMETIDO,
         vigencia: createResearchDto.vigencia,
-        palavra_chave: {
-          create: [...createResearchDto.palavras_chave],
-        },
+        ...(Array.isArray(createResearchDto.palavras_chave_ids) && {
+          palavra_chave: {
+            connect: createResearchDto.palavras_chave_ids.map((id: number) => ({ id })),
+          },
+        }),
         objetivos: {
           create: createResearchDto.objetivos.map((objetivo_id: number) => {
             return {
@@ -146,10 +148,9 @@ export class ResearchService {
         email: updateResearchDto.email,
         situacao: SituacaoProjeto.SUBMETIDO,
         vigencia: updateResearchDto.vigencia,
-        ...(Array.isArray(updateResearchDto.palavras_chave) && {
+        ...(Array.isArray(updateResearchDto.palavras_chave_ids) && {
           palavra_chave: {
-            deleteMany: {},
-            create: updateResearchDto.palavras_chave,
+            set: updateResearchDto.palavras_chave_ids.map((id: number) => ({ id })),
           },
         }),
         ...(Array.isArray(updateResearchDto.objetivos) && {

@@ -1,6 +1,5 @@
-import { CategoriaProjeto, Idioma, TipoProjeto } from '@prisma/client';
+import { CategoriaProjeto, TipoProjeto } from '@prisma/client';
 import {
-  ArrayMinSize,
   IsArray,
   IsDateString,
   IsEmail,
@@ -12,50 +11,39 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 class ResearchBody {
-  @IsString()
-  resumo: string;
+  @IsString({ message: 'O resumo deve ser um texto' })
+  resumo!: string;
 
-  @IsString()
-  abstract: string;
+  @IsString({ message: 'O abstract deve ser um texto' })
+  abstract!: string;
 
-  @IsString()
-  introducao: string;
+  @IsString({ message: 'A introdução deve ser um texto' })
+  introducao!: string;
 
-  @IsString()
-  objetivos: string;
+  @IsString({ message: 'Os objetivos devem ser um texto' })
+  objetivos!: string;
 
-  @IsString()
-  metodologia: string;
+  @IsString({ message: 'A metodologia deve ser um texto' })
+  metodologia!: string;
 
-  @IsString()
-  resultados_esperados: string;
+  @IsString({ message: 'Os resultados esperados devem ser um texto' })
+  resultados_esperados!: string;
 
-  @IsString()
-  referencias: string;
-}
-
-class PalavraChaveBody {
-  @IsNotEmpty()
-  @IsString()
-  palavra_chave: string;
-
-  @ApiProperty({ enum: Idioma })
-  @IsNotEmpty()
-  @IsEnum(Idioma)
-  lingua: Idioma;
+  @IsString({ message: 'As referências devem ser um texto' })
+  referencias!: string;
 }
 
 class AtividadesBody {
   @ApiProperty({
     required: true,
   })
-  @IsNotEmpty()
-  @IsString()
-  descricao: string;
+  @IsNotEmpty({ message: 'A descrição da atividade é obrigatória' })
+  @IsString({ message: 'A descrição da atividade deve ser um texto' })
+  descricao!: string;
 
   @ApiProperty({
     isArray: true,
@@ -64,8 +52,8 @@ class AtividadesBody {
     required: true,
   })
   @IsArray()
-  @IsDateString({}, { each: true })
-  meses: Array<Date>;
+  @IsDateString({}, { each: true, message: 'Cada mês deve estar no formato de data válido' })
+  meses!: Array<Date>;
 }
 
 export class updateResearchDto {
@@ -73,74 +61,80 @@ export class updateResearchDto {
     required: false,
     enum: TipoProjeto,
   })
-  @IsEnum(TipoProjeto)
-  tipo: TipoProjeto;
+  @IsOptional()
+  @IsEnum(TipoProjeto, { message: 'O tipo do projeto é inválido' })
+  tipo!: TipoProjeto;
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsString()
-  titulo: string;
+  @IsString({ message: 'O título em português deve ser um texto' })
+  titulo!: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsString()
-  title: string;
+  @IsString({ message: 'O título em inglês deve ser um texto' })
+  title!: string;
 
   @ApiProperty({ required: false, enum: CategoriaProjeto })
   @IsOptional()
-  @IsString()
-  @IsEnum(CategoriaProjeto)
-  categoria: CategoriaProjeto;
+  @IsString({ message: 'A categoria do projeto deve ser um texto' })
+  @IsEnum(CategoriaProjeto, { message: 'A categoria do projeto é inválida' })
+  categoria!: CategoriaProjeto;
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsDateString()
-  vigencia: Date;
+  @IsDateString({}, { message: 'A vigência deve estar no formato de data válido' })
+  vigencia!: Date;
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsDateString()
-  data_inicio: Date;
+  @IsDateString({}, { message: 'A data de início deve estar no formato de data válido' })
+  data_inicio!: Date;
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsDateString()
-  data_fim: Date;
+  @IsDateString({}, { message: 'A data de fim deve estar no formato de data válido' })
+  data_fim!: Date;
 
   @ApiProperty({
-    required: true,
+    required: false,
     isArray: true,
-    minLength: 3,
+    type: Number,
+    description: 'IDs das palavras-chave cadastradas',
   })
   @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => PalavraChaveBody)
-  palavras_chave: PalavraChaveBody[];
+  @IsArray({ message: 'As palavras-chave devem ser um array' })
+  @Type(() => Number)
+  @IsInt({ each: true, message: 'Cada palavra-chave deve ser um ID numérico válido' })
+  palavras_chave_ids!: number[];
 
+  @ApiProperty({ required: false, description: 'E-mail para contato do projeto' })
   @IsOptional()
-  @IsEmail()
-  email: string;
+  @IsEmail({}, { message: 'O e-mail informado é inválido' })
+  email!: string;
 
   @ApiProperty({ isArray: true, type: 'number' })
   @IsOptional()
-  @IsArray()
-  @IsInt({ each: true })
-  objetivos: Number[];
+  @IsArray({ message: 'Os objetivos devem ser um array de IDs' })
+  @IsInt({ each: true, message: 'Cada objetivo deve ser um número inteiro' })
+  objetivos!: number[];
 
+  @ApiProperty({ required: false, description: 'Corpo textual do projeto' })
   @IsOptional()
-  @IsObject()
+  @IsObject({ message: 'O corpo do projeto deve ser um objeto' })
   @ValidateNested()
   @Type(() => ResearchBody)
-  corpo_projeto: ResearchBody;
+  corpo_projeto!: ResearchBody;
 
+  @ApiProperty({ type: [AtividadesBody], required: false, description: 'Atividades do projeto' })
   @IsOptional()
-  @IsArray()
+  @IsArray({ message: 'As atividades devem ser um array' })
   @ValidateNested({ each: true })
   @Type(() => AtividadesBody)
-  atividades: AtividadesBody[];
+  atividades!: AtividadesBody[];
 
+  @ApiProperty({ required: false, type: Number, description: 'ID da unidade acadêmica' })
   @IsOptional()
-  @IsInt()
-  unidade_id: number;
+  @IsInt({ message: 'O ID da unidade acadêmica deve ser um número inteiro' })
+  unidade_id!: number;
 }

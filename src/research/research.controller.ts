@@ -5,6 +5,7 @@ import {
   Get,
   Query,
   Param,
+  ParseIntPipe,
   Patch,
   HttpCode,
   HttpStatus,
@@ -15,27 +16,25 @@ import { ResearchService } from './research.service';
 import { PaginatedDto } from '../common/dto/paginated.dto';
 import { findOneResearchDto } from './dto/find-one-research.dto';
 import { projeto_pesquisa } from '@prisma/client';
-import {
-  ApiCreatedResponse,
-  ApiNoContentResponse,
-  ApiOkResponse,
-  ApiOperation,
-  ApiQuery,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { updateResearchDto } from './dto/update-research.dto';
 
-@ApiTags('Projeto de pesquisa')
-@Controller('research')
+@ApiTags('Projetos de pesquisa')
+@Controller('research-projects')
 export class ResearchController {
   constructor(private readonly researchService: ResearchService) {}
 
   @Post()
   @ApiOperation({ summary: 'Cria um novo projeto de pesquisa' })
-  @ApiCreatedResponse({ description: 'Projeto criado com sucesso' })
-  create(
-    @Body() createResearchDto: CreateResearchDto,
-  ): Promise<projeto_pesquisa> {
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Projeto de pesquisa criado com sucesso.',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Unidade acadêmica não encontrada.',
+  })
+  create(@Body() createResearchDto: CreateResearchDto): Promise<projeto_pesquisa> {
     return this.researchService.create(createResearchDto);
   }
 
@@ -43,7 +42,10 @@ export class ResearchController {
   @ApiOperation({
     summary: 'Retorna todos os projetos de pesquisa com paginação',
   })
-  @ApiOkResponse({ type: PaginatedDto<findOneResearchDto> })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Lista paginada de projetos de pesquisa retornada com sucesso.',
+  })
   @ApiQuery({ name: 'limit', required: false, type: Number, default: 10 })
   @ApiQuery({ name: 'offset', required: false, type: Number, default: 0 })
   findAll(
@@ -55,34 +57,63 @@ export class ResearchController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Retorna dados de um projeto de pesquisa pelo ID' })
-  @ApiOkResponse({
-    description: 'Projeto de pesquisa retornado com sucesso',
-    type: findOneResearchDto,
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'ID do projeto de pesquisa.',
   })
-  findOne(@Param('id') id: number): Promise<findOneResearchDto> {
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Projeto de pesquisa retornado com sucesso.',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Projeto de pesquisa não encontrado.',
+  })
+  findOne(@Param('id', ParseIntPipe) id: number): Promise<findOneResearchDto> {
     return this.researchService.findOne(id);
   }
 
   @Patch(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Atualiza registro de um projeto de pesquisa' })
-  @ApiNoContentResponse({
-    description: 'Projeto de pesquisa atualizado com sucesso',
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'ID do projeto de pesquisa.',
   })
-  update(
-    @Param('id') id: number,
+  @ApiResponse({
+    status: HttpStatus.NO_CONTENT,
+    description: 'Projeto de pesquisa atualizado com sucesso.',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Projeto de pesquisa não encontrado.',
+  })
+  async update(
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateResearchDto: updateResearchDto,
-  ) {
-    return this.researchService.update(id, updateResearchDto);
+  ): Promise<void> {
+    await this.researchService.update(id, updateResearchDto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Exclui registro de um projeto de pesquisa' })
-  @ApiNoContentResponse({
-    description: 'Projeto de pesquisa deletado com sucesso',
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'ID do projeto de pesquisa.',
   })
-  delete(@Param('id') id: number) {
-    return this.researchService.delete(id);
+  @ApiResponse({
+    status: HttpStatus.NO_CONTENT,
+    description: 'Projeto de pesquisa excluido com sucesso.',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Projeto de pesquisa não encontrado.',
+  })
+  async delete(@Param('id', ParseIntPipe) id: number): Promise<void> {
+    await this.researchService.delete(id);
   }
 }

@@ -6,15 +6,16 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { WorkPlanModule } from './work-plan/work-plan.module';
+import { AcademicUnitModule } from './academic-unit/academic-unit.module';
 
 @Module({
   imports: [
-    ResearchModule,
-    PrismaModule,
-    UsersModule,
+    AcademicUnitModule,
     AuthModule,
-    WorkPlanModule,
+    PrismaModule,
     ResearchModule,
+    UsersModule,
+    WorkPlanModule,
   ],
   providers: [
     {

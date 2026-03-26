@@ -13,7 +13,6 @@ async function bootstrap() {
     .setTitle('Propesq Documentation')
     .setDescription('Propesq API description')
     .setVersion('1.0')
-    .addTag('research')
     .addBearerAuth(
       {
         type: 'http',

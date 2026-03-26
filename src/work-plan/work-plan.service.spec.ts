@@ -54,7 +54,7 @@ describe('WorkPlanService', () => {
   let prisma: typeof mockPrismaService;
 
   beforeEach(async () => {
-    mockPrismaService.$transaction.mockImplementation(async (callback) =>
+    mockPrismaService.$transaction.mockImplementation(async callback =>
       callback(mockPrismaService),
     );
 
@@ -132,9 +132,7 @@ describe('WorkPlanService', () => {
       prisma.cronograma.findUnique.mockResolvedValue({ id: 7 });
       prisma.projeto_pesquisa.findUnique.mockResolvedValue({ id: 1 });
 
-      await expect(service.create(createDto)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
       expect(prisma.plano_trabalho.create).not.toHaveBeenCalled();
     });
   });

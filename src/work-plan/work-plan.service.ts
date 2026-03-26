@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaginatedDto } from '../common/dto/paginated.dto';
@@ -25,7 +21,7 @@ export class WorkPlanService {
       createWorkPlanDto.pesquisa_id,
     );
 
-    const workPlan = await this.prisma.$transaction(async (tx) => {
+    const workPlan = await this.prisma.$transaction(async tx => {
       const createdWorkPlan = await tx.plano_trabalho.create({
         data: {
           discente_id: createWorkPlanDto.discente_id,
@@ -53,11 +49,7 @@ export class WorkPlanService {
         data: { corpo_id: body.id },
       });
 
-      await this.syncActivitiesWithSql(
-        createdWorkPlan.id,
-        createWorkPlanDto.atividades,
-        tx,
-      );
+      await this.syncActivitiesWithSql(createdWorkPlan.id, createWorkPlanDto.atividades, tx);
 
       return createdWorkPlan;
     });
@@ -93,9 +85,7 @@ export class WorkPlanService {
     });
 
     if (!rawWorkPlan) {
-      throw new NotFoundException(
-        `Plano de trabalho com ID ${id} não encontrado`,
-      );
+      throw new NotFoundException(`Plano de trabalho com ID ${id} não encontrado`);
     }
 
     const [workPlan] = await this.attachActivitiesAndMonths([rawWorkPlan]);
@@ -118,7 +108,7 @@ export class WorkPlanService {
       );
     }
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async tx => {
       await tx.plano_trabalho.update({
         where: { id },
         data: {
@@ -153,12 +143,7 @@ export class WorkPlanService {
       });
 
       if (updateWorkPlanDto.corpo_plano_trabalho) {
-        await this.syncBodyPlan(
-          tx,
-          id,
-          workPlan.corpo_id,
-          updateWorkPlanDto.corpo_plano_trabalho,
-        );
+        await this.syncBodyPlan(tx, id, workPlan.corpo_id, updateWorkPlanDto.corpo_plano_trabalho);
       }
 
       if (Array.isArray(updateWorkPlanDto.atividades)) {
@@ -178,11 +163,7 @@ export class WorkPlanService {
     });
   }
 
-  private async validateForeignKeys(
-    discente_id: number,
-    usuario_id: number,
-    pesquisa_id?: number,
-  ) {
+  private async validateForeignKeys(discente_id: number, usuario_id: number, pesquisa_id?: number) {
     const [discente, usuario, projeto] = await Promise.all([
       this.prisma.discente.findUnique({ where: { id: discente_id } }),
       this.prisma.usuario.findUnique({ where: { id: usuario_id } }),
@@ -194,21 +175,15 @@ export class WorkPlanService {
     ]);
 
     if (!discente) {
-      throw new NotFoundException(
-        `Discente com ID ${discente_id} não encontrado`,
-      );
+      throw new NotFoundException(`Discente com ID ${discente_id} não encontrado`);
     }
 
     if (!usuario) {
-      throw new NotFoundException(
-        `Usuário com ID ${usuario_id} não encontrado`,
-      );
+      throw new NotFoundException(`Usuário com ID ${usuario_id} não encontrado`);
     }
 
     if (pesquisa_id && !projeto) {
-      throw new NotFoundException(
-        `Projeto de pesquisa com ID ${pesquisa_id} não encontrado`,
-      );
+      throw new NotFoundException(`Projeto de pesquisa com ID ${pesquisa_id} não encontrado`);
     }
   }
 
@@ -270,15 +245,13 @@ export class WorkPlanService {
       workPlanId,
     );
 
-    const existingActivityIds = existingActivities.map(
-      (atividade) => atividade.id,
-    );
+    const existingActivityIds = existingActivities.map(atividade => atividade.id);
     const incomingExistingIds = atividadesDto
-      .filter((atividade) => atividade.id !== undefined)
-      .map((atividade) => atividade.id as number);
+      .filter(atividade => atividade.id !== undefined)
+      .map(atividade => atividade.id as number);
 
     const invalidActivityIds = incomingExistingIds.filter(
-      (atividadeId) => !existingActivityIds.includes(atividadeId),
+      atividadeId => !existingActivityIds.includes(atividadeId),
     );
 
     if (invalidActivityIds.length > 0) {
@@ -331,9 +304,7 @@ export class WorkPlanService {
 
       const activityId = insertedActivity[0]?.id;
       if (!activityId) {
-        throw new BadRequestException(
-          'Não foi possível criar a atividade do plano.',
-        );
+        throw new BadRequestException('Não foi possível criar a atividade do plano.');
       }
 
       if (Array.isArray(atividadeDto.meses)) {
@@ -352,13 +323,13 @@ export class WorkPlanService {
       activityId,
     );
 
-    const existingMonthIds = existingMonths.map((mes) => mes.id);
+    const existingMonthIds = existingMonths.map(mes => mes.id);
     const incomingExistingIds = monthsDto
-      .filter((mes) => mes.id !== undefined)
-      .map((mes) => mes.id as number);
+      .filter(mes => mes.id !== undefined)
+      .map(mes => mes.id as number);
 
     const invalidMonthIds = incomingExistingIds.filter(
-      (monthId) => !existingMonthIds.includes(monthId),
+      monthId => !existingMonthIds.includes(monthId),
     );
 
     if (invalidMonthIds.length > 0) {
@@ -396,9 +367,7 @@ export class WorkPlanService {
       }
 
       if (!monthDto.data) {
-        throw new BadRequestException(
-          'O campo data é obrigatório ao criar um novo mês.',
-        );
+        throw new BadRequestException('O campo data é obrigatório ao criar um novo mês.');
       }
 
       await tx.$executeRawUnsafe(
@@ -438,14 +407,12 @@ export class WorkPlanService {
     };
   }
 
-  private async attachActivitiesAndMonths<T extends { id: number }>(
-    plans: T[],
-  ): Promise<any[]> {
+  private async attachActivitiesAndMonths<T extends { id: number }>(plans: T[]): Promise<any[]> {
     if (plans.length === 0) {
       return plans;
     }
 
-    const planIds = plans.map((plan) => plan.id);
+    const planIds = plans.map(plan => plan.id);
     const activities = await this.prisma.$queryRawUnsafe<
       Array<{ id: number; descricao: string; plano_trabalho_id: number }>
     >(
@@ -453,7 +420,7 @@ export class WorkPlanService {
       planIds,
     );
 
-    const activityIds = activities.map((activity) => activity.id);
+    const activityIds = activities.map(activity => activity.id);
     const months =
       activityIds.length > 0
         ? await this.prisma.$queryRawUnsafe<
@@ -464,10 +431,7 @@ export class WorkPlanService {
           )
         : [];
 
-    const monthsByActivity = new Map<
-      number,
-      Array<{ id: number; data: Date }>
-    >();
+    const monthsByActivity = new Map<number, Array<{ id: number; data: Date }>>();
     for (const month of months) {
       const current = monthsByActivity.get(month.atividade_id) ?? [];
       current.push({ id: month.id, data: month.data });
@@ -492,7 +456,7 @@ export class WorkPlanService {
       activitiesByPlan.set(activity.plano_trabalho_id, current);
     }
 
-    return plans.map((plan) => ({
+    return plans.map(plan => ({
       ...plan,
       atividades: activitiesByPlan.get(plan.id) ?? [],
     }));

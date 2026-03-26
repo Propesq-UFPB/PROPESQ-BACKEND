@@ -13,10 +13,7 @@ export class AcademicUnitService {
     return this.prisma.unidade_academica.create({ data: createUnit });
   }
 
-  async findAll(
-    limit: number,
-    offset: number,
-  ): Promise<PaginatedDto<unidade_academica>> {
+  async findAll(limit: number, offset: number): Promise<PaginatedDto<unidade_academica>> {
     const [data, total] = await Promise.all([
       this.prisma.unidade_academica.findMany({ take: limit, skip: offset }),
       this.prisma.unidade_academica.count(),
@@ -36,9 +33,7 @@ export class AcademicUnitService {
     });
 
     if (!academic_unit) {
-      throw new NotFoundException(
-        `Centro acadêmico com id ${id} não encontrado`,
-      );
+      throw new NotFoundException(`Centro acadêmico com id ${id} não encontrado`);
     }
 
     console.log(JSON.stringify(updateUnit));

@@ -12,9 +12,7 @@ export class AuthService {
   ) {}
 
   async login(loginDto: LoginDto) {
-    const user = await this.usersService
-      .findByEmail(loginDto.email)
-      .catch(() => null);
+    const user = await this.usersService.findByEmail(loginDto.email).catch(() => null);
 
     if (!user || user.senha !== loginDto.senha) {
       throw new UnauthorizedException('Credenciais inválidas');

@@ -48,11 +48,11 @@ export class ResearchService {
           }),
         },
         atividades: {
-          create: createResearchDto.atividades.map((atividade) => {
+          create: createResearchDto.atividades.map(atividade => {
             return {
               descricao: atividade.descricao,
               meses: {
-                create: atividade.meses.map((mes) => {
+                create: atividade.meses.map(mes => {
                   return {
                     data: mes,
                   };
@@ -76,10 +76,7 @@ export class ResearchService {
     });
   }
 
-  async findAll(
-    limit: number,
-    offset: number,
-  ): Promise<PaginatedDto<findOneResearchDto>> {
+  async findAll(limit: number, offset: number): Promise<PaginatedDto<findOneResearchDto>> {
     const [data, total] = await Promise.all([
       (
         await this.prisma.projeto_pesquisa.findMany({
@@ -92,7 +89,7 @@ export class ResearchService {
           skip: offset,
           orderBy: { data_cadastro: 'desc' },
         })
-      ).map((research) => {
+      ).map(research => {
         return this.formatResearch(research);
       }),
       this.prisma.projeto_pesquisa.count(),
@@ -128,9 +125,7 @@ export class ResearchService {
     });
 
     if (!data) {
-      throw new NotFoundException(
-        `Projeto de pesquisa Id ${id} não encontrado`,
-      );
+      throw new NotFoundException(`Projeto de pesquisa Id ${id} não encontrado`);
     }
 
     return this.formatResearch(data, true);
@@ -170,11 +165,11 @@ export class ResearchService {
         ...(Array.isArray(updateResearchDto.atividades) && {
           atividades: {
             deleteMany: {},
-            create: updateResearchDto.atividades.map((atividade) => {
+            create: updateResearchDto.atividades.map(atividade => {
               return {
                 descricao: atividade.descricao,
                 meses: {
-                  create: atividade.meses.map((mes) => {
+                  create: atividade.meses.map(mes => {
                     return {
                       data: mes,
                     };
@@ -206,22 +201,22 @@ export class ResearchService {
       situacao: SituacaoProjetoMapper[research.situacao],
       data_cadastro: research.data_cadastro.toLocaleDateString('pt-br'),
       key_words: research.palavra_chave
-        .filter((_) => _.lingua === Idioma.EN)
-        .map((_) => {
+        .filter(_ => _.lingua === Idioma.EN)
+        .map(_ => {
           return _.palavra_chave;
         }),
       palavras_chave: research.palavra_chave
-        .filter((_) => _.lingua === Idioma.PT)
-        .map((_) => {
+        .filter(_ => _.lingua === Idioma.PT)
+        .map(_ => {
           return _.palavra_chave;
         }),
-      objetivos: research?.objetivos?.map((objetivo) => {
+      objetivos: research?.objetivos?.map(objetivo => {
         return objetivo.objetivo;
       }),
-      atividades: research?.atividades?.map((atividade) => {
+      atividades: research?.atividades?.map(atividade => {
         return {
           descricao: atividade.descricao,
-          meses: atividade.meses.map((mes) => {
+          meses: atividade.meses.map(mes => {
             return mes.data;
           }),
         };
@@ -249,9 +244,7 @@ export class ResearchService {
     });
 
     if (!research_exists) {
-      throw new NotFoundException(
-        `Projeto de pesquisa Id ${id} não encontrado`,
-      );
+      throw new NotFoundException(`Projeto de pesquisa Id ${id} não encontrado`);
     }
 
     return this.prisma.projeto_pesquisa.delete({

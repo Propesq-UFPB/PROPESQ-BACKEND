@@ -15,9 +15,7 @@ export class UsersService {
     });
 
     if (!funcao) {
-      throw new NotFoundException(
-        `Função com ID ${createUserDto.funcao_id} não encontrada`,
-      );
+      throw new NotFoundException(`Função com ID ${createUserDto.funcao_id} não encontrada`);
     }
 
     return this.prisma.usuario.create({
@@ -54,8 +52,7 @@ export class UsersService {
       include: { funcao: true },
     });
 
-    if (!usuario)
-      throw new NotFoundException(`Usuário com ID ${id} não encontrado`);
+    if (!usuario) throw new NotFoundException(`Usuário com ID ${id} não encontrado`);
     return usuario;
   }
 
@@ -84,8 +81,7 @@ export class UsersService {
       where: { email },
     });
 
-    if (!usuario)
-      throw new NotFoundException(`Usuário com email ${email} não encontrado`);
+    if (!usuario) throw new NotFoundException(`Usuário com email ${email} não encontrado`);
     return usuario;
   }
 }

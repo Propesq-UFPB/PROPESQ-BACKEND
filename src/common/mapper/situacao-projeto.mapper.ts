@@ -8,8 +8,7 @@ export const SituacaoProjetoMapper: Record<SituacaoProjeto, string> = {
   VALIDADO: 'Validado',
   NAO_VALIDADO: 'Não validado',
   CADASTRADO: 'Cadastrado',
-  DISTRIBUIDO_PARA_AVALIACAO_AUTOMATICAMENTE:
-    'Distribuído para avaliação automaticamente',
+  DISTRIBUIDO_PARA_AVALIACAO_AUTOMATICAMENTE: 'Distribuído para avaliação automaticamente',
   AVALIACAO_INSUFICIENTE: 'Avaliação insuficiente',
   DISTRIBUICAO_PARA_AVALIACAO_MANUALMENTE: 'Distribuição para avaliação manual',
   APROVADO: 'Aprovado',

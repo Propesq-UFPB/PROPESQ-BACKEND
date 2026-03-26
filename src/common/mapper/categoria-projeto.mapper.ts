@@ -4,8 +4,7 @@ export const CategoriaProjetoMapper: Record<CategoriaProjeto, string> = {
   CATEGORIA_PADRAO: 'Categoria padrão',
   DESENVOLVIMENTO_CIENTIFICO_INSTITUCIONAL_E_TECNOLOGICO:
     'Desenvolvimento científico, institucional e tecnológico',
-  FOMENTO_A_PESQUISA_CIENTIFICA_E_TECNOLOGICA:
-    'Fomento à pesquisa científica e tecnológica',
+  FOMENTO_A_PESQUISA_CIENTIFICA_E_TECNOLOGICA: 'Fomento à pesquisa científica e tecnológica',
   ESTUDOS_DE_CTI: 'Estudos de CT&I (Ciência, Tecnologia e Inovação)',
   SAUDE: 'Saúde',
   BIOTECNOLOGIA: 'Biotecnologia',

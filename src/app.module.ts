@@ -5,7 +5,6 @@ import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
-import { SchedulesModule } from './schedules/schedules.module';
 import { WorkPlanModule } from './work-plan/work-plan.module';
 
 @Module({
@@ -14,7 +13,6 @@ import { WorkPlanModule } from './work-plan/work-plan.module';
     PrismaModule,
     UsersModule,
     AuthModule,
-    SchedulesModule,
     WorkPlanModule,
     ResearchModule,
   ],

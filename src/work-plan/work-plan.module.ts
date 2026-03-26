@@ -1,10 +1,8 @@
 import { Module } from '@nestjs/common';
-import { WorkPlanService } from './work-plan.service';
 import { WorkPlanController } from './work-plan.controller';
-import { PrismaModule } from '../prisma/prisma.module';
+import { WorkPlanService } from './work-plan.service';
 
 @Module({
-  imports: [PrismaModule],
   controllers: [WorkPlanController],
   providers: [WorkPlanService],
   exports: [WorkPlanService],

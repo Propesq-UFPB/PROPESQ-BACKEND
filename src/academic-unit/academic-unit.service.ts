@@ -1,10 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateAcademicUnit } from './dto/create-academic-unit.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateAcademicUnit } from './dto/update-academic-unit.dto';
-import { ApiNoContentResponse } from '@nestjs/swagger';
-import { PaginatedDto } from 'src/common/dto/paginated.dto';
 import { unidade_academica } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { PaginatedDto } from '../common/dto/paginated.dto';
 
 @Injectable()
 export class AcademicUnitService {

@@ -1,6 +1,8 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -10,10 +12,10 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { CreateAcademicUnit } from './dto/create-academic-unit.dto';
+import { CreateAcademicUnitDto } from './dto/create-academic-unit.dto';
 import { AcademicUnitService } from './academic-unit.service';
-import { UpdateAcademicUnit } from './dto/update-academic-unit.dto';
-import { unidade_academica } from '@prisma/client';
+import { UpdateAcademicUnitDto } from './dto/update-academic-unit.dto';
+import { AcademicUnitResponseDto } from './dto/academic-unit-response.dto';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -25,37 +27,94 @@ import {
 import { PaginatedDto } from '../common/dto/paginated.dto';
 
 @ApiBearerAuth('bearer')
-@ApiTags('Unidades acadêmicas')
+@ApiTags('Unidades Acadêmicas')
 @Controller('academic-units')
-export class AcademicUnitController {
+export class AcademicUnitsController {
   constructor(private readonly academicUnitService: AcademicUnitService) {}
 
-  @ApiOperation({ summary: 'Cria uma unidade acadêmica' })
+  @ApiOperation({ summary: 'Cria uma nova unidade acadêmica' })
   @ApiResponse({
     status: HttpStatus.CREATED,
     description: 'Unidade acadêmica criada com sucesso.',
+    type: AcademicUnitResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Dados inválidos para criação da unidade acadêmica.',
   })
   @Post()
-  create(@Body() createUnit: CreateAcademicUnit) {
+  create(@Body() createUnit: CreateAcademicUnitDto): Promise<AcademicUnitResponseDto> {
     return this.academicUnitService.create(createUnit);
   }
 
   @ApiOperation({ summary: 'Lista unidades acadêmicas com paginação' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, default: 10 })
-  @ApiQuery({ name: 'offset', required: false, type: Number, default: 0 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  @ApiQuery({ name: 'offset', required: false, type: Number, example: 0 })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Lista paginada de unidades acadêmicas retornada com sucesso.',
+    type: PaginatedDto,
   })
   @Get()
   findAll(
-    @Query('limit') limit: string = '10',
-    @Query('offset') offset: string = '0',
-  ): Promise<PaginatedDto<unidade_academica>> {
-    return this.academicUnitService.findAll(+limit, +offset);
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
+  ): Promise<PaginatedDto<AcademicUnitResponseDto>> {
+    return this.academicUnitService.findAll(limit, offset);
   }
 
-  @ApiOperation({ summary: 'Atualiza uma unidade acadêmica' })
+  @ApiOperation({ summary: 'Obtém uma unidade acadêmica pelo ID' })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'ID da unidade acadêmica.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Unidade acadêmica retornada com sucesso.',
+    type: AcademicUnitResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Unidade acadêmica não encontrada.',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Parâmetro de identificação inválido.',
+  })
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number): Promise<AcademicUnitResponseDto> {
+    return this.academicUnitService.findOne(id);
+  }
+
+  @ApiOperation({ summary: 'Atualiza uma unidade acadêmica pelo ID' })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'ID da unidade acadêmica.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Unidade acadêmica atualizada com sucesso.',
+    type: AcademicUnitResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Unidade acadêmica não encontrada.',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Dados de atualização inválidos.',
+  })
+  @Patch(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateUnit: UpdateAcademicUnitDto,
+  ): Promise<AcademicUnitResponseDto> {
+    return this.academicUnitService.update(id, updateUnit);
+  }
+
+  @ApiOperation({ summary: 'Remove uma unidade acadêmica pelo ID' })
   @ApiParam({
     name: 'id',
     type: Number,
@@ -63,18 +122,19 @@ export class AcademicUnitController {
   })
   @ApiResponse({
     status: HttpStatus.NO_CONTENT,
-    description: 'Unidade acadêmica atualizada com sucesso.',
+    description: 'Unidade acadêmica removida com sucesso.',
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
     description: 'Unidade acadêmica não encontrada.',
   })
-  @Patch(':id')
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Parâmetro de identificação inválido.',
+  })
+  @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateUnit: UpdateAcademicUnit,
-  ): Promise<void> {
-    await this.academicUnitService.update(id, updateUnit);
+  async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
+    await this.academicUnitService.remove(id);
   }
 }

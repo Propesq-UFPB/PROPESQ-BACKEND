@@ -1,0 +1,19 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: prod
+    ports:
+      - '${PORT}:${PORT}'
+    volumes:
+      - .:/usr/src/app:z
+
+  frontend:
+    build:
+      context: ../PROPESQ-PROTOTIPO
+      dockerfile: Dockerfile
+    ports:
+      - '3100:3100'
+    volumes:
+      - ../PROPESQ-PROTOTIPO:/usr/src/app:z

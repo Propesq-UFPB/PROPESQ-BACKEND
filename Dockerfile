@@ -17,5 +17,7 @@ COPY . .
 # Expose port
 EXPOSE 3000
 
-# For development: migrate + start
-CMD ["bun", "run", "start:migrate:dev"]
+RUN bun --bun run build
+
+# For production
+CMD ["bun", "--bun", "run", "start:server"]

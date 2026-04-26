@@ -84,7 +84,7 @@ describe('UsersService', () => {
     it('deve retornar resultados paginados', async () => {
       const mockUsers = [{ id: 1, nome: 'User 1' }];
       const total = 1;
-      
+
       prisma.usuario.findMany.mockResolvedValue(mockUsers);
       prisma.usuario.count.mockResolvedValue(total);
 

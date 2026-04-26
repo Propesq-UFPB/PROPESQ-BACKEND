@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { WorkPlanController } from './work-plan.controller';
 import { WorkPlanService } from './work-plan.service';
-import { WorkPlanCreationDto } from './dto/create-work-plan.dto';
-import { WorkPlanUpdateDto } from './dto/update-work-plan.dto';
+import { CreateWorkPlanDto } from './dto/create-work-plan.dto';
+import { UpdateWorkPlanDto } from './dto/update-work-plan.dto';
 
 const mockWorkPlanService = {
   create: jest.fn(),
@@ -40,53 +40,89 @@ describe('WorkPlanController', () => {
   });
 
   describe('create', () => {
-    it('deve chamar service.create', async () => {
-      const dto = new WorkPlanCreationDto();
+    it('deve chamar service.create com os parâmetros corretos', async () => {
+      const dto: CreateWorkPlanDto = {
+        discente_id: 1,
+        usuario_id: 1,
+        pesquisa_id: 1,
+        modalidade: 'PIBIC',
+        status: 'ATIVO',
+        tipo_bolsa: 'REMUNERADA',
+        cronograma_id: 1,
+        direcionamento_plano: 'Direcionamento',
+        corpo_id: 1,
+        corpo_plano_trabalho: {
+          titulo: 'Titulo',
+          introducao: 'Introducao',
+          objetivos: 'Objetivos',
+          metodologia: 'Metodologia',
+          referencias: 'Referencias',
+        },
+        atividades: [
+          {
+            descricao: 'Atividade 1',
+            meses: [{ data: '2026-03-01' }],
+          },
+        ],
+      };
+
       mockWorkPlanService.create.mockResolvedValue({ id: 1, ...dto });
 
-      await controller.create(dto);
+      const result = await controller.create(dto);
+
       expect(service.create).toHaveBeenCalledWith(dto);
+      expect(result).toEqual({ id: 1, ...dto });
     });
   });
 
   describe('findAll', () => {
-    it('deve chamar service.findAll com conversão de tipos', async () => {
-      mockWorkPlanService.findAll.mockResolvedValue({ results: [], total: 0 });
+    it('deve chamar service.findAll com valores padrão', async () => {
+      mockWorkPlanService.findAll.mockResolvedValue({ total: 0, results: [] });
 
-      await controller.findAll('20', '5');
-      expect(service.findAll).toHaveBeenCalledWith(20, 5);
+      await controller.findAll();
+
+      expect(service.findAll).toHaveBeenCalledWith(10, 0);
     });
 
-    it('deve usar valores padrão se query params vazios', async () => {
-      await controller.findAll();
-      expect(service.findAll).toHaveBeenCalledWith(10, 0);
+    it('deve chamar service.findAll com valores informados', async () => {
+      mockWorkPlanService.findAll.mockResolvedValue({ total: 0, results: [] });
+
+      await controller.findAll('20', '5');
+
+      expect(service.findAll).toHaveBeenCalledWith(20, 5);
     });
   });
 
   describe('findOne', () => {
-    it('deve chamar service.findOne com conversão de ID', async () => {
+    it('deve chamar service.findOne com o id numérico', async () => {
       mockWorkPlanService.findOne.mockResolvedValue({ id: 1 });
 
       await controller.findOne('1');
+
       expect(service.findOne).toHaveBeenCalledWith(1);
     });
   });
 
   describe('update', () => {
-    it('deve chamar service.update', async () => {
-      const dto = new WorkPlanUpdateDto();
-      mockWorkPlanService.update.mockResolvedValue({ id: 1 });
+    it('deve chamar service.update com os parâmetros corretos', async () => {
+      const dto: UpdateWorkPlanDto = {
+        status: 'EM_REVISAO',
+      };
+
+      mockWorkPlanService.update.mockResolvedValue({ id: 1, ...dto });
 
       await controller.update('1', dto);
+
       expect(service.update).toHaveBeenCalledWith(1, dto);
     });
   });
 
   describe('remove', () => {
-    it('deve chamar service.remove', async () => {
+    it('deve chamar service.remove com o id correto', async () => {
       mockWorkPlanService.remove.mockResolvedValue({ id: 1 });
 
       await controller.remove('1');
+
       expect(service.remove).toHaveBeenCalledWith(1);
     });
   });

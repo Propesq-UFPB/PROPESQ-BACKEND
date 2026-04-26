@@ -80,13 +80,13 @@ describe('AuthService', () => {
 
     it('deve lançar UnauthorizedException se o usuário não for encontrado', async () => {
       // Simula findByEmail lançando erro (comportamento do UsersService original) ou retornando null
-      usersService.findByEmail.mockRejectedValue(new Error('User not found')); 
+      usersService.findByEmail.mockRejectedValue(new Error('User not found'));
       // Nota: Seu auth.service usa .catch(() => null), então o mock deve refletir que o serviço retorna null ou lança erro capturado
-      
+
       // Ajuste para simular o comportamento do seu código:
       // O seu código faz: await this.usersService.findByEmail().catch(() => null);
       // Então se o mock rejeitar, o user vira null no código.
-      
+
       await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
     });
 

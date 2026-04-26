@@ -52,19 +52,19 @@ describe('UsersController', () => {
   describe('findAll', () => {
     it('deve chamar service.findAll com valores padrão', async () => {
       mockUsersService.findAll.mockResolvedValue({ results: [], total: 0 });
-      
+
       // Chamada sem argumentos (usa defaults do controller)
       await controller.findAll();
-      
+
       expect(service.findAll).toHaveBeenCalledWith(10, 0);
     });
 
     it('deve chamar service.findAll com valores convertidos', async () => {
       mockUsersService.findAll.mockResolvedValue({ results: [], total: 0 });
-      
+
       // Passando strings, como vem da URL
       await controller.findAll('20', '5');
-      
+
       expect(service.findAll).toHaveBeenCalledWith(20, 5);
     });
   });
@@ -74,7 +74,7 @@ describe('UsersController', () => {
       mockUsersService.findOne.mockResolvedValue({ id: 1 });
 
       await controller.findOne('1');
-      
+
       expect(service.findOne).toHaveBeenCalledWith(1);
     });
   });
@@ -85,7 +85,7 @@ describe('UsersController', () => {
       mockUsersService.update.mockResolvedValue({ id: 1 });
 
       await controller.update('1', dto);
-      
+
       expect(service.update).toHaveBeenCalledWith(1, dto);
     });
   });
@@ -95,7 +95,7 @@ describe('UsersController', () => {
       mockUsersService.remove.mockResolvedValue({ id: 1 });
 
       await controller.remove('1');
-      
+
       expect(service.remove).toHaveBeenCalledWith(1);
     });
   });

@@ -5,16 +5,16 @@ import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
-import { SchedulesModule } from './schedules/schedules.module';
 import { WorkPlanModule } from './work-plan/work-plan.module';
+import { AcademicUnitModule } from './academic-unit/academic-unit.module';
 
 @Module({
   imports: [
-    ResearchModule,
-    PrismaModule,
-    UsersModule,
+    AcademicUnitModule,
     AuthModule,
-    SchedulesModule,
+    PrismaModule,
+    ResearchModule,
+    UsersModule,
     WorkPlanModule,
   ],
   providers: [

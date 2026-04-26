@@ -33,42 +33,59 @@ model area_conhecimento {
   projeto_pesquisa projeto_pesquisa[]
 }
 
-model atividade {
-  id         Int          @id @default(autoincrement())
-  atividade  Int
-  mes_id     Int
-  mes        mes          @relation(fields: [mes_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  cronograma cronograma[]
+model atividade_projeto_pesquisa {
+  id                  Int                    @id @default(autoincrement())
+  descricao           String                 @db.Text
+  meses               mes_projeto_pesquisa[]
+  projeto_pesquisa_id Int?
+  projeto_pesquisa    projeto_pesquisa?      @relation(fields: [projeto_pesquisa_id], references: [id], onDelete: Cascade)
+}
+
+model mes_projeto_pesquisa {
+  id           Int                        @id @default(autoincrement())
+  data         DateTime                   @db.Date
+  atividade_id Int
+  atividade    atividade_projeto_pesquisa @relation(fields: [atividade_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model atividade_plano_trabalho {
+  id                Int                  @id @default(autoincrement())
+  descricao         String               @db.Text
+  meses             mes_plano_trabalho[]
+  plano_trabalho_id Int?
+  plano_trabalho    plano_trabalho?      @relation(fields: [plano_trabalho_id], references: [id], onDelete: Cascade)
+}
+
+model mes_plano_trabalho {
+  id                         Int                       @id @default(autoincrement())
+  data                       DateTime                  @db.Date
+  atividade_id               Int
+  atividadePlanoTrabalho     atividade_plano_trabalho? @relation(fields: [atividade_plano_trabalhoId], references: [id], onDelete: Cascade)
+  atividade_plano_trabalhoId Int?
 }
 
 model corpo_plano_trabalho {
-  id             Int              @id @default(autoincrement())
-  titulo         String
-  introducao     String
-  objetivos      String
-  metodologia    String
-  referencias    String
-  plano_trabalho plano_trabalho[]
+  id                Int            @id @default(autoincrement())
+  titulo            String
+  introducao        String
+  objetivos         String
+  metodologia       String
+  referencias       String
+  plano_trabalho_id Int            @unique
+  plano_trabalho    plano_trabalho @relation(fields: [plano_trabalho_id], references: [id], onDelete: Cascade)
 }
 
 model corpo_projeto {
-  id               Int                @id @default(autoincrement())
-  resumo           String
-  introducao       String
-  objetivos        String
-  metodologia      String
-  referencias      String
-  projeto_pesquisa projeto_pesquisa[]
-}
-
-model cronograma {
-  id                     Int                @id @default(autoincrement())
-  data_inicio            DateTime           @db.Date
-  data_fim               DateTime           @db.Date
-  atividade_id           Int
-  atividade              atividade          @relation(fields: [atividade_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  plano_trabalho_items   plano_trabalho[]   @relation("plano_trabalho_cronograma")
-  projeto_pesquisa_items projeto_pesquisa[] @relation("projeto_pesquisa_cronograma")
+  id                   Int              @id @default(autoincrement())
+  resumo               String
+  abstract             String
+  introducao           String
+  objetivos            String
+  metodologia          String
+  referencias          String
+  resultados_esperados String
+  projeto_pesquisa_id  Int              @unique
+  projeto_pesquisa     projeto_pesquisa @relation(fields: [projeto_pesquisa_id], references: [id], onDelete: Cascade)
 }
 
 model discente {
@@ -84,25 +101,20 @@ model docente {
   usuario    usuario @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
-model localidade {
-  id                          Int                @id @default(autoincrement())
-  departamento                String
-  centro                      String
-  unidade                     Int
-  projeto_pesquisa_localidade projeto_pesquisa[] @relation("projeto_pesquisa_localidade")
-}
-
-model mes {
-  id        Int         @id @default(autoincrement())
-  data      DateTime    @db.Date
-  atividade atividade[]
+model unidade_academica {
+  id               Int                @id @default(autoincrement())
+  sigla            String             @unique @db.VarChar(15)
+  nome             String             @unique @db.VarChar(255)
+  ativo            Boolean            @default(true)
+  projetoPesquisas projeto_pesquisa[]
 }
 
 model palavra_chave {
-  id               Int                @id @default(autoincrement())
-  palavra_chave    String
-  lingua           String             @db.VarChar(255)
-  projeto_pesquisa projeto_pesquisa[]
+  id                 Int               @id @default(autoincrement())
+  palavra_chave      String
+  lingua             Idioma
+  projetoPesquisa    projeto_pesquisa? @relation(fields: [projeto_pesquisaId], references: [id], onDelete: Cascade)
+  projeto_pesquisaId Int?
 }
 
 model permissao {
@@ -115,45 +127,61 @@ model permissao {
 }
 
 model plano_trabalho {
-  id                   Int                  @id @default(autoincrement())
+  id                   Int                        @id @default(autoincrement())
   discente_id          Int
   usuario_id           Int
-  modalidade           String               @db.VarChar(255)
+  modalidade           String                     @db.VarChar(255)
   status               String
-  tipo_bolsa           String               @db.VarChar(255)
+  tipo_bolsa           String                     @db.VarChar(255)
   cronograma_id        Int
   direcionamento_plano String
   corpo_id             Int
-  corpo_plano_trabalho corpo_plano_trabalho @relation(fields: [corpo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  cronograma           cronograma           @relation("plano_trabalho_cronograma", fields: [cronograma_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  discente             discente             @relation(fields: [discente_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  usuario              usuario              @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  projeto_pesquisa     projeto_pesquisa[]
+  pesquisa_id          Int
+  atividades           atividade_plano_trabalho[]
+  corpo_plano_trabalho corpo_plano_trabalho?
+  discente             discente                   @relation(fields: [discente_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuario              usuario                    @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  projeto_pesquisa     projeto_pesquisa           @relation(fields: [pesquisa_id], references: [id], onDelete: Cascade)
 }
 
 model projeto_pesquisa {
-  id                     Int                     @id @default(autoincrement())
+  id                     Int                          @id @default(autoincrement())
   codigo                 String
-  tipo                   String                  @db.VarChar(255)
+  tipo                   TipoProjeto
   titulo                 String
-  categoria              String
-  situacao               String                  @map("situação")
-  localidade_id          Int
-  area_conhecimento_id   Int
-  palavra_chave_id       Int
-  vigencia               DateTime                @db.Timestamp(6)
-  plano_trabalho_id      Int
-  corpo_id               Int
-  edital                 String
-  cota                   String
-  cronograma_id          Int
-  area_conhecimento      area_conhecimento       @relation(fields: [area_conhecimento_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  corpo_projeto          corpo_projeto           @relation(fields: [corpo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  cronograma             cronograma              @relation("projeto_pesquisa_cronograma", fields: [cronograma_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  title                  String
+  categoria              CategoriaProjeto
+  situacao               SituacaoProjeto              @map("situação")
+  email                  String
+  unidade_id             Int
+  area_conhecimento_id   Int?
+  vigencia               DateTime                     @db.Timestamp(6)
+  data_cadastro          DateTime
+  edital                 String?
+  cota                   String?
+  atividades             atividade_projeto_pesquisa[]
+  objetivos              pesquisa_objetivo[]
+  palavra_chave          palavra_chave[]
+  corpo_projeto          corpo_projeto?
+  plano_trabalho         plano_trabalho[]
+  area_conhecimento      area_conhecimento?           @relation(fields: [area_conhecimento_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   anexo_projeto_pesquisa anexo_projeto_pesquisa?
-  localidade             localidade              @relation("projeto_pesquisa_localidade", fields: [localidade_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  palavra_chave          palavra_chave           @relation(fields: [palavra_chave_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  plano_trabalho         plano_trabalho          @relation(fields: [plano_trabalho_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  unidade_academica      unidade_academica            @relation(fields: [unidade_id], references: [id], onDelete: Cascade)
+}
+
+model objetivo_desenvolvimento_sustentavel {
+  id                Int                 @id @default(autoincrement())
+  tipo              String              @unique
+  pesquisa_objetivo pesquisa_objetivo[]
+}
+
+model pesquisa_objetivo {
+  pesquisa_id Int
+  objetivo_id Int
+  pesquisa    projeto_pesquisa                     @relation(fields: [pesquisa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  objetivo    objetivo_desenvolvimento_sustentavel @relation(fields: [objetivo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([pesquisa_id, objetivo_id])
 }
 
 model funcao {
@@ -188,4 +216,81 @@ model usuario {
   docente        docente[]
   plano_trabalho plano_trabalho[]
   funcao         funcao           @relation(fields: [funcao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+// ENUMS 
+enum Idioma {
+  PT
+  EN
+}
+
+enum TipoProjeto {
+  INTERNO
+  EXTERNO
+}
+
+enum SituacaoProjeto {
+  CADASTRO_EM_ANDAMENTO
+  SUBMETIDO
+  AGUARDANDO_VALIDACAO
+  NECESSITA_CORRECAO
+  VALIDADO
+  NAO_VALIDADO
+  CADASTRADO
+  DISTRIBUIDO_PARA_AVALIACAO_AUTOMATICAMENTE
+  AVALIACAO_INSUFICIENTE
+  DISTRIBUICAO_PARA_AVALIACAO_MANUALMENTE
+  APROVADO
+  EM_EXECUCAO
+  CADASTRADO_SEM_PLANO
+  FINALIZADO_RENOVADO
+  FINALIZADO
+  REPROVADO
+  DESATIVADO
+  EXCLUIDO
+  AGUARDANDO_AVALIACAO
+}
+
+enum CategoriaProjeto {
+  CATEGORIA_PADRAO
+  DESENVOLVIMENTO_CIENTIFICO_INSTITUCIONAL_E_TECNOLOGICO
+  FOMENTO_A_PESQUISA_CIENTIFICA_E_TECNOLOGICA
+  ESTUDOS_DE_CTI
+  SAUDE
+  BIOTECNOLOGIA
+  NANOTECNOLOGIA
+  BIOCOMBUSTIVEIS
+  ENERGIA_ELETRICA
+  ENERGIAS_RENOVAVEIS
+  PETROLEO_E_GAS
+  AGRONEGOCIO
+  BIODIVERSIDADE_E_RECURSOS_NATURAIS
+  RECURSOS_HIDRICOS
+  SEMIARIDO
+  AQUICULTURA_E_PESCA
+  METEOROLOGIA_E_MUDANCAS_CLIMATICAS
+  TECNOLOGIA_INDUSTRIAL
+  SEGURANCA_PUBLICA
+  TECNOLOGIA_SOCIAL
+  DESIGN
+  TECNOLOGIA_INCLUSIVA
+  ECONOMIA_CRIATIVA
+  INOVACAO
+  PROGRAMAS_DE_COMPUTADOR
+  MODELOS_DE_UTILIDADE
+  NOVA_CULTIVAR
+  CULTIVAR_DERIVADA
+  AGROINDUSTRIA
+  DESENHO_INDUSTRIAL
+  TOPOGRAFIA_DE_CIRCUITO_INDUSTRIAL
+  DESENVOLVIMENTO_DE_TECNOLOGIA
+  DESENVOLVIMENTO_DE_PRODUTO
+  DESENVOLVIMENTO_DE_PROCESSO
+  APERFEICOAMENTO_DE_TECNOLOGIA
+  APERFEICOAMENTO_DE_PROCESSO
+  APERFEICOAMENTO_DE_PRODUTO
+  SERVICO_INOVADOR
+  PESQUISA_CIENTIFICA
+  PESQUISA_BASICA
+  PESQUISA_APLICADA
 }

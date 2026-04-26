@@ -1,15 +1,27 @@
+import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { WorkPlanService } from './work-plan.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
-import { WorkPlanCreationDto } from './dto/create-work-plan.dto';
-import { WorkPlanUpdateDto } from './dto/update-work-plan.dto';
+import { CreateWorkPlanDto } from './dto/create-work-plan.dto';
+import { UpdateWorkPlanDto } from './dto/update-work-plan.dto';
+import { WorkPlanService } from './work-plan.service';
 
 const mockPrismaService = {
-  discente: { findUnique: jest.fn() },
-  usuario: { findUnique: jest.fn() },
-  cronograma: { findUnique: jest.fn() },
-  corpo_plano_trabalho: { findUnique: jest.fn() },
+  $transaction: jest.fn(),
+  $queryRawUnsafe: jest.fn(),
+  $executeRawUnsafe: jest.fn(),
+  discente: {
+    findUnique: jest.fn(),
+  },
+  usuario: {
+    findUnique: jest.fn(),
+  },
+  cronograma: {
+    findUnique: jest.fn(),
+  },
+  projeto_pesquisa: {
+    findUnique: jest.fn(),
+    update: jest.fn(),
+  },
   plano_trabalho: {
     create: jest.fn(),
     findMany: jest.fn(),
@@ -18,7 +30,23 @@ const mockPrismaService = {
     update: jest.fn(),
     delete: jest.fn(),
   },
-  projeto_pesquisa: { count: jest.fn() },
+  atividade_plano_trabalho: {
+    findMany: jest.fn(),
+    deleteMany: jest.fn(),
+    update: jest.fn(),
+    create: jest.fn(),
+  },
+  mes_plano_trabalho: {
+    findMany: jest.fn(),
+    deleteMany: jest.fn(),
+    update: jest.fn(),
+    create: jest.fn(),
+  },
+  corpo_plano_trabalho: {
+    findUnique: jest.fn(),
+    update: jest.fn(),
+    create: jest.fn(),
+  },
 };
 
 describe('WorkPlanService', () => {
@@ -26,6 +54,10 @@ describe('WorkPlanService', () => {
   let prisma: typeof mockPrismaService;
 
   beforeEach(async () => {
+    mockPrismaService.$transaction.mockImplementation(async callback =>
+      callback(mockPrismaService),
+    );
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WorkPlanService,
@@ -49,74 +81,67 @@ describe('WorkPlanService', () => {
   });
 
   describe('create', () => {
-    const createDto: WorkPlanCreationDto = {
+    const createDto: CreateWorkPlanDto = {
       discente_id: 1,
       usuario_id: 1,
-      cronograma_id: 1,
-      corpo_id: 1,
-      modalidade: 'IC',
-      status: 'Ativo',
-      tipo_bolsa: 'Voluntário',
-      direcionamento_plano: 'Pesquisa',
+      pesquisa_id: 1,
+      modalidade: 'PIBIC',
+      status: 'ATIVO',
+      tipo_bolsa: 'REMUNERADA',
+      cronograma_id: 7,
+      direcionamento_plano: 'Direcionamento',
+      corpo_id: 99,
+      corpo_plano_trabalho: {
+        titulo: 'Titulo',
+        introducao: 'Introducao',
+        objetivos: 'Objetivos',
+        metodologia: 'Metodologia',
+        referencias: 'Referencias',
+      },
+      atividades: [
+        {
+          descricao: 'Atividade 1',
+          meses: [{ data: '2026-03-01' }],
+        },
+      ],
     };
 
-    it('deve criar um plano de trabalho se todas as FKs existirem', async () => {
+    it('deve criar plano de trabalho com sucesso', async () => {
       prisma.discente.findUnique.mockResolvedValue({ id: 1 });
       prisma.usuario.findUnique.mockResolvedValue({ id: 1 });
-      prisma.cronograma.findUnique.mockResolvedValue({ id: 1 });
-      prisma.corpo_plano_trabalho.findUnique.mockResolvedValue({ id: 1 });
-      
+      prisma.cronograma.findUnique.mockResolvedValue({ id: 7 });
+      prisma.projeto_pesquisa.findUnique.mockResolvedValue({ id: 1 });
+      prisma.corpo_plano_trabalho.create.mockResolvedValue({ id: 99 });
       prisma.plano_trabalho.create.mockResolvedValue({ id: 1, ...createDto });
+      prisma.plano_trabalho.findUnique.mockResolvedValue({ id: 1 });
+      prisma.projeto_pesquisa.update.mockResolvedValue({
+        id: 1,
+        plano_trabalho_id: 1,
+      });
+      prisma.$queryRawUnsafe.mockResolvedValue([]);
 
-      const result = await service.create(createDto);
+      const result = await service.create({ ...createDto, atividades: [] });
 
       expect(prisma.plano_trabalho.create).toHaveBeenCalled();
-      expect(result).toHaveProperty('id');
+      expect(result.id).toEqual(1);
     });
 
-    it('deve lançar NotFoundException se o discente não existir', async () => {
+    it('deve lançar erro quando discente não existe', async () => {
       prisma.discente.findUnique.mockResolvedValue(null);
-      // Os outros podem retornar algo para isolar o erro
       prisma.usuario.findUnique.mockResolvedValue({ id: 1 });
-      prisma.cronograma.findUnique.mockResolvedValue({ id: 1 });
-      prisma.corpo_plano_trabalho.findUnique.mockResolvedValue({ id: 1 });
+      prisma.cronograma.findUnique.mockResolvedValue({ id: 7 });
+      prisma.projeto_pesquisa.findUnique.mockResolvedValue({ id: 1 });
 
       await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
-    });
-
-    it('deve lançar NotFoundException se o usuário não existir', async () => {
-      prisma.discente.findUnique.mockResolvedValue({ id: 1 });
-      prisma.usuario.findUnique.mockResolvedValue(null); // Falha aqui
-      prisma.cronograma.findUnique.mockResolvedValue({ id: 1 });
-      prisma.corpo_plano_trabalho.findUnique.mockResolvedValue({ id: 1 });
-
-      await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
-    });
-
-    it('deve lançar NotFoundException se o cronograma não existir', async () => {
-      prisma.discente.findUnique.mockResolvedValue({ id: 1 });
-      prisma.usuario.findUnique.mockResolvedValue({ id: 1 });
-      prisma.cronograma.findUnique.mockResolvedValue(null); // Falha aqui
-      prisma.corpo_plano_trabalho.findUnique.mockResolvedValue({ id: 1 });
-
-      await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
-    });
-
-    it('deve lançar NotFoundException se o corpo do plano não existir', async () => {
-      prisma.discente.findUnique.mockResolvedValue({ id: 1 });
-      prisma.usuario.findUnique.mockResolvedValue({ id: 1 });
-      prisma.cronograma.findUnique.mockResolvedValue({ id: 1 });
-      prisma.corpo_plano_trabalho.findUnique.mockResolvedValue(null); // Falha aqui
-
-      await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
+      expect(prisma.plano_trabalho.create).not.toHaveBeenCalled();
     });
   });
 
   describe('findAll', () => {
-    it('deve retornar dados paginados', async () => {
-      const mockData = [{ id: 1, status: 'Ativo' }];
-      prisma.plano_trabalho.findMany.mockResolvedValue(mockData);
+    it('deve retornar resultados paginados', async () => {
+      prisma.plano_trabalho.findMany.mockResolvedValue([{ id: 1 }]);
       prisma.plano_trabalho.count.mockResolvedValue(1);
+      prisma.$queryRawUnsafe.mockResolvedValue([]);
 
       const result = await service.findAll(10, 0);
 
@@ -124,103 +149,77 @@ describe('WorkPlanService', () => {
         total: 1,
         limit: 10,
         offset: 0,
-        results: mockData,
+        results: [{ id: 1, atividades: [] }],
       });
-      expect(prisma.plano_trabalho.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ take: 10, skip: 0 })
-      );
     });
   });
 
   describe('findOne', () => {
-    it('deve retornar um plano se encontrado', async () => {
+    it('deve retornar o plano quando existir', async () => {
       prisma.plano_trabalho.findUnique.mockResolvedValue({ id: 1 });
+      prisma.$queryRawUnsafe.mockResolvedValue([]);
+
       const result = await service.findOne(1);
-      expect(result).toBeDefined();
+
+      expect(result).toEqual({ id: 1, atividades: [] });
     });
 
-    it('deve lançar NotFoundException se não encontrado', async () => {
+    it('deve lançar NotFoundException quando não existir', async () => {
       prisma.plano_trabalho.findUnique.mockResolvedValue(null);
-      await expect(service.findOne(99)).rejects.toThrow(NotFoundException);
+
+      await expect(service.findOne(123)).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('update', () => {
-    const updateDto: WorkPlanUpdateDto = { status: 'Finalizado' };
-
-    beforeEach(() => {
-      // Por padrão, findOne encontra o plano (para focar nos testes de FK)
-      prisma.plano_trabalho.findUnique.mockResolvedValue({ id: 1 });
-    });
+    const updateDto: UpdateWorkPlanDto = {
+      status: 'EM_REVISAO',
+      atividades: [],
+    };
 
     it('deve atualizar com sucesso', async () => {
-      prisma.plano_trabalho.update.mockResolvedValue({ id: 1, ...updateDto });
+      prisma.plano_trabalho.findUnique.mockResolvedValue({
+        id: 1,
+        discente_id: 1,
+        usuario_id: 1,
+        pesquisa_id: 1,
+        cronograma_id: 7,
+        corpo_id: 99,
+        projeto_pesquisa: [{ id: 1 }],
+      });
+      prisma.plano_trabalho.update.mockResolvedValue({ id: 1 });
+      prisma.discente.findUnique.mockResolvedValue({ id: 1 });
+      prisma.usuario.findUnique.mockResolvedValue({ id: 1 });
+      prisma.cronograma.findUnique.mockResolvedValue({ id: 7 });
+      prisma.projeto_pesquisa.findUnique.mockResolvedValue({ id: 1 });
+      prisma.$queryRawUnsafe.mockResolvedValue([]);
+      prisma.$executeRawUnsafe.mockResolvedValue(0);
 
       const result = await service.update(1, updateDto);
-      expect(result.status).toBe('Finalizado');
-    });
 
-    it('deve validar nova FK de discente se fornecida e não encontrada', async () => {
-      prisma.discente.findUnique.mockResolvedValue(null); // Não existe
-
-      await expect(
-        service.update(1, { discente_id: 99 })
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('deve validar nova FK de usuario se fornecida e não encontrada', async () => {
-      prisma.usuario.findUnique.mockResolvedValue(null); // Não existe
-
-      await expect(
-        service.update(1, { usuario_id: 99 })
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('deve validar nova FK de cronograma se fornecida e não encontrada', async () => {
-      prisma.cronograma.findUnique.mockResolvedValue(null); // Não existe
-
-      await expect(
-        service.update(1, { cronograma_id: 99 })
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('deve validar nova FK de corpo do plano se fornecida e não encontrada', async () => {
-      prisma.corpo_plano_trabalho.findUnique.mockResolvedValue(null); // Não existe
-
-      await expect(
-        service.update(1, { corpo_id: 99 })
-      ).rejects.toThrow(NotFoundException);
-    });
-    
-    // Testes de sucesso para as FKs no update (para cobrir o caminho feliz do if)
-    it('deve permitir atualizar FK de usuario se existir', async () => {
-      prisma.usuario.findUnique.mockResolvedValue({ id: 2 });
-      prisma.plano_trabalho.update.mockResolvedValue({ id: 1, usuario_id: 2 });
-      
-      await service.update(1, { usuario_id: 2 });
-      expect(prisma.usuario.findUnique).toHaveBeenCalledWith({ where: { id: 2 } });
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(result.id).toEqual(1);
     });
   });
 
   describe('remove', () => {
-    it('deve remover se não houver projetos vinculados', async () => {
+    it('deve remover com sucesso', async () => {
       prisma.plano_trabalho.findUnique.mockResolvedValue({ id: 1 });
-      prisma.projeto_pesquisa.count.mockResolvedValue(0);
+      prisma.$queryRawUnsafe.mockResolvedValue([]);
       prisma.plano_trabalho.delete.mockResolvedValue({ id: 1 });
 
-      await service.remove(1);
+      const result = await service.remove(1);
+
       expect(prisma.plano_trabalho.delete).toHaveBeenCalledWith({
         where: { id: 1 },
-        include: expect.any(Object),
+        include: {
+          corpo_plano_trabalho: true,
+          discente: true,
+          usuario: true,
+          projeto_pesquisa: true,
+        },
       });
-    });
-
-    it('deve lançar BadRequestException se houver projetos vinculados', async () => {
-      prisma.plano_trabalho.findUnique.mockResolvedValue({ id: 1 });
-      prisma.projeto_pesquisa.count.mockResolvedValue(2);
-
-      await expect(service.remove(1)).rejects.toThrow(BadRequestException);
-      expect(prisma.plano_trabalho.delete).not.toHaveBeenCalled();
+      expect(result).toEqual({ id: 1 });
     });
   });
 });

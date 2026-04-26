@@ -18,13 +18,13 @@ describe('JwtStrategy', () => {
 
   it('deve validar e retornar o payload decodificado', async () => {
     const payload = { sub: 1, email: 'teste@email.com', nome: 'Teste' };
-    
+
     const result = await strategy.validate(payload);
-    
-    expect(result).toEqual({ 
-      userId: 1, 
-      email: 'teste@email.com', 
-      nome: 'Teste' 
+
+    expect(result).toEqual({
+      userId: 1,
+      email: 'teste@email.com',
+      nome: 'Teste',
     });
   });
 });

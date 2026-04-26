@@ -52,7 +52,7 @@ describe('AuthController', () => {
         senha: '123',
         funcao_id: 1,
       };
-      
+
       // Simula retorno sem senha
       const expectedResult = { id: 1, nome: 'User', email: 'u@u.com', funcao_id: 1 };
       mockAuthService.register.mockResolvedValue(expectedResult);

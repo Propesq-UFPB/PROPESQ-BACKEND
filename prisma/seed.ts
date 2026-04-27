@@ -121,6 +121,48 @@ async function main() {
     console.log('Usuario admin existente atualizado com sucesso!');
   }
 
+  console.log('Iniciando seed do usuario coordenador...');
+
+  const coordinatorRole = await prisma.funcao.findUnique({
+    where: { nome: 'COORDENADOR' },
+  });
+
+  if (!coordinatorRole) {
+    throw new Error('Função COORDENADOR não encontrada; execute o seed de funções primeiro.');
+  }
+
+  const existingCoordinator = await prisma.usuario.findFirst({
+    where: { email: 'coordenador@exemplo.com' },
+  });
+
+  if (!existingCoordinator) {
+    await prisma.usuario.create({
+      data: {
+        nome: 'Usuario Coordenador',
+        email: 'coordenador@exemplo.com',
+        senha: 'senha123',
+        funcao_id: coordinatorRole.id,
+        criado_em: new Date(),
+        atualizado_em: new Date(),
+      },
+    });
+
+    console.log('Usuario coordenador criado com sucesso!');
+  } else {
+    await prisma.usuario.update({
+      where: { id: existingCoordinator.id },
+      data: {
+        nome: 'Usuario Coordenador',
+        email: 'coordenador@exemplo.com',
+        senha: 'senha123',
+        funcao_id: coordinatorRole.id,
+        atualizado_em: new Date(),
+      },
+    });
+
+    console.log('Usuario coordenador existente atualizado com sucesso!');
+  }
+
   console.log('Iniciando seed de entidades relacionadas a pesquisa...');
 
   const unidadeAcademica = await prisma.unidade_academica.upsert({

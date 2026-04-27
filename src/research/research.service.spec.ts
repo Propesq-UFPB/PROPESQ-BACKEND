@@ -245,4 +245,47 @@ describe('ResearchService', () => {
       expect(result).toEqual({ id: 1 });
     });
   });
+
+  describe('publish', () => {
+    it('deve publicar quando estado atual for permitido', async () => {
+      prisma.projeto_pesquisa.findUnique.mockResolvedValue({
+        id: 1,
+        situacao: SituacaoProjeto.VALIDADO,
+        unidade_id: 3,
+      });
+      prisma.projeto_pesquisa.update.mockResolvedValue({ id: 1 });
+
+      await service.publish(1, {
+        userId: 1,
+        email: 'coord@teste.com',
+        nome: 'Coordenador',
+        funcao: 'COORDENADOR',
+        unidade_id: 3,
+      });
+
+      expect(prisma.projeto_pesquisa.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: {
+          situacao: SituacaoProjeto.PUBLICADO,
+        },
+      });
+    });
+
+    it('deve lançar erro quando usuário não for coordenador', async () => {
+      prisma.projeto_pesquisa.findUnique.mockResolvedValue({
+        id: 1,
+        situacao: SituacaoProjeto.VALIDADO,
+        unidade_id: 3,
+      });
+
+      await expect(
+        service.publish(1, {
+          userId: 1,
+          email: 'user@teste.com',
+          nome: 'Usuário',
+          funcao: 'ALUNO',
+        }),
+      ).rejects.toThrow();
+    });
+  });
 });

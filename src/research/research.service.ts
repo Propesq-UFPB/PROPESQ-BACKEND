@@ -38,6 +38,8 @@ export class ResearchService {
         categoria: createResearchDto.categoria,
         email: createResearchDto.email,
         situacao: SituacaoProjeto.SUBMETIDO,
+        data_inicio: createResearchDto.data_inicio,
+        data_fim: createResearchDto.data_fim,
         vigencia: createResearchDto.vigencia,
         ...(Array.isArray(createResearchDto.palavras_chave_ids) && {
           palavra_chave: {
@@ -159,13 +161,12 @@ export class ResearchService {
       where: { id: id },
       data: {
         tipo: updateResearchDto.tipo,
-        codigo: 'DEFAULT_CODE',
-        data_cadastro: new Date(),
         titulo: updateResearchDto.titulo,
         title: updateResearchDto.title,
         categoria: updateResearchDto.categoria,
         email: updateResearchDto.email,
-        situacao: SituacaoProjeto.SUBMETIDO,
+        data_inicio: updateResearchDto.data_inicio,
+        data_fim: updateResearchDto.data_fim,
         vigencia: updateResearchDto.vigencia,
         ...(Array.isArray(updateResearchDto.palavras_chave_ids) && {
           palavra_chave: {

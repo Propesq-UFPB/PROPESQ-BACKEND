@@ -1,4 +1,4 @@
-import { ApiProperty, OmitType, PartialType } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, OmitType, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsArray,
@@ -84,6 +84,12 @@ export class UpdateBodyWorkPlanDto {
 export class UpdateWorkPlanDto extends PartialType(
   OmitType(CreateWorkPlanDto, ['corpo_plano_trabalho', 'atividades'] as const),
 ) {
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'O ID do corpo do plano deve ser um número inteiro' })
+  corpo_id?: number;
+
   @ApiProperty({ type: UpdateBodyWorkPlanDto, required: false })
   @IsOptional()
   @IsNotEmpty({ message: 'O corpo do plano de trabalho não pode ser vazio' })

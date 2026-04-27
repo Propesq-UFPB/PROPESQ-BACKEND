@@ -21,11 +21,15 @@ async function main() {
       descricao: 'Acesso total ao sistema',
     },
     {
-      nome: 'TEACHER',
-      descricao: 'Acesso às funcionalidades de professor',
+      nome: 'GESTOR',
+      descricao: 'Acesso às funcionalidades de gestor',
     },
     {
-      nome: 'STUDENT',
+      nome: 'COORDENADOR',
+      descricao: 'Acesso às funcionalidades de coordenador',
+    },
+    {
+      nome: 'ALUNO',
       descricao: 'Acesso às funcionalidades de aluno',
     },
   ];

@@ -32,7 +32,6 @@ export class WorkPlanService {
           tipo_bolsa: createWorkPlanDto.tipo_bolsa,
           cronograma_id: createWorkPlanDto.cronograma_id,
           direcionamento_plano: createWorkPlanDto.direcionamento_plano,
-          corpo_id: createWorkPlanDto.corpo_id,
         },
         include: this.defaultInclude(),
       });
@@ -135,9 +134,6 @@ export class WorkPlanService {
           }),
           ...(updateWorkPlanDto.direcionamento_plano !== undefined && {
             direcionamento_plano: updateWorkPlanDto.direcionamento_plano,
-          }),
-          ...(updateWorkPlanDto.corpo_id !== undefined && {
-            corpo_id: updateWorkPlanDto.corpo_id,
           }),
         },
       });

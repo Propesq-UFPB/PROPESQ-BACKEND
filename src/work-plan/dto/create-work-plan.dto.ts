@@ -105,12 +105,6 @@ export class CreateWorkPlanDto {
   @IsString({ message: 'O direcionamento do plano deve ser um texto' })
   direcionamento_plano!: string;
 
-  @ApiProperty({ required: true })
-  @Type(() => Number)
-  @IsNotEmpty({ message: 'O ID do corpo é obrigatório' })
-  @IsInt({ message: 'O ID do corpo deve ser um número inteiro' })
-  corpo_id!: number;
-
   @ApiProperty({
     type: CreateBodyWorkPlanDto,
     required: true,

@@ -135,7 +135,7 @@ model plano_trabalho {
   tipo_bolsa           String                     @db.VarChar(255)
   cronograma_id        Int
   direcionamento_plano String
-  corpo_id             Int
+  corpo_id             Int?
   pesquisa_id          Int
   atividades           atividade_plano_trabalho[]
   corpo_plano_trabalho corpo_plano_trabalho?
@@ -155,6 +155,8 @@ model projeto_pesquisa {
   email                  String
   unidade_id             Int
   area_conhecimento_id   Int?
+  data_inicio            DateTime?                    @db.Timestamp(6)
+  data_fim               DateTime?                    @db.Timestamp(6)
   vigencia               DateTime                     @db.Timestamp(6)
   data_cadastro          DateTime
   edital                 String?

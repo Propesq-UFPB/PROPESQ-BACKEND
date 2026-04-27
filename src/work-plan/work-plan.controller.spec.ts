@@ -50,7 +50,6 @@ describe('WorkPlanController', () => {
         tipo_bolsa: 'REMUNERADA',
         cronograma_id: 1,
         direcionamento_plano: 'Direcionamento',
-        corpo_id: 1,
         corpo_plano_trabalho: {
           titulo: 'Titulo',
           introducao: 'Introducao',
@@ -97,7 +96,7 @@ describe('WorkPlanController', () => {
     it('deve chamar service.findOne com o id numérico', async () => {
       mockWorkPlanService.findOne.mockResolvedValue({ id: 1 });
 
-      await controller.findOne('1');
+      await controller.findOne(1);
 
       expect(service.findOne).toHaveBeenCalledWith(1);
     });
@@ -111,7 +110,7 @@ describe('WorkPlanController', () => {
 
       mockWorkPlanService.update.mockResolvedValue({ id: 1, ...dto });
 
-      await controller.update('1', dto);
+      await controller.update(1, dto);
 
       expect(service.update).toHaveBeenCalledWith(1, dto);
     });
@@ -121,7 +120,7 @@ describe('WorkPlanController', () => {
     it('deve chamar service.remove com o id correto', async () => {
       mockWorkPlanService.remove.mockResolvedValue({ id: 1 });
 
-      await controller.remove('1');
+      await controller.remove(1);
 
       expect(service.remove).toHaveBeenCalledWith(1);
     });

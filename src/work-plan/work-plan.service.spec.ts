@@ -90,7 +90,6 @@ describe('WorkPlanService', () => {
       tipo_bolsa: 'REMUNERADA',
       cronograma_id: 7,
       direcionamento_plano: 'Direcionamento',
-      corpo_id: 99,
       corpo_plano_trabalho: {
         titulo: 'Titulo',
         introducao: 'Introducao',
@@ -112,7 +111,7 @@ describe('WorkPlanService', () => {
       prisma.cronograma.findUnique.mockResolvedValue({ id: 7 });
       prisma.projeto_pesquisa.findUnique.mockResolvedValue({ id: 1 });
       prisma.corpo_plano_trabalho.create.mockResolvedValue({ id: 99 });
-      prisma.plano_trabalho.create.mockResolvedValue({ id: 1, ...createDto });
+      prisma.plano_trabalho.create.mockResolvedValue({ id: 1 });
       prisma.plano_trabalho.findUnique.mockResolvedValue({ id: 1 });
       prisma.projeto_pesquisa.update.mockResolvedValue({
         id: 1,
@@ -122,7 +121,24 @@ describe('WorkPlanService', () => {
 
       const result = await service.create({ ...createDto, atividades: [] });
 
-      expect(prisma.plano_trabalho.create).toHaveBeenCalled();
+      expect(prisma.plano_trabalho.create).toHaveBeenCalledWith({
+        data: {
+          discente_id: 1,
+          usuario_id: 1,
+          pesquisa_id: 1,
+          modalidade: 'PIBIC',
+          status: 'ATIVO',
+          tipo_bolsa: 'REMUNERADA',
+          cronograma_id: 7,
+          direcionamento_plano: 'Direcionamento',
+        },
+        include: {
+          corpo_plano_trabalho: true,
+          discente: true,
+          usuario: true,
+          projeto_pesquisa: true,
+        },
+      });
       expect(result.id).toEqual(1);
     });
 

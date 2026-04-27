@@ -1,0 +1,248 @@
+import { NotFoundException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import { Prisma, CategoriaProjeto, Idioma, SituacaoProjeto, TipoProjeto } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { ResearchService } from './research.service';
+import { CreateResearchDto } from './dto/create-research.dto';
+import { updateResearchDto } from './dto/update-research.dto';
+
+const mockPrismaService = {
+  projeto_pesquisa: {
+    create: jest.fn(),
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+    count: jest.fn(),
+  },
+  unidade_academica: {
+    findUnique: jest.fn(),
+  },
+  corpo_projeto: {
+    findUnique: jest.fn(),
+  },
+  palavra_chave: {
+    findMany: jest.fn(),
+  },
+  objetivo_desenvolvimento_sustentavel: {
+    findMany: jest.fn(),
+  },
+  atividade_projeto_pesquisa: {
+    findMany: jest.fn(),
+  },
+};
+
+describe('ResearchService', () => {
+  let service: ResearchService;
+  let prisma: typeof mockPrismaService;
+  const researchRecord = {
+    id: 1,
+    tipo: TipoProjeto.INTERNO,
+    titulo: 'Projeto em PT',
+    title: 'Project in EN',
+    categoria: CategoriaProjeto.CATEGORIA_PADRAO,
+    codigo: 'RP-001',
+    email: 'research@example.com',
+    situacao: SituacaoProjeto.SUBMETIDO,
+    data_cadastro: new Date('2026-01-01'),
+    palavra_chave: [{ lingua: Idioma.PT, palavra_chave: 'pesquisa' }],
+    objetivos: [{ objetivo: { id: 10, tipo: 'ODS 10' } }],
+    atividades: [{ descricao: 'Atividade', meses: [{ data: new Date('2026-01-10') }] }],
+    corpo_projeto: {
+      resumo: 'Resumo',
+      abstract: 'Abstract',
+      introducao: 'Introducao',
+      objetivos: 'Objetivos',
+      metodologia: 'Metodologia',
+      referencias: 'Referencias',
+      resultados_esperados: 'Resultados',
+    },
+  };
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        ResearchService,
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
+      ],
+    }).compile();
+
+    service = module.get<ResearchService>(ResearchService);
+    prisma = module.get(PrismaService);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('deve estar definido', () => {
+    expect(service).toBeDefined();
+  });
+
+  describe('create', () => {
+    const createDto: CreateResearchDto = {
+      tipo: TipoProjeto.INTERNO,
+      titulo: 'Projeto em PT',
+      title: 'Project in EN',
+      categoria: CategoriaProjeto.CATEGORIA_PADRAO,
+      vigencia: new Date('2026-01-01') as any,
+      data_inicio: new Date('2026-01-02') as any,
+      data_fim: new Date('2026-12-31') as any,
+      email: 'research@example.com',
+      palavras_chave_ids: [1, 2],
+      pesquisa_objetivo_ids: [10],
+      corpo_projeto_id: 5,
+      atividade_projeto_pesquisa_ids: [7],
+      unidade_id: 3,
+    };
+
+    it('deve persistir o projeto de pesquisa com as datas', async () => {
+      prisma.unidade_academica.findUnique.mockResolvedValue({ id: 3 });
+      prisma.corpo_projeto.findUnique.mockResolvedValue({ id: 5 });
+      prisma.palavra_chave.findMany.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+      prisma.objetivo_desenvolvimento_sustentavel.findMany.mockResolvedValue([{ id: 10 }]);
+      prisma.atividade_projeto_pesquisa.findMany.mockResolvedValue([{ id: 7 }]);
+      prisma.projeto_pesquisa.create.mockResolvedValue({ id: 1 });
+
+      await service.create(createDto);
+
+      expect(prisma.projeto_pesquisa.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            tipo: TipoProjeto.INTERNO,
+            codigo: 'DEFAULT_CODE',
+            situacao: SituacaoProjeto.SUBMETIDO,
+            data_inicio: createDto.data_inicio,
+            data_fim: createDto.data_fim,
+          }),
+        }),
+      );
+    });
+
+    it('deve lançar erro quando a unidade acadêmica não existir', async () => {
+      prisma.unidade_academica.findUnique.mockResolvedValue(null);
+
+      await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('findAll', () => {
+    it('deve retornar lista paginada formatada', async () => {
+      prisma.projeto_pesquisa.findMany.mockResolvedValue([
+        {
+          id: 1,
+          tipo: TipoProjeto.INTERNO,
+          titulo: 'Projeto em PT',
+          title: 'Project in EN',
+          categoria: CategoriaProjeto.CATEGORIA_PADRAO,
+          codigo: 'RP-001',
+          email: 'research@example.com',
+          situacao: SituacaoProjeto.SUBMETIDO,
+          data_cadastro: new Date('2026-01-01'),
+          palavra_chave: [
+            { lingua: Idioma.PT, palavra_chave: 'pesquisa' },
+            { lingua: Idioma.EN, palavra_chave: 'research' },
+          ],
+          objetivos: [{ objetivo: { id: 10, tipo: 'ODS 10' } }],
+          atividades: [],
+        },
+      ]);
+      prisma.projeto_pesquisa.count.mockResolvedValue(1);
+
+      const result = await service.findAll(10, 0);
+
+      expect(result.total).toBe(1);
+      expect(result.results[0].codigo).toBe('RP-001');
+      expect(result.results[0].key_words).toEqual(['research']);
+      expect(result.results[0].palavras_chave).toEqual(['pesquisa']);
+    });
+  });
+
+  describe('findOne', () => {
+    it('deve retornar um projeto formatado com corpo', async () => {
+      prisma.projeto_pesquisa.findUnique.mockResolvedValue({
+        id: 1,
+        tipo: TipoProjeto.INTERNO,
+        titulo: 'Projeto em PT',
+        title: 'Project in EN',
+        categoria: CategoriaProjeto.CATEGORIA_PADRAO,
+        codigo: 'RP-001',
+        email: 'research@example.com',
+        situacao: SituacaoProjeto.SUBMETIDO,
+        data_cadastro: new Date('2026-01-01'),
+        palavra_chave: [{ lingua: Idioma.PT, palavra_chave: 'pesquisa' }],
+        objetivos: [{ objetivo: { id: 10, tipo: 'ODS 10' } }],
+        atividades: [{ descricao: 'Atividade', meses: [{ data: new Date('2026-01-10') }] }],
+        corpo_projeto: {
+          resumo: 'Resumo',
+          abstract: 'Abstract',
+          introducao: 'Introducao',
+          objetivos: 'Objetivos',
+          metodologia: 'Metodologia',
+          referencias: 'Referencias',
+          resultados_esperados: 'Resultados',
+        },
+      });
+
+      const result = await service.findOne(1);
+
+      expect(result.corpo?.resumo).toBe('Resumo');
+      expect(result.atividades[0].descricao).toBe('Atividade');
+    });
+
+    it('deve lançar NotFoundException quando não existir', async () => {
+      prisma.projeto_pesquisa.findUnique.mockResolvedValue(null);
+
+      await expect(service.findOne(123)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('update', () => {
+    const updateDto: updateResearchDto = {
+      titulo: 'Novo título',
+      data_inicio: new Date('2026-02-01') as any,
+      data_fim: new Date('2026-11-30') as any,
+      unidade_id: 3,
+    };
+
+    it('deve atualizar sem sobrescrever codigo e situacao', async () => {
+      prisma.projeto_pesquisa.findUnique.mockResolvedValue(researchRecord);
+      prisma.unidade_academica.findUnique.mockResolvedValue({ id: 3 });
+      prisma.projeto_pesquisa.update.mockResolvedValue({ id: 1 });
+
+      await service.update(1, updateDto);
+
+      const [call] = prisma.projeto_pesquisa.update.mock.calls[0];
+      expect(call.data).toMatchObject({
+        titulo: 'Novo título',
+        data_inicio: updateDto.data_inicio,
+        data_fim: updateDto.data_fim,
+      });
+      expect(call.data).not.toHaveProperty('codigo');
+      expect(call.data).not.toHaveProperty('situacao');
+    });
+  });
+
+  describe('delete', () => {
+    it('deve remover um projeto existente', async () => {
+      prisma.projeto_pesquisa.findUnique.mockResolvedValue({ id: 1 });
+      prisma.projeto_pesquisa.delete.mockResolvedValue({ id: 1 });
+
+      const result = await service.delete(1);
+
+      expect(prisma.projeto_pesquisa.delete).toHaveBeenCalledWith({
+        where: { id: 1 },
+        include: {
+          anexo_projeto_pesquisa: true,
+          objetivos: true,
+          palavra_chave: true,
+          corpo_projeto: true,
+        },
+      });
+      expect(result).toEqual({ id: 1 });
+    });
+  });
+});

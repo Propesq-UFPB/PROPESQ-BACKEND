@@ -64,18 +64,6 @@ export class CreateBodyWorkPlanDto {
 export class CreateWorkPlanDto {
   @ApiProperty({ required: true })
   @Type(() => Number)
-  @IsNotEmpty({ message: 'O ID do discente é obrigatório' })
-  @IsInt({ message: 'O ID do discente deve ser um número inteiro' })
-  discente_id!: number;
-
-  @ApiProperty({ required: false, description: 'Campo opcional. Quando informado, é ignorado.' })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt({ message: 'O ID do usuário deve ser um número inteiro' })
-  usuario_id?: number;
-
-  @ApiProperty({ required: true })
-  @Type(() => Number)
   @IsNotEmpty({ message: 'O ID da pesquisa é obrigatório' })
   @IsInt({ message: 'O ID da pesquisa deve ser um número inteiro' })
   pesquisa_id!: number;

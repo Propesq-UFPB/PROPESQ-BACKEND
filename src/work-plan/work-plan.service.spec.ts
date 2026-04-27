@@ -82,7 +82,6 @@ describe('WorkPlanService', () => {
 
   describe('create', () => {
     const createDto: CreateWorkPlanDto = {
-      discente_id: 1,
       pesquisa_id: 1,
       modalidade: 'PIBIC',
       status: 'ATIVO',

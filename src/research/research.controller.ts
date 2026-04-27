@@ -10,7 +10,12 @@ import {
   HttpCode,
   HttpStatus,
   Delete,
+  UseGuards,
 } from '@nestjs/common';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 import { CreateResearchDto } from './dto/create-research.dto';
 import { ResearchService } from './research.service';
 import { PaginatedDto } from '../common/dto/paginated.dto';
@@ -103,6 +108,27 @@ export class ResearchController {
     @Body() updateResearchDto: updateResearchDto,
   ): Promise<void> {
     await this.researchService.update(id, updateResearchDto);
+  }
+
+  @Patch(':id/publish')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(RolesGuard)
+  @Roles('COORDENADOR')
+  @ApiOperation({ summary: 'Publica um projeto de pesquisa (somente coordenador)' })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'ID do projeto de pesquisa.',
+  })
+  @ApiResponse({
+    status: HttpStatus.NO_CONTENT,
+    description: 'Projeto publicado com sucesso.',
+  })
+  async publish(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() currentUser: CurrentUserPayload,
+  ): Promise<void> {
+    await this.researchService.publish(id, currentUser);
   }
 
   @Delete(':id')

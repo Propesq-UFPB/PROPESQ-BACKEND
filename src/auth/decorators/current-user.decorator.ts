@@ -4,6 +4,8 @@ export interface CurrentUserPayload {
   userId: number;
   email: string;
   nome: string;
+  funcao?: string;
+  unidade_id?: number;
   [key: string]: any;
 }
 

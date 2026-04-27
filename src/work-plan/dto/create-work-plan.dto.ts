@@ -6,6 +6,7 @@ import {
   IsInt,
   IsNotEmpty,
   IsObject,
+  IsOptional,
   IsString,
   ValidateNested,
 } from 'class-validator';
@@ -67,11 +68,11 @@ export class CreateWorkPlanDto {
   @IsInt({ message: 'O ID do discente deve ser um número inteiro' })
   discente_id!: number;
 
-  @ApiProperty({ required: true })
+  @ApiProperty({ required: false, description: 'Campo opcional. Quando informado, é ignorado.' })
+  @IsOptional()
   @Type(() => Number)
-  @IsNotEmpty({ message: 'O ID do usuário é obrigatório' })
   @IsInt({ message: 'O ID do usuário deve ser um número inteiro' })
-  usuario_id!: number;
+  usuario_id?: number;
 
   @ApiProperty({ required: true })
   @Type(() => Number)

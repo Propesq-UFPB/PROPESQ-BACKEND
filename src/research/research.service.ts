@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateResearchDto } from '../research/dto/create-research.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { Idioma, SituacaoProjeto, type projeto_pesquisa } from '@prisma/client';
@@ -8,6 +13,7 @@ import { CategoriaProjetoMapper } from '../common/mapper/categoria-projeto.mappe
 import { SituacaoProjetoMapper } from '../common/mapper/situacao-projeto.mapper';
 import { TipoProjetoMapper } from '../common/mapper/tipo-projeto.mapper';
 import { updateResearchDto } from './dto/update-research.dto';
+import { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 
 @Injectable()
 export class ResearchService {
@@ -265,6 +271,51 @@ export class ResearchService {
         objetivos: true,
         palavra_chave: true,
         corpo_projeto: true,
+      },
+    });
+  }
+
+  async publish(id: number, currentUser: CurrentUserPayload): Promise<void> {
+    const research = await this.prisma.projeto_pesquisa.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        situacao: true,
+        unidade_id: true,
+      },
+    });
+
+    if (!research) {
+      throw new NotFoundException(`Projeto de pesquisa Id ${id} não encontrado`);
+    }
+
+    if (currentUser.funcao?.toUpperCase() !== 'COORDENADOR') {
+      throw new ForbiddenException('Apenas coordenadores podem publicar projetos.');
+    }
+
+    if (currentUser.unidade_id !== undefined && currentUser.unidade_id !== research.unidade_id) {
+      throw new ForbiddenException(
+        'Coordenador não autorizado a publicar projeto de outra unidade acadêmica.',
+      );
+    }
+
+    const allowedTransitions = new Set<SituacaoProjeto>([
+      SituacaoProjeto.SUBMETIDO,
+      SituacaoProjeto.AGUARDANDO_VALIDACAO,
+      SituacaoProjeto.VALIDADO,
+      SituacaoProjeto.CADASTRADO,
+    ]);
+
+    if (!allowedTransitions.has(research.situacao)) {
+      throw new BadRequestException(
+        `Projeto em situação ${research.situacao} não pode ser publicado.`,
+      );
+    }
+
+    await this.prisma.projeto_pesquisa.update({
+      where: { id },
+      data: {
+        situacao: SituacaoProjeto.PUBLICADO,
       },
     });
   }

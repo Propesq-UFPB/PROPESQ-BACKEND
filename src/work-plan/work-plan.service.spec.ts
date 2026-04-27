@@ -83,7 +83,6 @@ describe('WorkPlanService', () => {
   describe('create', () => {
     const createDto: CreateWorkPlanDto = {
       discente_id: 1,
-      usuario_id: 1,
       pesquisa_id: 1,
       modalidade: 'PIBIC',
       status: 'ATIVO',
@@ -106,8 +105,7 @@ describe('WorkPlanService', () => {
     };
 
     it('deve criar plano de trabalho com sucesso', async () => {
-      prisma.discente.findUnique.mockResolvedValue({ id: 1 });
-      prisma.usuario.findUnique.mockResolvedValue({ id: 1 });
+      prisma.discente.findUnique.mockResolvedValue({ id: 1, usuario_id: 42 });
       prisma.cronograma.findUnique.mockResolvedValue({ id: 7 });
       prisma.projeto_pesquisa.findUnique.mockResolvedValue({ id: 1 });
       prisma.corpo_plano_trabalho.create.mockResolvedValue({ id: 99 });
@@ -124,7 +122,7 @@ describe('WorkPlanService', () => {
       expect(prisma.plano_trabalho.create).toHaveBeenCalledWith({
         data: {
           discente_id: 1,
-          usuario_id: 1,
+          usuario_id: 42,
           pesquisa_id: 1,
           modalidade: 'PIBIC',
           status: 'ATIVO',
@@ -144,7 +142,6 @@ describe('WorkPlanService', () => {
 
     it('deve lançar erro quando discente não existe', async () => {
       prisma.discente.findUnique.mockResolvedValue(null);
-      prisma.usuario.findUnique.mockResolvedValue({ id: 1 });
       prisma.cronograma.findUnique.mockResolvedValue({ id: 7 });
       prisma.projeto_pesquisa.findUnique.mockResolvedValue({ id: 1 });
 

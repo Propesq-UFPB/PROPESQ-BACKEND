@@ -10,6 +10,7 @@ const mockResearchService = {
   findAll: jest.fn(),
   findOne: jest.fn(),
   update: jest.fn(),
+  publish: jest.fn(),
   delete: jest.fn(),
 };
 
@@ -117,6 +118,27 @@ describe('ResearchController', () => {
       await controller.delete(1);
 
       expect(service.delete).toHaveBeenCalledWith(1);
+    });
+  });
+
+  describe('publish', () => {
+    it('deve chamar service.publish com id e usuário atual', async () => {
+      mockResearchService.publish.mockResolvedValue(undefined);
+
+      await controller.publish(1, {
+        userId: 10,
+        email: 'coord@teste.com',
+        nome: 'Coord',
+        funcao: 'COORDENADOR',
+      });
+
+      expect(service.publish).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          userId: 10,
+          funcao: 'COORDENADOR',
+        }),
+      );
     });
   });
 });

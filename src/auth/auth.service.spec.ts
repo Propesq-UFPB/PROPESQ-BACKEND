@@ -53,7 +53,7 @@ describe('AuthService', () => {
   describe('login', () => {
     const loginDto: LoginDto = {
       email: 'teste@teste.com',
-      senha: '123',
+      password: '123',
     };
 
     const mockUser = {
@@ -75,7 +75,11 @@ describe('AuthService', () => {
         email: mockUser.email,
         nome: mockUser.nome,
       });
-      expect(result).toEqual({ access_token: 'token_jwt_simulado' });
+      expect(result).toEqual({ accessToken: 'token_jwt_simulado', user: {
+        id: 1,
+        email: 'teste@teste.com',
+        nome: 'Usuário Teste'
+      } });
     });
 
     it('deve lançar UnauthorizedException se o usuário não for encontrado', async () => {

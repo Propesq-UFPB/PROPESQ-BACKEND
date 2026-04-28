@@ -16,6 +16,7 @@ import { updateResearchDto } from './dto/update-research.dto';
 import { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { AssignEvaluatorDto } from './dto/assign-evaluator.dto';
 import { EvaluateProjectDto } from './dto/evaluate-project.dto';
+import { FinalDecisionDto } from './dto/final-decision.dto';
 
 @Injectable()
 export class ResearchService {
@@ -135,6 +136,34 @@ export class ResearchService {
       }),
       this.prisma.projeto_pesquisa.count({
         where: { avaliador_id: userId },
+      }),
+    ]);
+
+    return {
+      total,
+      limit,
+      offset,
+      results: data,
+    };
+  }
+
+  async getRanking(limit: number, offset: number): Promise<PaginatedDto<findOneResearchDto>> {
+    const [data, total] = await Promise.all([
+      (
+        await this.prisma.projeto_pesquisa.findMany({
+          where: { situacao: SituacaoProjeto.APROVADO },
+          include: {
+            corpo_projeto: true,
+            palavra_chave: true,
+            objetivos: true,
+          },
+          take: limit,
+          skip: offset,
+          orderBy: [{ pontuacao_final: 'desc' }, { data_cadastro: 'asc' }],
+        })
+      ).map(research => this.formatResearch(research)),
+      this.prisma.projeto_pesquisa.count({
+        where: { situacao: SituacaoProjeto.APROVADO },
       }),
     ]);
 
@@ -423,6 +452,43 @@ export class ResearchService {
         observacao: evaluateDto.observacao,
         data_avaliacao: new Date(),
       },
+    });
+  }
+
+  async finalDecision(id: number, userId: number, dto: FinalDecisionDto): Promise<void> {
+    const project = await this.prisma.projeto_pesquisa.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Projeto de pesquisa Id ${id} não encontrado`);
+    }
+
+    if (dto.situacao !== SituacaoProjeto.APROVADO && dto.situacao !== SituacaoProjeto.REPROVADO) {
+      throw new BadRequestException('A situação deve ser estritamente APROVADO ou REPROVADO.');
+    }
+
+    // Utiliza uma transação para garantir que a situação é atualizada
+    // e o histórico é gravado em simultâneo.
+    await this.prisma.$transaction(async tx => {
+      await tx.projeto_pesquisa.update({
+        where: { id },
+        data: {
+          situacao: dto.situacao,
+          pontuacao_final: dto.pontuacao_final,
+        },
+      });
+
+      await tx.historico_avaliacao.create({
+        data: {
+          projeto_id: id,
+          avaliador_id: userId,
+          status: dto.situacao,
+          observacao: dto.justificativa,
+          data_avaliacao: new Date(),
+        },
+      });
     });
   }
 

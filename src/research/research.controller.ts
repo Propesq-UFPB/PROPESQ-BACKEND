@@ -32,6 +32,7 @@ import {
 import { updateResearchDto } from './dto/update-research.dto';
 import { AssignEvaluatorDto } from './dto/assign-evaluator.dto';
 import { EvaluateProjectDto } from './dto/evaluate-project.dto';
+import { FinalDecisionDto } from './dto/final-decision.dto';
 
 @ApiBearerAuth('bearer')
 @ApiTags('Projetos de pesquisa')
@@ -88,6 +89,21 @@ export class ResearchController {
     @Query('offset') offset: string = '0',
   ): Promise<PaginatedDto<findOneResearchDto>> {
     return this.researchService.findMyEvaluations(currentUser.userId, +limit, +offset);
+  }
+
+  @Get('ranking')
+  @ApiOperation({ summary: 'Retorna o ranking de projetos aprovados' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Ranking de projetos aprovados retornado com sucesso.',
+  })
+  @ApiQuery({ name: 'limit', required: false, type: Number, default: 10 })
+  @ApiQuery({ name: 'offset', required: false, type: Number, default: 0 })
+  getRanking(
+    @Query('limit') limit: string = '10',
+    @Query('offset') offset: string = '0',
+  ): Promise<PaginatedDto<findOneResearchDto>> {
+    return this.researchService.getRanking(+limit, +offset);
   }
 
   @Get(':id')
@@ -188,6 +204,22 @@ export class ResearchController {
     @CurrentUser() currentUser: CurrentUserPayload,
   ): Promise<void> {
     await this.researchService.evaluateProject(id, currentUser.userId, evaluateProjectDto);
+  }
+
+  @Patch(':id/final-decision')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(RolesGuard)
+  @Roles('GESTOR')
+  @ApiOperation({ summary: 'Regista a decisão final (deferimento/indeferimento) (somente GESTOR)' })
+  @ApiParam({ name: 'id', type: Number, description: 'ID do projeto de pesquisa.' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Decisão final registada com sucesso.' })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Projeto não encontrado.' })
+  async finalDecision(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() finalDecisionDto: FinalDecisionDto,
+    @CurrentUser() currentUser: CurrentUserPayload,
+  ): Promise<void> {
+    await this.researchService.finalDecision(id, currentUser.userId, finalDecisionDto);
   }
 
   @Delete(':id')

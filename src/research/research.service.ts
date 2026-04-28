@@ -15,6 +15,7 @@ import { TipoProjetoMapper } from '../common/mapper/tipo-projeto.mapper';
 import { updateResearchDto } from './dto/update-research.dto';
 import { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { AssignEvaluatorDto } from './dto/assign-evaluator.dto';
+import { EvaluateProjectDto } from './dto/evaluate-project.dto';
 
 @Injectable()
 export class ResearchService {
@@ -101,6 +102,40 @@ export class ResearchService {
         return this.formatResearch(research);
       }),
       this.prisma.projeto_pesquisa.count(),
+    ]);
+
+    return {
+      total,
+      limit,
+      offset,
+      results: data,
+    };
+  }
+
+  async findMyEvaluations(
+    userId: number,
+    limit: number,
+    offset: number,
+  ): Promise<PaginatedDto<findOneResearchDto>> {
+    const [data, total] = await Promise.all([
+      (
+        await this.prisma.projeto_pesquisa.findMany({
+          where: { avaliador_id: userId },
+          include: {
+            corpo_projeto: true,
+            palavra_chave: true,
+            objetivos: true,
+          },
+          take: limit,
+          skip: offset,
+          orderBy: { data_cadastro: 'desc' },
+        })
+      ).map(research => {
+        return this.formatResearch(research);
+      }),
+      this.prisma.projeto_pesquisa.count({
+        where: { avaliador_id: userId },
+      }),
     ]);
 
     return {
@@ -349,6 +384,44 @@ export class ResearchService {
       data: {
         avaliador_id: assignEvaluatorDto.coordinator_id,
         situacao: SituacaoProjeto.DISTRIBUICAO_PARA_AVALIACAO_MANUALMENTE,
+      },
+    });
+  }
+
+  async evaluateProject(
+    id: number,
+    userId: number,
+    evaluateDto: EvaluateProjectDto,
+  ): Promise<void> {
+    const project = await this.prisma.projeto_pesquisa.findUnique({
+      where: { id },
+      select: { id: true, avaliador_id: true },
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Projeto de pesquisa Id ${id} não encontrado`);
+    }
+
+    if (project.avaliador_id !== userId) {
+      throw new ForbiddenException(
+        'Não tem permissão para avaliar este projeto. O projeto foi atribuído a outro coordenador.',
+      );
+    }
+
+    await this.prisma.projeto_pesquisa.update({
+      where: { id },
+      data: {
+        situacao: evaluateDto.status,
+      },
+    });
+
+    await this.prisma.historico_avaliacao.create({
+      data: {
+        projeto_id: id,
+        avaliador_id: userId,
+        status: evaluateDto.status,
+        observacao: evaluateDto.observacao,
+        data_avaliacao: new Date(),
       },
     });
   }

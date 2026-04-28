@@ -173,10 +173,23 @@ model projeto_pesquisa {
   corpo_projeto          corpo_projeto?
   anexo_projeto_pesquisa anexo_projeto_pesquisa?
 
-  atividades     atividade_projeto_pesquisa[]
-  objetivos      pesquisa_objetivo[]
-  palavra_chave  palavra_chave[]
-  plano_trabalho plano_trabalho[]
+  atividades          atividade_projeto_pesquisa[]
+  objetivos           pesquisa_objetivo[]
+  palavra_chave       palavra_chave[]
+  plano_trabalho      plano_trabalho[]
+  historico_avaliacao historico_avaliacao[]
+}
+
+model historico_avaliacao {
+  id             Int             @id @default(autoincrement())
+  projeto_id     Int
+  avaliador_id   Int
+  status         SituacaoProjeto
+  observacao     String?         @db.Text
+  data_avaliacao DateTime        @default(now()) @db.Timestamp(6)
+
+  projeto_pesquisa projeto_pesquisa @relation(fields: [projeto_id], references: [id], onDelete: Cascade)
+  avaliador        usuario          @relation("avaliador_historico", fields: [avaliador_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model objetivo_desenvolvimento_sustentavel {
@@ -224,11 +237,12 @@ model usuario {
   funcao_id Int
   funcao    funcao @relation(fields: [funcao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  anexo              anexo[]
-  discente           discente[]
-  docente            docente[]
-  plano_trabalho     plano_trabalho[]
-  projetos_avaliados projeto_pesquisa[] @relation("avaliador_projeto")
+  anexo               anexo[]
+  discente            discente[]
+  docente             docente[]
+  plano_trabalho      plano_trabalho[]
+  projetos_avaliados  projeto_pesquisa[]    @relation("avaliador_projeto")
+  historico_avaliacao historico_avaliacao[] @relation("avaliador_historico")
 }
 
 // ENUMS 

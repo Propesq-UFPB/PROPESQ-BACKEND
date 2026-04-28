@@ -163,6 +163,90 @@ async function main() {
     console.log('Usuario coordenador existente atualizado com sucesso!');
   }
 
+  console.log('Iniciando seed do usuario gestor...');
+
+  const managerRole = await prisma.funcao.findUnique({
+    where: { nome: 'GESTOR' },
+  });
+
+  if (!managerRole) {
+    throw new Error('Função GESTOR não encontrada; execute o seed de funções primeiro.');
+  }
+
+  const existingManager = await prisma.usuario.findFirst({
+    where: { email: 'gestor@exemplo.com' },
+  });
+
+  if (!existingManager) {
+    await prisma.usuario.create({
+      data: {
+        nome: 'Usuario Gestor',
+        email: 'gestor@exemplo.com',
+        senha: 'senha123',
+        funcao_id: managerRole.id,
+        criado_em: new Date(),
+        atualizado_em: new Date(),
+      },
+    });
+
+    console.log('Usuario gestor criado com sucesso!');
+  } else {
+    await prisma.usuario.update({
+      where: { id: existingManager.id },
+      data: {
+        nome: 'Usuario Gestor',
+        email: 'gestor@exemplo.com',
+        senha: 'senha123',
+        funcao_id: managerRole.id,
+        atualizado_em: new Date(),
+      },
+    });
+
+    console.log('Usuario gestor existente atualizado com sucesso!');
+  }
+
+  console.log('Iniciando seed do usuario aluno...');
+
+  const studentRole = await prisma.funcao.findUnique({
+    where: { nome: 'ALUNO' },
+  });
+
+  if (!studentRole) {
+    throw new Error('Função ALUNO não encontrada; execute o seed de funções primeiro.');
+  }
+
+  const existingStudent = await prisma.usuario.findFirst({
+    where: { email: 'aluno@exemplo.com' },
+  });
+
+  if (!existingStudent) {
+    await prisma.usuario.create({
+      data: {
+        nome: 'Usuario Aluno',
+        email: 'aluno@exemplo.com',
+        senha: 'senha123',
+        funcao_id: studentRole.id,
+        criado_em: new Date(),
+        atualizado_em: new Date(),
+      },
+    });
+
+    console.log('Usuario aluno criado com sucesso!');
+  } else {
+    await prisma.usuario.update({
+      where: { id: existingStudent.id },
+      data: {
+        nome: 'Usuario Aluno',
+        email: 'aluno@exemplo.com',
+        senha: 'senha123',
+        funcao_id: studentRole.id,
+        atualizado_em: new Date(),
+      },
+    });
+
+    console.log('Usuario aluno existente atualizado com sucesso!');
+  }
+
   console.log('Iniciando seed de entidades relacionadas a pesquisa...');
 
   const unidadeAcademica = await prisma.unidade_academica.upsert({

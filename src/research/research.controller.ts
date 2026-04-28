@@ -31,6 +31,7 @@ import {
 } from '@nestjs/swagger';
 import { updateResearchDto } from './dto/update-research.dto';
 import { AssignEvaluatorDto } from './dto/assign-evaluator.dto';
+import { EvaluateProjectDto } from './dto/evaluate-project.dto';
 
 @ApiBearerAuth('bearer')
 @ApiTags('Projetos de pesquisa')
@@ -67,6 +68,26 @@ export class ResearchController {
     @Query('offset') offset: string = '0',
   ): Promise<PaginatedDto<findOneResearchDto>> {
     return this.researchService.findAll(+limit, +offset);
+  }
+
+  @Get('my-evaluations')
+  @UseGuards(RolesGuard)
+  @Roles('COORDENADOR')
+  @ApiOperation({
+    summary: 'Retorna os projetos atribuídos ao coordenador autenticado',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Lista paginada de projetos atribuídos retornada com sucesso.',
+  })
+  @ApiQuery({ name: 'limit', required: false, type: Number, default: 10 })
+  @ApiQuery({ name: 'offset', required: false, type: Number, default: 0 })
+  findMyEvaluations(
+    @CurrentUser() currentUser: CurrentUserPayload,
+    @Query('limit') limit: string = '10',
+    @Query('offset') offset: string = '0',
+  ): Promise<PaginatedDto<findOneResearchDto>> {
+    return this.researchService.findMyEvaluations(currentUser.userId, +limit, +offset);
   }
 
   @Get(':id')
@@ -148,6 +169,25 @@ export class ResearchController {
     @Body() assignEvaluatorDto: AssignEvaluatorDto,
   ): Promise<void> {
     await this.researchService.assignEvaluator(id, assignEvaluatorDto);
+  }
+
+  @Patch(':id/evaluate')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(RolesGuard)
+  @Roles('COORDENADOR')
+  @ApiOperation({ summary: 'Avalia um projeto atribuído (somente coordenador)' })
+  @ApiParam({ name: 'id', type: Number, description: 'ID do projeto de pesquisa.' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Projeto avaliado com sucesso.' })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'O projeto não está atribuído a este coordenador.',
+  })
+  async evaluateProject(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() evaluateProjectDto: EvaluateProjectDto,
+    @CurrentUser() currentUser: CurrentUserPayload,
+  ): Promise<void> {
+    await this.researchService.evaluateProject(id, currentUser.userId, evaluateProjectDto);
   }
 
   @Delete(':id')

@@ -146,30 +146,37 @@ model plano_trabalho {
 }
 
 model projeto_pesquisa {
-  id                     Int                          @id @default(autoincrement())
-  codigo                 String
-  tipo                   TipoProjeto
-  titulo                 String
-  title                  String
-  categoria              CategoriaProjeto
-  situacao               SituacaoProjeto              @map("situação")
-  email                  String
-  unidade_id             Int
-  area_conhecimento_id   Int?
-  data_inicio            DateTime?                    @db.Timestamp(6)
-  data_fim               DateTime?                    @db.Timestamp(6)
-  vigencia               DateTime                     @db.Timestamp(6)
-  data_cadastro          DateTime
-  edital                 String?
-  cota                   String?
-  atividades             atividade_projeto_pesquisa[]
-  objetivos              pesquisa_objetivo[]
-  palavra_chave          palavra_chave[]
+  id            Int              @id @default(autoincrement())
+  codigo        String
+  tipo          TipoProjeto
+  titulo        String
+  title         String
+  categoria     CategoriaProjeto
+  situacao      SituacaoProjeto  @map("situação")
+  email         String
+  data_inicio   DateTime?        @db.Timestamp(6)
+  data_fim      DateTime?        @db.Timestamp(6)
+  vigencia      DateTime         @db.Timestamp(6)
+  data_cadastro DateTime
+  edital        String?
+  cota          String?
+
+  unidade_id        Int
+  unidade_academica unidade_academica @relation(fields: [unidade_id], references: [id], onDelete: Cascade)
+
+  area_conhecimento_id Int?
+  area_conhecimento    area_conhecimento? @relation(fields: [area_conhecimento_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  avaliador_id Int?
+  avaliador    usuario? @relation("avaliador_projeto", fields: [avaliador_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
   corpo_projeto          corpo_projeto?
-  plano_trabalho         plano_trabalho[]
-  area_conhecimento      area_conhecimento?           @relation(fields: [area_conhecimento_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   anexo_projeto_pesquisa anexo_projeto_pesquisa?
-  unidade_academica      unidade_academica            @relation(fields: [unidade_id], references: [id], onDelete: Cascade)
+
+  atividades     atividade_projeto_pesquisa[]
+  objetivos      pesquisa_objetivo[]
+  palavra_chave  palavra_chave[]
+  plano_trabalho plano_trabalho[]
 }
 
 model objetivo_desenvolvimento_sustentavel {
@@ -207,18 +214,21 @@ model funcao_permissao {
 }
 
 model usuario {
-  id             Int              @id @default(autoincrement())
-  nome           String
-  email          String
-  senha          String
-  criado_em      DateTime         @db.Timestamp(6)
-  atualizado_em  DateTime         @db.Timestamp(6)
-  funcao_id      Int
-  anexo          anexo[]
-  discente       discente[]
-  docente        docente[]
-  plano_trabalho plano_trabalho[]
-  funcao         funcao           @relation(fields: [funcao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id            Int      @id @default(autoincrement())
+  nome          String
+  email         String
+  senha         String
+  criado_em     DateTime @db.Timestamp(6)
+  atualizado_em DateTime @db.Timestamp(6)
+
+  funcao_id Int
+  funcao    funcao @relation(fields: [funcao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  anexo              anexo[]
+  discente           discente[]
+  docente            docente[]
+  plano_trabalho     plano_trabalho[]
+  projetos_avaliados projeto_pesquisa[] @relation("avaliador_projeto")
 }
 
 // ENUMS 

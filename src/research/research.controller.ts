@@ -30,6 +30,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { updateResearchDto } from './dto/update-research.dto';
+import { AssignEvaluatorDto } from './dto/assign-evaluator.dto';
 
 @ApiBearerAuth('bearer')
 @ApiTags('Projetos de pesquisa')
@@ -129,6 +130,24 @@ export class ResearchController {
     @CurrentUser() currentUser: CurrentUserPayload,
   ): Promise<void> {
     await this.researchService.publish(id, currentUser);
+  }
+
+  @Patch(':id/assign-evaluator')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(RolesGuard)
+  @Roles('GESTOR')
+  @ApiOperation({ summary: 'Atribui um avaliador a um projeto (somente gestor)' })
+  @ApiParam({ name: 'id', type: Number, description: 'ID do projeto de pesquisa.' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Avaliador atribuído com sucesso.' })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Acesso negado ou usuário não é coordenador.',
+  })
+  async assignEvaluator(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() assignEvaluatorDto: AssignEvaluatorDto,
+  ): Promise<void> {
+    await this.researchService.assignEvaluator(id, assignEvaluatorDto);
   }
 
   @Delete(':id')

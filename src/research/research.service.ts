@@ -14,6 +14,7 @@ import { SituacaoProjetoMapper } from '../common/mapper/situacao-projeto.mapper'
 import { TipoProjetoMapper } from '../common/mapper/tipo-projeto.mapper';
 import { updateResearchDto } from './dto/update-research.dto';
 import { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
+import { AssignEvaluatorDto } from './dto/assign-evaluator.dto';
 
 @Injectable()
 export class ResearchService {
@@ -316,6 +317,38 @@ export class ResearchService {
       where: { id },
       data: {
         situacao: SituacaoProjeto.PUBLICADO,
+      },
+    });
+  }
+
+  async assignEvaluator(id: number, assignEvaluatorDto: AssignEvaluatorDto): Promise<void> {
+    const project = await this.prisma.projeto_pesquisa.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Projeto de pesquisa Id ${id} não encontrado`);
+    }
+
+    const evaluator = await this.prisma.usuario.findUnique({
+      where: { id: assignEvaluatorDto.coordinator_id },
+      include: { funcao: true },
+    });
+
+    if (!evaluator) {
+      throw new NotFoundException(`Usuário Id ${assignEvaluatorDto.coordinator_id} não encontrado`);
+    }
+
+    if (evaluator.funcao?.nome.toUpperCase() !== 'COORDENADOR') {
+      throw new ForbiddenException('O utilizador atribuído deve ter a função de COORDENADOR.');
+    }
+
+    await this.prisma.projeto_pesquisa.update({
+      where: { id },
+      data: {
+        avaliador_id: assignEvaluatorDto.coordinator_id,
+        situacao: SituacaoProjeto.DISTRIBUICAO_PARA_AVALIACAO_MANUALMENTE,
       },
     });
   }

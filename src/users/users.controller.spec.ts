@@ -13,6 +13,10 @@ const mockUsersService = {
 };
 
 describe('UsersController', () => {
+  /* IMPORTANTE:
+      Em testes unitários o id é passado diretamente como number
+      pois o ParseIntPipe é executado apenas quando o método é chamado
+      através de uma requisição HTTP */
   let controller: UsersController;
   let service: UsersService;
 
@@ -44,7 +48,8 @@ describe('UsersController', () => {
       const dto = new CreateUserDto();
       mockUsersService.create.mockResolvedValue({ id: 1, ...dto });
 
-      await controller.create(dto);
+      await controller.create(dto)
+      
       expect(service.create).toHaveBeenCalledWith(dto);
     });
   });
@@ -73,7 +78,7 @@ describe('UsersController', () => {
     it('deve chamar service.findOne convertendo ID', async () => {
       mockUsersService.findOne.mockResolvedValue({ id: 1 });
 
-      await controller.findOne('1');
+      await controller.findOne(1); 
 
       expect(service.findOne).toHaveBeenCalledWith(1);
     });
@@ -84,7 +89,7 @@ describe('UsersController', () => {
       const dto = new UpdateUserDto();
       mockUsersService.update.mockResolvedValue({ id: 1 });
 
-      await controller.update('1', dto);
+      await controller.update(1, dto);
 
       expect(service.update).toHaveBeenCalledWith(1, dto);
     });
@@ -94,7 +99,7 @@ describe('UsersController', () => {
     it('deve chamar service.remove', async () => {
       mockUsersService.remove.mockResolvedValue({ id: 1 });
 
-      await controller.remove('1');
+      await controller.remove(1);
 
       expect(service.remove).toHaveBeenCalledWith(1);
     });

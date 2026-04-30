@@ -224,6 +224,104 @@ describe('ResearchService', () => {
       expect(call.data).not.toHaveProperty('codigo');
       expect(call.data).not.toHaveProperty('situacao');
     });
+
+    const setupValidMocks = () => {
+      prisma.projeto_pesquisa.findUnique.mockResolvedValue(researchRecord);
+      prisma.unidade_academica.findUnique.mockResolvedValue({ id: 3 });
+      prisma.corpo_projeto.findUnique.mockResolvedValue({ id: 5 });
+      prisma.palavra_chave.findMany.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+    }
+
+    const makeDto = (overrides = {}) => {
+      return {
+        ...updateDto,
+        ...overrides,
+      };
+    };
+
+    it('deve lançar erro quando corpo_projeto_id não existir', async () => {
+      setupValidMocks();
+
+      prisma.corpo_projeto.findUnique.mockResolvedValue(null);
+
+      await expect(service.update(1, makeDto({ corpo_projeto_id: 999 }))).rejects.toThrow(NotFoundException);
+    });
+
+    it('deve lançar erro quando alguma das palavras_chave_id não existir', async () => {
+      setupValidMocks();
+
+      prisma.palavra_chave.findMany.mockResolvedValue([]);
+      
+      await expect(service.update(1, makeDto({palavras_chave_ids: [111]}))).rejects.toThrow(NotFoundException);
+    });
+
+    it('deve lançar erro quando algum dos pesquisa_objetivo_ids não existir', async () => {
+      setupValidMocks();
+
+      prisma.objetivo_desenvolvimento_sustentavel.findMany.mockResolvedValue([]);
+      
+      await expect(service.update(1, makeDto({pesquisa_objetivo_ids: [999]}))).rejects.toThrow(NotFoundException);
+    });
+
+    it('deve lançar erro quando algum dos atividade_projeto_pesquisa_ids não existir', async () => {
+      setupValidMocks();
+
+      prisma.atividade_projeto_pesquisa.findMany.mockResolvedValue([]);
+      
+      await expect(service.update(1, makeDto({atividade_projeto_pesquisa_ids: [999]}))).rejects.toThrow(NotFoundException);
+    })
+
+    // palavras_chave_ids, pesquisa_objetivo_ids, atividade_projeto_pesquisa_ids
+    it('deve incluir palavra_chave no update quando palavras_chave_id for um array', async () => {
+      setupValidMocks();
+
+      await service.update(1, makeDto({palavras_chave_ids: [1, 2]}));
+
+      const [call] = prisma.projeto_pesquisa.update.mock.calls[0];
+      expect(call.data).toMatchObject({
+        palavra_chave: {
+          set: [{id: 1}, {id: 2}],
+        },
+      });
+    });
+
+    it ('deve incluir objetivo no update quando pesquisa_objetivo_ids for um array', async () => {
+      setupValidMocks();
+      prisma.objetivo_desenvolvimento_sustentavel.findMany.mockResolvedValue([{id: 10}, {id: 20}]);
+      prisma.projeto_pesquisa.update.mockResolvedValue({id: 1});
+
+      await service.update(1, makeDto({pesquisa_objetivo_ids: [10, 20]}));
+
+      const [call] = prisma.projeto_pesquisa.update.mock.calls[0];
+      expect(call.data).toMatchObject({
+        objetivos: {
+          deleteMany: {},
+          create: [
+            { objetivo: { connect: { id: 10 } } },
+            { objetivo: { connect: { id: 20 } } },
+          ],
+        },
+      });
+    });
+
+    it('deve incluir atividades no update quando atividade_projeto_pesquisa_ids for um array', async () => {
+      setupValidMocks();
+      prisma.atividade_projeto_pesquisa.findMany.mockResolvedValue([{id: 10}, {id: 20}]);
+      prisma.projeto_pesquisa.update.mockResolvedValue({id: 1});
+
+      await service.update(1, makeDto({atividade_projeto_pesquisa_ids: [10, 20]}));
+
+      const [call] = prisma.projeto_pesquisa.update.mock.calls[0];
+      expect(call.data).toMatchObject({
+        atividades: {
+          set: [
+            {id: 10},
+            {id: 20},
+          ]
+        }
+      });
+    });
+    
   });
 
   describe('delete', () => {
@@ -243,6 +341,12 @@ describe('ResearchService', () => {
         },
       });
       expect(result).toEqual({ id: 1 });
+    });
+
+    it('deve lançar erro quando a pesquisa não existir', async () => {
+      prisma.projeto_pesquisa.findUnique.mockResolvedValue(null);
+
+      await expect(service.delete(1)).rejects.toThrow(NotFoundException);
     });
   });
 });

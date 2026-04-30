@@ -48,6 +48,7 @@ export class AuthController {
       id: user.userId,
       email: user.email,
       nome: user.nome,
+      funcao: user.funcao ?? '',
     };
   }
 

@@ -17,7 +17,12 @@ describe('JwtStrategy', () => {
   });
 
   it('deve validar e retornar o payload decodificado', async () => {
-    const payload = { sub: 1, email: 'teste@email.com', nome: 'Teste' };
+    const payload = {
+      sub: 1,
+      email: 'teste@email.com',
+      nome: 'Teste',
+      funcao: 'COORDENADOR',
+    };
 
     const result = await strategy.validate(payload);
 
@@ -25,6 +30,8 @@ describe('JwtStrategy', () => {
       userId: 1,
       email: 'teste@email.com',
       nome: 'Teste',
+      funcao: 'COORDENADOR',
+      unidade_id: undefined,
     });
   });
 });

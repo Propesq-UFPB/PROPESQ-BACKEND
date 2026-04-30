@@ -15,6 +15,10 @@ const mockPrismaService = {
     delete: jest.fn(),
     count: jest.fn(),
   },
+  historico_avaliacao: {
+    create: jest.fn(),
+  },
+  $transaction: jest.fn(),
   unidade_academica: {
     findUnique: jest.fn(),
   },
@@ -243,6 +247,150 @@ describe('ResearchService', () => {
         },
       });
       expect(result).toEqual({ id: 1 });
+    });
+  });
+
+  describe('publish', () => {
+    it('deve publicar quando estado atual for permitido', async () => {
+      prisma.projeto_pesquisa.findUnique.mockResolvedValue({
+        id: 1,
+        situacao: SituacaoProjeto.VALIDADO,
+        unidade_id: 3,
+      });
+      prisma.projeto_pesquisa.update.mockResolvedValue({ id: 1 });
+
+      await service.publish(1, {
+        userId: 1,
+        email: 'coord@teste.com',
+        nome: 'Coordenador',
+        funcao: 'COORDENADOR',
+        unidade_id: 3,
+      });
+
+      expect(prisma.projeto_pesquisa.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: {
+          situacao: SituacaoProjeto.PUBLICADO,
+        },
+      });
+    });
+
+    it('deve lançar erro quando usuário não for coordenador', async () => {
+      prisma.projeto_pesquisa.findUnique.mockResolvedValue({
+        id: 1,
+        situacao: SituacaoProjeto.VALIDADO,
+        unidade_id: 3,
+      });
+
+      await expect(
+        service.publish(1, {
+          userId: 1,
+          email: 'user@teste.com',
+          nome: 'Usuário',
+          funcao: 'ALUNO',
+        }),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('finalDecision', () => {
+    it('deve atualizar a situacao e registrar o historico final', async () => {
+      const mockTx = {
+        projeto_pesquisa: {
+          update: jest.fn(),
+        },
+        historico_avaliacao: {
+          create: jest.fn(),
+        },
+      };
+
+      prisma.projeto_pesquisa.findUnique.mockResolvedValue({ id: 1 });
+      prisma.$transaction.mockImplementation(async callback => callback(mockTx as any));
+
+      await service.finalDecision(1, 10, {
+        situacao: SituacaoProjeto.APROVADO,
+        justificativa: 'Projeto aprovado com observacoes finais',
+        pontuacao_final: 9.5,
+      });
+
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(mockTx.projeto_pesquisa.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: {
+          situacao: SituacaoProjeto.APROVADO,
+          pontuacao_final: 9.5,
+        },
+      });
+      expect(mockTx.historico_avaliacao.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            projeto_id: 1,
+            avaliador_id: 10,
+            status: SituacaoProjeto.APROVADO,
+            observacao: 'Projeto aprovado com observacoes finais',
+          }),
+        }),
+      );
+    });
+
+    it('deve lançar NotFoundException quando o projeto nao existir', async () => {
+      prisma.projeto_pesquisa.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.finalDecision(999, 10, {
+          situacao: SituacaoProjeto.REPROVADO,
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getRanking', () => {
+    it('deve retornar apenas projetos aprovados ordenados corretamente', async () => {
+      prisma.projeto_pesquisa.findMany.mockResolvedValue([
+        {
+          id: 1,
+          tipo: TipoProjeto.INTERNO,
+          titulo: 'Projeto A',
+          title: 'Project A',
+          categoria: CategoriaProjeto.CATEGORIA_PADRAO,
+          codigo: 'RP-001',
+          email: 'research@example.com',
+          situacao: SituacaoProjeto.APROVADO,
+          data_cadastro: new Date('2026-01-01'),
+          palavra_chave: [{ lingua: Idioma.PT, palavra_chave: 'pesquisa' }],
+          objetivos: [],
+          atividades: [],
+        },
+      ]);
+      prisma.projeto_pesquisa.count.mockResolvedValue(1);
+
+      const result = await service.getRanking(10, 0);
+
+      expect(prisma.projeto_pesquisa.findMany).toHaveBeenCalledWith({
+        where: { situacao: SituacaoProjeto.APROVADO },
+        include: {
+          corpo_projeto: true,
+          palavra_chave: true,
+          objetivos: true,
+        },
+        take: 10,
+        skip: 0,
+        orderBy: [{ pontuacao_final: 'desc' }, { data_cadastro: 'asc' }],
+      });
+
+      expect(result.total).toBe(1);
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].codigo).toBe('RP-001');
+    });
+
+    it('deve retornar vazio quando nao houver projetos aprovados', async () => {
+      prisma.projeto_pesquisa.findMany.mockResolvedValue([]);
+      prisma.projeto_pesquisa.count.mockResolvedValue(0);
+
+      const result = await service.getRanking(10, 0);
+
+      expect(result.total).toBe(0);
+      expect(result.results).toHaveLength(0);
     });
   });
 });

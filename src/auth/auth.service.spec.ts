@@ -61,6 +61,7 @@ describe('AuthService', () => {
       email: 'teste@teste.com',
       senha: '123', // Senha correta
       nome: 'Usuário Teste',
+      funcao: { nome: 'COORDENADOR' },
     };
 
     it('deve retornar um token de acesso se as credenciais forem válidas', async () => {
@@ -74,6 +75,16 @@ describe('AuthService', () => {
         sub: mockUser.id,
         email: mockUser.email,
         nome: mockUser.nome,
+        funcao: 'COORDENADOR',
+      });
+      expect(result).toEqual({
+        accessToken: 'token_jwt_simulado',
+        user: {
+          id: 1,
+          email: 'teste@teste.com',
+          nome: 'Usuário Teste',
+          funcao: 'COORDENADOR',
+        },
       });
       expect(result).toEqual({ accessToken: 'token_jwt_simulado', user: {
         id: 1,

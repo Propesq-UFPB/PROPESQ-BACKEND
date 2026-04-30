@@ -4,6 +4,7 @@ import { UpdateAcademicUnitDto } from './dto/update-academic-unit.dto';
 import { Prisma, unidade_academica } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AcademicUnitResponseDto } from './dto/academic-unit-response.dto';
+import { AcademicUnitLookupDto } from './dto/academic-unit-lookup.dto';
 import { PaginatedDto } from '../common/dto/paginated.dto';
 
 @Injectable()
@@ -55,6 +56,15 @@ export class AcademicUnitService {
       offset,
       results: units.map(unit => this.toResponseDto(unit)),
     };
+  }
+
+  async getLookup(): Promise<AcademicUnitLookupDto[]> {
+    const rows = await this.prisma.unidade_academica.findMany({
+      select: { id: true, nome: true },
+      orderBy: { nome: 'asc' },
+    });
+
+    return rows.map(row => ({ id: row.id, name: row.nome }));
   }
 
   async findOne(id: number): Promise<AcademicUnitResponseDto> {

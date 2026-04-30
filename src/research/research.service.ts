@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateResearchDto } from '../research/dto/create-research.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { Idioma, SituacaoProjeto, type projeto_pesquisa } from '@prisma/client';
@@ -8,6 +13,10 @@ import { CategoriaProjetoMapper } from '../common/mapper/categoria-projeto.mappe
 import { SituacaoProjetoMapper } from '../common/mapper/situacao-projeto.mapper';
 import { TipoProjetoMapper } from '../common/mapper/tipo-projeto.mapper';
 import { updateResearchDto } from './dto/update-research.dto';
+import { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
+import { AssignEvaluatorDto } from './dto/assign-evaluator.dto';
+import { EvaluateProjectDto } from './dto/evaluate-project.dto';
+import { FinalDecisionDto } from './dto/final-decision.dto';
 
 @Injectable()
 export class ResearchService {
@@ -94,6 +103,68 @@ export class ResearchService {
         return this.formatResearch(research);
       }),
       this.prisma.projeto_pesquisa.count(),
+    ]);
+
+    return {
+      total,
+      limit,
+      offset,
+      results: data,
+    };
+  }
+
+  async findMyEvaluations(
+    userId: number,
+    limit: number,
+    offset: number,
+  ): Promise<PaginatedDto<findOneResearchDto>> {
+    const [data, total] = await Promise.all([
+      (
+        await this.prisma.projeto_pesquisa.findMany({
+          where: { avaliador_id: userId },
+          include: {
+            corpo_projeto: true,
+            palavra_chave: true,
+            objetivos: true,
+          },
+          take: limit,
+          skip: offset,
+          orderBy: { data_cadastro: 'desc' },
+        })
+      ).map(research => {
+        return this.formatResearch(research);
+      }),
+      this.prisma.projeto_pesquisa.count({
+        where: { avaliador_id: userId },
+      }),
+    ]);
+
+    return {
+      total,
+      limit,
+      offset,
+      results: data,
+    };
+  }
+
+  async getRanking(limit: number, offset: number): Promise<PaginatedDto<findOneResearchDto>> {
+    const [data, total] = await Promise.all([
+      (
+        await this.prisma.projeto_pesquisa.findMany({
+          where: { situacao: SituacaoProjeto.APROVADO },
+          include: {
+            corpo_projeto: true,
+            palavra_chave: true,
+            objetivos: true,
+          },
+          take: limit,
+          skip: offset,
+          orderBy: [{ pontuacao_final: 'desc' }, { data_cadastro: 'asc' }],
+        })
+      ).map(research => this.formatResearch(research)),
+      this.prisma.projeto_pesquisa.count({
+        where: { situacao: SituacaoProjeto.APROVADO },
+      }),
     ]);
 
     return {
@@ -266,6 +337,158 @@ export class ResearchService {
         palavra_chave: true,
         corpo_projeto: true,
       },
+    });
+  }
+
+  async publish(id: number, currentUser: CurrentUserPayload): Promise<void> {
+    const research = await this.prisma.projeto_pesquisa.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        situacao: true,
+        unidade_id: true,
+      },
+    });
+
+    if (!research) {
+      throw new NotFoundException(`Projeto de pesquisa Id ${id} não encontrado`);
+    }
+
+    if (currentUser.funcao?.toUpperCase() !== 'COORDENADOR') {
+      throw new ForbiddenException('Apenas coordenadores podem publicar projetos.');
+    }
+
+    if (currentUser.unidade_id !== undefined && currentUser.unidade_id !== research.unidade_id) {
+      throw new ForbiddenException(
+        'Coordenador não autorizado a publicar projeto de outra unidade acadêmica.',
+      );
+    }
+
+    const allowedTransitions = new Set<SituacaoProjeto>([
+      SituacaoProjeto.SUBMETIDO,
+      SituacaoProjeto.AGUARDANDO_VALIDACAO,
+      SituacaoProjeto.VALIDADO,
+      SituacaoProjeto.CADASTRADO,
+    ]);
+
+    if (!allowedTransitions.has(research.situacao)) {
+      throw new BadRequestException(
+        `Projeto em situação ${research.situacao} não pode ser publicado.`,
+      );
+    }
+
+    await this.prisma.projeto_pesquisa.update({
+      where: { id },
+      data: {
+        situacao: SituacaoProjeto.PUBLICADO,
+      },
+    });
+  }
+
+  async assignEvaluator(id: number, assignEvaluatorDto: AssignEvaluatorDto): Promise<void> {
+    const project = await this.prisma.projeto_pesquisa.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Projeto de pesquisa Id ${id} não encontrado`);
+    }
+
+    const evaluator = await this.prisma.usuario.findUnique({
+      where: { id: assignEvaluatorDto.coordinator_id },
+      include: { funcao: true },
+    });
+
+    if (!evaluator) {
+      throw new NotFoundException(`Usuário Id ${assignEvaluatorDto.coordinator_id} não encontrado`);
+    }
+
+    if (evaluator.funcao?.nome.toUpperCase() !== 'COORDENADOR') {
+      throw new ForbiddenException('O utilizador atribuído deve ter a função de COORDENADOR.');
+    }
+
+    await this.prisma.projeto_pesquisa.update({
+      where: { id },
+      data: {
+        avaliador_id: assignEvaluatorDto.coordinator_id,
+        situacao: SituacaoProjeto.DISTRIBUICAO_PARA_AVALIACAO_MANUALMENTE,
+      },
+    });
+  }
+
+  async evaluateProject(
+    id: number,
+    userId: number,
+    evaluateDto: EvaluateProjectDto,
+  ): Promise<void> {
+    const project = await this.prisma.projeto_pesquisa.findUnique({
+      where: { id },
+      select: { id: true, avaliador_id: true },
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Projeto de pesquisa Id ${id} não encontrado`);
+    }
+
+    if (project.avaliador_id !== userId) {
+      throw new ForbiddenException(
+        'Não tem permissão para avaliar este projeto. O projeto foi atribuído a outro coordenador.',
+      );
+    }
+
+    await this.prisma.projeto_pesquisa.update({
+      where: { id },
+      data: {
+        situacao: evaluateDto.status,
+      },
+    });
+
+    await this.prisma.historico_avaliacao.create({
+      data: {
+        projeto_id: id,
+        avaliador_id: userId,
+        status: evaluateDto.status,
+        observacao: evaluateDto.observacao,
+        data_avaliacao: new Date(),
+      },
+    });
+  }
+
+  async finalDecision(id: number, userId: number, dto: FinalDecisionDto): Promise<void> {
+    const project = await this.prisma.projeto_pesquisa.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Projeto de pesquisa Id ${id} não encontrado`);
+    }
+
+    if (dto.situacao !== SituacaoProjeto.APROVADO && dto.situacao !== SituacaoProjeto.REPROVADO) {
+      throw new BadRequestException('A situação deve ser estritamente APROVADO ou REPROVADO.');
+    }
+
+    // Utiliza uma transação para garantir que a situação é atualizada
+    // e o histórico é gravado em simultâneo.
+    await this.prisma.$transaction(async tx => {
+      await tx.projeto_pesquisa.update({
+        where: { id },
+        data: {
+          situacao: dto.situacao,
+          pontuacao_final: dto.pontuacao_final,
+        },
+      });
+
+      await tx.historico_avaliacao.create({
+        data: {
+          projeto_id: id,
+          avaliador_id: userId,
+          status: dto.situacao,
+          observacao: dto.justificativa,
+          data_avaliacao: new Date(),
+        },
+      });
     });
   }
 

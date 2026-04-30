@@ -16,6 +16,7 @@ import { CreateAcademicUnitDto } from './dto/create-academic-unit.dto';
 import { AcademicUnitService } from './academic-unit.service';
 import { UpdateAcademicUnitDto } from './dto/update-academic-unit.dto';
 import { AcademicUnitResponseDto } from './dto/academic-unit-response.dto';
+import { AcademicUnitLookupDto } from './dto/academic-unit-lookup.dto';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -61,6 +62,17 @@ export class AcademicUnitsController {
     @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
   ): Promise<PaginatedDto<AcademicUnitResponseDto>> {
     return this.academicUnitService.findAll(limit, offset);
+  }
+
+  @ApiOperation({ summary: 'Lista unidades acadêmicas para select/dropdown (id e nome)' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Lista completa de opções de lookup, ordenada alfabeticamente por nome.',
+    type: [AcademicUnitLookupDto],
+  })
+  @Get('lookup')
+  getLookup(): Promise<AcademicUnitLookupDto[]> {
+    return this.academicUnitService.getLookup();
   }
 
   @ApiOperation({ summary: 'Obtém uma unidade acadêmica pelo ID' })

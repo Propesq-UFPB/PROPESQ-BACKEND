@@ -10,6 +10,9 @@ const mockResearchService = {
   findAll: jest.fn(),
   findOne: jest.fn(),
   update: jest.fn(),
+  publish: jest.fn(),
+  finalDecision: jest.fn(),
+  getRanking: jest.fn(),
   delete: jest.fn(),
 };
 
@@ -117,6 +120,74 @@ describe('ResearchController', () => {
       await controller.delete(1);
 
       expect(service.delete).toHaveBeenCalledWith(1);
+    });
+  });
+
+  describe('publish', () => {
+    it('deve chamar service.publish com id e usuário atual', async () => {
+      mockResearchService.publish.mockResolvedValue(undefined);
+
+      await controller.publish(1, {
+        userId: 10,
+        email: 'coord@teste.com',
+        nome: 'Coord',
+        funcao: 'COORDENADOR',
+      });
+
+      expect(service.publish).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          userId: 10,
+          funcao: 'COORDENADOR',
+        }),
+      );
+    });
+  });
+
+  describe('finalDecision', () => {
+    it('deve chamar service.finalDecision com o id e o usuário atual', async () => {
+      mockResearchService.finalDecision.mockResolvedValue(undefined);
+
+      await controller.finalDecision(
+        1,
+        {
+          situacao: 'APROVADO' as any,
+          justificativa: 'Parecer final aprovado',
+        },
+        {
+          userId: 10,
+          email: 'gestor@teste.com',
+          nome: 'Gestor',
+          funcao: 'GESTOR',
+        },
+      );
+
+      expect(service.finalDecision).toHaveBeenCalledWith(
+        1,
+        10,
+        expect.objectContaining({
+          situacao: 'APROVADO',
+          justificativa: 'Parecer final aprovado',
+        }),
+      );
+    });
+  });
+
+  describe('getRanking', () => {
+    it('deve chamar service.getRanking com a paginação padrao', async () => {
+      mockResearchService.getRanking.mockResolvedValue({ total: 0, results: [] });
+
+      await controller.getRanking();
+
+      expect(service.getRanking).toHaveBeenCalledWith(10, 0);
+    });
+
+    it('deve chamar service.getRanking com paginação informada', async () => {
+      mockResearchService.getRanking.mockResolvedValue({ total: 0, results: [] });
+
+      await controller.getRanking('25', '5');
+
+      expect(service.getRanking).toHaveBeenCalledWith(25, 5);
     });
   });
 });

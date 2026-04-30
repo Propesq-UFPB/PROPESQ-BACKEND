@@ -9,6 +9,9 @@ export class LoginUserDto {
 
   @ApiProperty({ example: 'Administrador', description: 'Nome do usuário autenticado.' })
   nome!: string;
+
+  @ApiProperty({ example: 'COORDENADOR', description: 'Função do usuário autenticado.' })
+  funcao!: string;
 }
 
 export class LoginResponseDto {

@@ -12,6 +12,7 @@ export const SituacaoProjetoMapper: Record<SituacaoProjeto, string> = {
   AVALIACAO_INSUFICIENTE: 'Avaliação insuficiente',
   DISTRIBUICAO_PARA_AVALIACAO_MANUALMENTE: 'Distribuição para avaliação manual',
   APROVADO: 'Aprovado',
+  PUBLICADO: 'Publicado',
   EM_EXECUCAO: 'Em execução',
   CADASTRADO_SEM_PLANO: 'Cadastrado sem plano',
   FINALIZADO_RENOVADO: 'Finalizado (renovado)',

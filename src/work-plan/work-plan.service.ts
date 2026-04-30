@@ -15,17 +15,20 @@ export class WorkPlanService {
   constructor(private prisma: PrismaService) {}
 
   async create(createWorkPlanDto: CreateWorkPlanDto) {
-    await this.validateForeignKeys(
-      createWorkPlanDto.discente_id,
-      createWorkPlanDto.usuario_id,
-      createWorkPlanDto.pesquisa_id,
-    );
+    // Validar apenas pesquisa_id (obrigatório)
+    const projeto = await this.prisma.projeto_pesquisa.findUnique({
+      where: { id: createWorkPlanDto.pesquisa_id },
+    });
+
+    if (!projeto) {
+      throw new NotFoundException(
+        `Projeto de pesquisa com ID ${createWorkPlanDto.pesquisa_id} não encontrado`,
+      );
+    }
 
     const workPlan = await this.prisma.$transaction(async tx => {
       const createdWorkPlan = await tx.plano_trabalho.create({
         data: {
-          discente_id: createWorkPlanDto.discente_id,
-          usuario_id: createWorkPlanDto.usuario_id,
           pesquisa_id: createWorkPlanDto.pesquisa_id,
           modalidade: createWorkPlanDto.modalidade,
           status: createWorkPlanDto.status,
@@ -95,15 +98,9 @@ export class WorkPlanService {
   async update(id: number, updateWorkPlanDto: UpdateWorkPlanDto) {
     const workPlan = await this.findOne(id);
 
-    if (
-      updateWorkPlanDto.discente_id ||
-      updateWorkPlanDto.usuario_id ||
-      updateWorkPlanDto.pesquisa_id
-    ) {
+    if (updateWorkPlanDto.pesquisa_id) {
       await this.validateForeignKeys(
-        updateWorkPlanDto.discente_id ?? workPlan.discente_id,
-        updateWorkPlanDto.usuario_id ?? workPlan.usuario_id,
-        updateWorkPlanDto.pesquisa_id ?? workPlan.projeto_pesquisa?.[0]?.id,
+        updateWorkPlanDto.pesquisa_id ?? workPlan.pesquisa_id ?? workPlan.projeto_pesquisa?.id,
       );
     }
 
@@ -111,12 +108,6 @@ export class WorkPlanService {
       await tx.plano_trabalho.update({
         where: { id },
         data: {
-          ...(updateWorkPlanDto.discente_id !== undefined && {
-            discente_id: updateWorkPlanDto.discente_id,
-          }),
-          ...(updateWorkPlanDto.usuario_id !== undefined && {
-            usuario_id: updateWorkPlanDto.usuario_id,
-          }),
           ...(updateWorkPlanDto.pesquisa_id !== undefined && {
             pesquisa_id: updateWorkPlanDto.pesquisa_id,
           }),
@@ -159,10 +150,14 @@ export class WorkPlanService {
     });
   }
 
-  private async validateForeignKeys(discente_id: number, usuario_id: number, pesquisa_id?: number) {
+  private async validateForeignKeys(
+    discente_id: number,
+    pesquisa_id?: number,
+    usuario_id?: number,
+  ) {
     const [discente, usuario, projeto] = await Promise.all([
       this.prisma.discente.findUnique({ where: { id: discente_id } }),
-      this.prisma.usuario.findUnique({ where: { id: usuario_id } }),
+      usuario_id ? this.prisma.usuario.findUnique({ where: { id: usuario_id } }) : null,
       pesquisa_id
         ? this.prisma.projeto_pesquisa.findUnique({
             where: { id: pesquisa_id },
@@ -174,13 +169,15 @@ export class WorkPlanService {
       throw new NotFoundException(`Discente com ID ${discente_id} não encontrado`);
     }
 
-    if (!usuario) {
+    if (usuario_id && !usuario) {
       throw new NotFoundException(`Usuário com ID ${usuario_id} não encontrado`);
     }
 
     if (pesquisa_id && !projeto) {
       throw new NotFoundException(`Projeto de pesquisa com ID ${pesquisa_id} não encontrado`);
     }
+
+    return discente;
   }
 
   private async syncBodyPlan(

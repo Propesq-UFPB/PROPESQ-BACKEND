@@ -3,6 +3,14 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
 import { jwtConstants } from './constants';
 
+type JwtPayload = {
+  sub: number;
+  email: string;
+  nome: string;
+  funcao?: string;
+  unidade_id?: number;
+};
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor() {
@@ -13,7 +21,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: any) {
-    return { userId: payload.sub, email: payload.email, nome: payload.nome };
+  async validate(payload: JwtPayload) {
+    return {
+      userId: payload.sub,
+      email: payload.email,
+      nome: payload.nome,
+      funcao: payload.funcao,
+      unidade_id: payload.unidade_id,
+    };
   }
 }

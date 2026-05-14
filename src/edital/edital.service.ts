@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEditalDto } from './dto/create-edital.dto';
 
@@ -7,6 +7,8 @@ export class EditalService {
   constructor(private prisma: PrismaService) {}
 
   async create(createEditalDto: CreateEditalDto) {
+    await this.assertEditalExistsByCodigo(createEditalDto.codigo);
+
     return this.prisma.edital.create({
       data: {
         codigo: createEditalDto.codigo,
@@ -51,5 +53,14 @@ export class EditalService {
         }),
       },
     });
+  }
+
+  // Verifica se código já existe, se sim, existe um conflito
+  async assertEditalExistsByCodigo(codigo: string | undefined): Promise<void> {
+    const edital = await this.prisma.edital.findUnique({ where: { codigo: codigo } });
+
+    if (edital && codigo) {
+      throw new ConflictException(`Edital com código ${codigo} já existe`);
+    }
   }
 }

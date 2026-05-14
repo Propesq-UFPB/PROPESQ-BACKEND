@@ -102,6 +102,61 @@ model docente {
   usuario    usuario @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
+model edital {
+  id                              Int              @id @default(autoincrement())
+  codigo                          String?          @unique @db.VarChar(255)
+  descricao                       String           @db.Text
+  // id_cota                        Int
+  titulacao_min                   TitulacaoMin
+  tipo                            TipoEdital
+  validar_indice_min              TipoIndiceMin?
+  valor_indice_min                Float?
+  limite_solicitacoes_orientador  Int
+  limite_planos_orientador        Int
+  edital_para_voluntarios         Boolean
+  avaliacao_vigente               Boolean
+  apenas_orient_coordena_plano    Boolean
+  apenas_colab_vol_cadastra_plano Boolean
+  prof_subst_cadastra_proj        Boolean
+  tec_admin_coord_proj            Boolean
+  periodo_submissoes_id           Int
+  periodo_correcao_plano_id       Int?
+  periodo_execucao_id             Int
+  categoria                       CategoriaProjeto
+
+  periodo_submissoes       periodo_edital             @relation("periodo_submissoes", fields: [periodo_submissoes_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  periodo_correcao         periodo_edital?            @relation("periodo_correcao_plano", fields: [periodo_correcao_plano_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  periodo_execucao_rel     periodo_edital             @relation("periodo_execucao", fields: [periodo_execucao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  edital_cota_distribuicao edital_cota_distribuicao[]
+  projetos_pesquisa        projeto_pesquisa[]
+}
+
+model edital_cota_distribuicao {
+  id                                 Int     @id @default(autoincrement())
+  id_edital                          Int
+  // id_bolsa                       Int
+  divulgar_resultado                 Boolean
+  quantidade                         Int
+  fppi_min                           Float
+  fppi_max                           Float?
+  media_min_proj                     Float
+  exige_doutorado                    Boolean
+  percentual_cotas_novos_doutorandos Float?
+  fppi_min_novos_doutorandos         Float?
+  fppi_max_novos_doutorandos         Float?
+
+  edital edital @relation(fields: [id_edital], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model periodo_edital {
+  id                     Int      @id @default(autoincrement())
+  inicio                 DateTime @db.Date
+  fim                    DateTime @db.Date
+  editais_submissoes     edital[] @relation("periodo_submissoes")
+  editais_correcao_plano edital[] @relation("periodo_correcao_plano")
+  editais_execucao       edital[] @relation("periodo_execucao")
+}
+
 model unidade_academica {
   id               Int                @id @default(autoincrement())
   sigla            String             @unique @db.VarChar(15)
@@ -161,6 +216,7 @@ model projeto_pesquisa {
   edital          String?
   cota            String?
   pontuacao_final Float?
+  edital_id       Int?
 
   unidade_id        Int
   unidade_academica unidade_academica @relation(fields: [unidade_id], references: [id], onDelete: Cascade)
@@ -173,6 +229,7 @@ model projeto_pesquisa {
 
   corpo_projeto          corpo_projeto?
   anexo_projeto_pesquisa anexo_projeto_pesquisa?
+  edital_rel             edital?                 @relation(fields: [edital_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   atividades          atividade_projeto_pesquisa[]
   objetivos           pesquisa_objetivo[]
@@ -322,4 +379,27 @@ enum CategoriaProjeto {
   PESQUISA_CIENTIFICA
   PESQUISA_BASICA
   PESQUISA_APLICADA
+}
+
+enum TitulacaoMin {
+  SEM_RESTRICOES @map("SEM RESTRICOES")
+  MESTRES
+  DOUTORES
+}
+
+enum TipoEdital {
+  PESQUISA
+  APOIO_GRP_PESQ
+  APOIO_NOVO_PESQ
+}
+
+enum TipoIndiceMin {
+  INDICE_EFICIENCIA_CH // índice de eficiência em carga horário
+  INDICE_EFICIENCIA_PL // índice de eficiência em períodos letivos
+}
+
+enum TipoPeriodoEdital {
+  SUBMISSAO
+  CORRECAO_PLANO_TRABALHO
+  EXECUCAO_PROJETO
 }

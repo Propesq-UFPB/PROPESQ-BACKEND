@@ -9,6 +9,7 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { CreateEditalDto } from './dto/create-edital.dto';
 import {
@@ -22,6 +23,8 @@ import {
 } from '@nestjs/swagger';
 import { EditalService } from './edital.service';
 import { UpdateEditalDto } from './dto/update-edital.dto';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @ApiBearerAuth('bearer')
 @ApiTags('Edital')
@@ -30,6 +33,8 @@ export class EditalController {
   constructor(private readonly editalService: EditalService) {}
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles('GESTOR')
   @ApiCreatedResponse({ description: 'Edital cadastrado com sucesso.' })
   async create(@Body() createEditalDto: CreateEditalDto) {
     return this.editalService.create(createEditalDto);
@@ -51,6 +56,8 @@ export class EditalController {
   }
 
   @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles('GESTOR')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({ description: 'Edital deletado com sucesso' })
   @ApiNotFoundResponse({ description: 'Edital não encontrado' })
@@ -59,6 +66,8 @@ export class EditalController {
   }
 
   @Patch(':id')
+  @UseGuards(RolesGuard)
+  @Roles('GESTOR')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({ description: 'Edital atualizado com sucesso' })
   @ApiNotFoundResponse({ description: 'Edital não encontrado' })

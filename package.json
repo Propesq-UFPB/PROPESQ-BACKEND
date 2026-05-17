@@ -96,5 +96,8 @@
       ".*\\.entity\\.ts$",
       "main\\.ts$"
     ]
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   }
 }

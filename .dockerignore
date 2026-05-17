@@ -3,6 +3,7 @@
 # Build artifacts
 /dist
 /build
+/data
 # Logs and other files
 /npm-debug.log
 .env

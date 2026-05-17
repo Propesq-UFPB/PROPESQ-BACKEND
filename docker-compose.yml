@@ -14,7 +14,7 @@ services:
       - ./data:/var/lib/postgresql/data
     command: ['postgres', '-p', '${DATABASE_PORT}']
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -d ${DATABASE_NAME} -U ${DATABASE_USER}']
+      test: ['CMD-SHELL', 'pg_isready -d ${DATABASE_NAME} -U ${DATABASE_USER} -p ${DATABASE_PORT}']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -32,6 +32,7 @@ services:
         condition: service_healthy
     volumes:
       - .:/usr/src/app
+      - /usr/src/app/node_modules
   frontend:
     container_name: 'propesq_frontend'
     build:
@@ -41,3 +42,4 @@ services:
       - '3100:3100'
     volumes:
       - ../PROPESQ-PROTOTIPO:/usr/src/app
+      - /usr/src/app/node_modules

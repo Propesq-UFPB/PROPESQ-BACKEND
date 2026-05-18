@@ -14,6 +14,7 @@ export class EditalService {
 
     return this.prisma.edital.create({
       data: {
+        data_cadastro: new Date(),
         codigo: createEditalDto.codigo,
         descricao: createEditalDto.descricao,
         titulacao_min: createEditalDto.titulacao_min,

@@ -304,6 +304,51 @@ model usuario {
   historico_avaliacao historico_avaliacao[] @relation("avaliador_historico")
 }
 
+model cota_bolsa {
+  id                           Int                @id @default(autoincrement())
+  codigo                       String?            @unique @db.VarChar(255)
+  relatorio_anual              Boolean
+  descricao                    String             @db.Text
+  envio_relatorios_parciais_id Int
+  envio_relatorios_finais_id   Int
+  cadastro_plano_voluntario_id Int
+  periodo_relatorio_parcial    periodo_cota_bolsa @relation("periodo_relatorio_parcial", fields: [envio_relatorios_parciais_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  periodo_relatorio_final      periodo_cota_bolsa @relation("periodo_relatorio_final", fields: [envio_relatorios_finais_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  periodo_cadastro_voluntario  periodo_cota_bolsa @relation("periodo_cadastro_voluntario", fields: [cadastro_plano_voluntario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model periodo_cota_bolsa {
+  id                              Int          @id @default(autoincrement())
+  inicio                          DateTime     @db.Date
+  fim                             DateTime     @db.Date
+  cotas_relatorio_parcial         cota_bolsa[] @relation("periodo_relatorio_parcial")
+  cotas_relatorio_final           cota_bolsa[] @relation("periodo_relatorio_final")
+  cotas_cadastro_plano_voluntario cota_bolsa[] @relation("periodo_cadastro_voluntario")
+}
+
+model bolsa {
+  id                          Int      @id @default(autoincrement())
+  descricao                   String   @db.Text
+  categoria                   String   @db.Text
+  dia_limite_indicacao        Int
+  dia_limite_finalizacao      Int
+  niveis                      String   @db.Bit(3)
+  vinculado_cota              Boolean
+  necessita_relatorio         Boolean
+  necessidade_dados_bancarios Boolean
+  possui_bancos_exclusivos    Boolean
+  possui_tipo_conta_excls     Boolean
+  envio_relatorio_inicio      DateTime @db.Date
+  envio_relatorio_fim         DateTime @db.Date
+}
+
+model categoria_edital {
+  id          Int     @id @default(autoincrement())
+  denominacao String  @unique @db.VarChar(255)
+  ordem       Int     @unique
+  ativo       Boolean
+}
+
 // ENUMS 
 enum Idioma {
   PT

@@ -2,6 +2,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: 'propesq_db'
+    restart: always
     environment:
       POSTGRES_USER: ${DATABASE_USER}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
@@ -11,13 +12,13 @@ services:
     ports:
       - '5433:${DATABASE_PORT}'
     volumes:
-      - ./data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     command: ['postgres', '-p', '${DATABASE_PORT}']
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -d ${DATABASE_NAME} -U ${DATABASE_USER}']
       interval: 5s
-      timeout: 5s
-      retries: 5
+      timeout: 2s
+      retries: 20
   backend:
     container_name: 'propesq_backend'
     build:
@@ -32,6 +33,7 @@ services:
         condition: service_healthy
     volumes:
       - .:/usr/src/app
+      - /usr/src/app/node_modules
   frontend:
     container_name: 'propesq_frontend'
     build:
@@ -41,3 +43,8 @@ services:
       - '3100:3100'
     volumes:
       - ../PROPESQ-PROTOTIPO:/usr/src/app
+
+networks:
+  prisma-network:
+volumes:
+  postgres_data:

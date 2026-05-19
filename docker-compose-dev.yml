@@ -2,7 +2,6 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: 'propesq_db'
-    restart: always
     environment:
       POSTGRES_USER: ${DATABASE_USER}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
@@ -43,6 +42,7 @@ services:
       - '3100:3100'
     volumes:
       - ../PROPESQ-PROTOTIPO:/usr/src/app
+      - /usr/src/app/node_modules
 
 networks:
   prisma-network:

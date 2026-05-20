@@ -25,7 +25,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { PaginatedDto } from '../common/dto/paginated.dto';
+import { Paginated, PaginatedResult } from '../common/dto/paginated.dto';
 
 @ApiBearerAuth('bearer')
 @ApiTags('Unidades Acadêmicas')
@@ -54,13 +54,13 @@ export class AcademicUnitsController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Lista paginada de unidades acadêmicas retornada com sucesso.',
-    type: PaginatedDto,
+    type: Paginated(AcademicUnitResponseDto),
   })
   @Get()
   findAll(
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
     @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
-  ): Promise<PaginatedDto<AcademicUnitResponseDto>> {
+  ): Promise<PaginatedResult<AcademicUnitResponseDto>> {
     return this.academicUnitService.findAll(limit, offset);
   }
 

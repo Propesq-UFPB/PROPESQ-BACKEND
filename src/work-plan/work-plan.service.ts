@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { PaginatedDto } from '../common/dto/paginated.dto';
+import { PaginatedResult } from '../common/dto/paginated.dto';
 import { CreateWorkPlanDto } from './dto/create-work-plan.dto';
 import {
   UpdateActivityWorkPlanDto,
@@ -59,7 +59,7 @@ export class WorkPlanService {
     return this.findOne(workPlan.id);
   }
 
-  async findAll(limit: number, offset: number): Promise<PaginatedDto<any>> {
+  async findAll(limit: number, offset: number): Promise<PaginatedResult<unknown>> {
     const [rawData, total] = await Promise.all([
       this.prisma.plano_trabalho.findMany({
         take: limit,

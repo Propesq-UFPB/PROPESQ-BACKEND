@@ -7,7 +7,7 @@ import {
 import { CreateResearchDto } from '../research/dto/create-research.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { Idioma, SituacaoProjeto, type projeto_pesquisa } from '@prisma/client';
-import { PaginatedDto } from '../common/dto/paginated.dto';
+import { PaginatedResult } from '../common/dto/paginated.dto';
 import { findOneResearchDto } from './dto/find-one-research.dto';
 import { CategoriaProjetoMapper } from '../common/mapper/categoria-projeto.mapper';
 import { SituacaoProjetoMapper } from '../common/mapper/situacao-projeto.mapper';
@@ -86,7 +86,7 @@ export class ResearchService {
     });
   }
 
-  async findAll(limit: number, offset: number): Promise<PaginatedDto<findOneResearchDto>> {
+  async findAll(limit: number, offset: number): Promise<PaginatedResult<findOneResearchDto>> {
     const [data, total] = await Promise.all([
       (
         await this.prisma.projeto_pesquisa.findMany({
@@ -117,7 +117,7 @@ export class ResearchService {
     userId: number,
     limit: number,
     offset: number,
-  ): Promise<PaginatedDto<findOneResearchDto>> {
+  ): Promise<PaginatedResult<findOneResearchDto>> {
     const [data, total] = await Promise.all([
       (
         await this.prisma.projeto_pesquisa.findMany({
@@ -147,7 +147,7 @@ export class ResearchService {
     };
   }
 
-  async getRanking(limit: number, offset: number): Promise<PaginatedDto<findOneResearchDto>> {
+  async getRanking(limit: number, offset: number): Promise<PaginatedResult<findOneResearchDto>> {
     const [data, total] = await Promise.all([
       (
         await this.prisma.projeto_pesquisa.findMany({

@@ -23,7 +23,7 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { usuario } from '@prisma/client';
-import { PaginatedDto } from '../common/dto/paginated.dto';
+import { Paginated, PaginatedResult } from '../common/dto/paginated.dto';
 
 @ApiBearerAuth('bearer')
 @ApiTags('Usuários')
@@ -52,11 +52,12 @@ export class UsersController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Lista paginada de usuários retornada com sucesso.',
+    type: Paginated(CreateUserDto),
   })
   findAll(
     @Query('limit') limit: string = '10',
     @Query('offset') offset: string = '0',
-  ): Promise<PaginatedDto<usuario>> {
+  ): Promise<PaginatedResult<usuario>> {
     return this.usersService.findAll(+limit, +offset);
   }
 

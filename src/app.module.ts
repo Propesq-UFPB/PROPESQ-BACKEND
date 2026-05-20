@@ -8,6 +8,7 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { WorkPlanModule } from './work-plan/work-plan.module';
 import { AcademicUnitModule } from './academic-unit/academic-unit.module';
 import { EditalModule } from './edital/edital.module';
+import { ScholarshipModule } from './scholarship/scholarship.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { EditalModule } from './edital/edital.module';
     UsersModule,
     WorkPlanModule,
     EditalModule,
+    ScholarshipModule,
   ],
   providers: [
     {

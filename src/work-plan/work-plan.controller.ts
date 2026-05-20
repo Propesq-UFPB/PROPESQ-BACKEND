@@ -19,7 +19,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { PaginatedDto } from '../common/dto/paginated.dto';
+import { Paginated, PaginatedResult } from '../common/dto/paginated.dto';
 import { CreateWorkPlanDto } from './dto/create-work-plan.dto';
 import { UpdateWorkPlanDto } from './dto/update-work-plan.dto';
 import { WorkPlanService } from './work-plan.service';
@@ -53,11 +53,12 @@ export class WorkPlanController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Lista paginada de planos de trabalho retornada com sucesso.',
+    type: Paginated(CreateWorkPlanDto),
   })
   findAll(
     @Query('limit') limit: string = '10',
     @Query('offset') offset: string = '0',
-  ): Promise<PaginatedDto<any>> {
+  ): Promise<PaginatedResult<unknown>> {
     return this.workPlanService.findAll(+limit, +offset);
   }
 

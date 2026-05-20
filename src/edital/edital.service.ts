@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEditalDto } from './dto/create-edital.dto';
-import { PaginatedDto } from '../common/dto/paginated.dto';
+import { PaginatedResult } from '../common/dto/paginated.dto';
 import { UpdateEditalDto } from './dto/update-edital.dto';
 import { TitulacaoMinMapper } from '../common/mapper/titulacao-min.mapper';
 
@@ -59,7 +59,7 @@ export class EditalService {
     });
   }
 
-  async findMany(limit: number, offset: number): Promise<PaginatedDto<any>> {
+  async findMany(limit: number, offset: number): Promise<PaginatedResult<unknown>> {
     const [data, total] = await Promise.all([
       (
         await this.prisma.edital.findMany({

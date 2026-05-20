@@ -18,7 +18,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { CreateResearchDto } from './dto/create-research.dto';
 import { ResearchService } from './research.service';
-import { PaginatedDto } from '../common/dto/paginated.dto';
+import { Paginated, PaginatedResult } from '../common/dto/paginated.dto';
 import { findOneResearchDto } from './dto/find-one-research.dto';
 import { projeto_pesquisa } from '@prisma/client';
 import {
@@ -61,13 +61,14 @@ export class ResearchController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Lista paginada de projetos de pesquisa retornada com sucesso.',
+    type: Paginated(findOneResearchDto),
   })
   @ApiQuery({ name: 'limit', required: false, type: Number, default: 10 })
   @ApiQuery({ name: 'offset', required: false, type: Number, default: 0 })
   findAll(
     @Query('limit') limit: string = '10',
     @Query('offset') offset: string = '0',
-  ): Promise<PaginatedDto<findOneResearchDto>> {
+  ): Promise<PaginatedResult<findOneResearchDto>> {
     return this.researchService.findAll(+limit, +offset);
   }
 
@@ -80,6 +81,7 @@ export class ResearchController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Lista paginada de projetos atribuídos retornada com sucesso.',
+    type: Paginated(findOneResearchDto),
   })
   @ApiQuery({ name: 'limit', required: false, type: Number, default: 10 })
   @ApiQuery({ name: 'offset', required: false, type: Number, default: 0 })
@@ -87,7 +89,7 @@ export class ResearchController {
     @CurrentUser() currentUser: CurrentUserPayload,
     @Query('limit') limit: string = '10',
     @Query('offset') offset: string = '0',
-  ): Promise<PaginatedDto<findOneResearchDto>> {
+  ): Promise<PaginatedResult<findOneResearchDto>> {
     return this.researchService.findMyEvaluations(currentUser.userId, +limit, +offset);
   }
 
@@ -96,13 +98,14 @@ export class ResearchController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Ranking de projetos aprovados retornado com sucesso.',
+    type: Paginated(findOneResearchDto),
   })
   @ApiQuery({ name: 'limit', required: false, type: Number, default: 10 })
   @ApiQuery({ name: 'offset', required: false, type: Number, default: 0 })
   getRanking(
     @Query('limit') limit: string = '10',
     @Query('offset') offset: string = '0',
-  ): Promise<PaginatedDto<findOneResearchDto>> {
+  ): Promise<PaginatedResult<findOneResearchDto>> {
     return this.researchService.getRanking(+limit, +offset);
   }
 

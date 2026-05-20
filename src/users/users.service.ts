@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { usuario } from '@prisma/client';
-import { PaginatedDto } from '../common/dto/paginated.dto';
+import { PaginatedResult } from '../common/dto/paginated.dto';
 
 @Injectable()
 export class UsersService {
@@ -27,7 +27,7 @@ export class UsersService {
     });
   }
 
-  async findAll(limit: number, offset: number): Promise<PaginatedDto<usuario>> {
+  async findAll(limit: number, offset: number): Promise<PaginatedResult<usuario>> {
     const [data, total] = await Promise.all([
       this.prisma.usuario.findMany({
         take: limit,

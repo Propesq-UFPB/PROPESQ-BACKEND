@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { WorkPlanModule } from './work-plan/work-plan.module';
 import { AcademicUnitModule } from './academic-unit/academic-unit.module';
+import { EditalModule } from './edital/edital.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { AcademicUnitModule } from './academic-unit/academic-unit.module';
     ResearchModule,
     UsersModule,
     WorkPlanModule,
+    EditalModule,
   ],
   providers: [
     {

@@ -8,6 +8,8 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { WorkPlanModule } from './work-plan/work-plan.module';
 import { AcademicUnitModule } from './academic-unit/academic-unit.module';
 import { EditalModule } from './edital/edital.module';
+import { CotaBolsaModule } from './cota_bolsa/cota_bolsa.module';
+import { CotaBolsaController } from './cota_bolsa/cota_bolsa.controller';
 
 @Module({
   imports: [
@@ -18,6 +20,7 @@ import { EditalModule } from './edital/edital.module';
     UsersModule,
     WorkPlanModule,
     EditalModule,
+    CotaBolsaModule,
   ],
   providers: [
     {

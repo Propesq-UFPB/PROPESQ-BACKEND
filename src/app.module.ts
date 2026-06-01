@@ -9,6 +9,7 @@ import { WorkPlanModule } from './work-plan/work-plan.module';
 import { AcademicUnitModule } from './academic-unit/academic-unit.module';
 import { EditalModule } from './edital/edital.module';
 import { ScholarshipModule } from './scholarship/scholarship.module';
+import { CategoryModule } from './category/category.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ScholarshipModule } from './scholarship/scholarship.module';
     WorkPlanModule,
     EditalModule,
     ScholarshipModule,
+    CategoryModule,
   ],
   providers: [
     {

@@ -10,7 +10,7 @@ import {
   IsString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class updateResearchDto {
   @ApiProperty({
@@ -31,11 +31,10 @@ export class updateResearchDto {
   @IsString({ message: 'O título em inglês deve ser um texto' })
   title?: string;
 
-  @ApiProperty({ required: false, enum: CategoriaProjeto })
+  @ApiPropertyOptional({ type: 'integer' })
   @IsOptional()
-  @IsString({ message: 'A categoria do projeto deve ser um texto' })
-  @IsEnum(CategoriaProjeto, { message: 'A categoria do projeto é inválida' })
-  categoria?: CategoriaProjeto;
+  @IsInt()
+  categoria_id?: number;
 
   @ApiProperty({ required: false })
   @IsOptional()

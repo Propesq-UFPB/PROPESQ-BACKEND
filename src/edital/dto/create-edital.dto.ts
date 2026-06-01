@@ -10,6 +10,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Min,
   ValidateNested,
 } from 'class-validator';
 import { CreateEditalCotaDistribuicaoDto } from './create-cota-distribuicao.dto';
@@ -113,10 +114,11 @@ export class CreateEditalDto {
   @IsInt()
   periodo_correcao_plano?: number;
 
-  @ApiProperty({ required: true, enum: CategoriaProjeto })
+  @ApiProperty({ required: true, type: 'integer' })
   @IsNotEmpty()
-  @IsEnum(CategoriaProjeto)
-  categoria: CategoriaProjeto;
+  @IsInt()
+  @Min(1)
+  categoria_id: number;
 
   @IsOptional()
   @ValidateNested({ each: true })

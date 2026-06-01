@@ -8,6 +8,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
@@ -30,11 +31,11 @@ export class CreateResearchDto {
   @IsString({ message: 'O título em inglês deve ser um texto' })
   title!: string;
 
-  @ApiProperty({ required: true, enum: CategoriaProjeto })
-  @IsNotEmpty({ message: 'A categoria do projeto é obrigatória' })
-  @IsString({ message: 'A categoria do projeto deve ser um texto' })
-  @IsEnum(CategoriaProjeto, { message: 'A categoria do projeto é inválida' })
-  categoria!: CategoriaProjeto;
+  @ApiProperty({ required: true, type: 'integer' })
+  @IsNotEmpty()
+  @IsInt()
+  @Min(1)
+  categoria_id: number;
 
   @ApiProperty({ required: true })
   @IsNotEmpty({ message: 'A vigência é obrigatória' })

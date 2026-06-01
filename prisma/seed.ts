@@ -54,6 +54,12 @@ async function main() {
     { tipo: 'Parcerias e Meios de Implementação' },
   ];
 
+  const categoriasEdital = Object.values(CategoriaProjeto).map((denominacao, index) => ({
+    denominacao,
+    ordem: index + 1,
+    ativo: true,
+  }));
+
   console.log('Iniciando seed de funções...');
 
   for (const f of funcoes) {
@@ -74,6 +80,17 @@ async function main() {
       create: {
         tipo: obj.tipo,
       },
+    });
+  }
+
+  for (const categoria of categoriasEdital) {
+    await prisma.categoria_edital.upsert({
+      where: { denominacao: categoria.denominacao },
+      update: {
+        ordem: categoria.ordem,
+        ativo: categoria.ativo,
+      },
+      create: categoria,
     });
   }
 
@@ -311,43 +328,67 @@ async function main() {
     });
   }
 
-  let projetoSeed = await prisma.projeto_pesquisa.findFirst({
-    where: { codigo: 'SEED-PROJ-001' },
-    include: { corpo_projeto: true },
+  const categoriaPadrao = await prisma.categoria_edital.findUnique({
+    where: { denominacao: CategoriaProjeto.CATEGORIA_PADRAO },
   });
 
-  if (!projetoSeed) {
-    projetoSeed = await prisma.projeto_pesquisa.create({
-      data: {
-        codigo: 'SEED-PROJ-001',
-        tipo: TipoProjeto.INTERNO,
-        titulo: 'Projeto Seed',
-        title: 'Seed Project',
-        categoria: CategoriaProjeto.CATEGORIA_PADRAO,
-        situacao: SituacaoProjeto.SUBMETIDO,
-        email: 'dev@example.com',
-        unidade_id: unidadeAcademica.id,
-        vigencia: new Date(),
-        data_cadastro: new Date(),
-      },
-      include: { corpo_projeto: true },
-    });
+  if (!categoriaPadrao) {
+    throw new Error('Categoria padrão não encontrada; execute o seed de categoria_edital primeiro.');
   }
 
-  if (!projetoSeed.corpo_projeto) {
-    await prisma.corpo_projeto.create({
-      data: {
-        resumo: 'Resumo seed',
-        abstract: 'Seed abstract',
-        introducao: 'Introdução seed',
-        objetivos: 'Objetivos seed',
-        metodologia: 'Metodologia seed',
-        referencias: 'Referências seed',
-        resultados_esperados: 'Resultados esperados seed',
-        projeto_pesquisa_id: projetoSeed.id,
-      },
+  try {
+    let projetoSeed = await prisma.projeto_pesquisa.findFirst({
+      where: { codigo: 'SEED-PROJ-001' },
+      include: { corpo_projeto: true },
     });
+
+    if (!projetoSeed) {
+      projetoSeed = await prisma.projeto_pesquisa.create({
+        data: {
+          codigo: 'SEED-PROJ-001',
+          tipo: TipoProjeto.INTERNO,
+          titulo: 'Projeto Seed',
+          title: 'Seed Project',
+          categoria_id: categoriaPadrao.id,
+          situacao: SituacaoProjeto.SUBMETIDO,
+          email: 'dev@example.com',
+          unidade_id: unidadeAcademica.id,
+          vigencia: new Date(),
+          data_cadastro: new Date(),
+        },
+        include: { corpo_projeto: true },
+      });
+    } else if (projetoSeed.categoria_id !== categoriaPadrao.id) {
+      projetoSeed = await prisma.projeto_pesquisa.update({
+        where: { id: projetoSeed.id },
+        data: { categoria_id: categoriaPadrao.id },
+        include: { corpo_projeto: true },
+      });
+    }
+  } catch (error: any) {
+    if (error?.code === 'P2022') {
+      console.warn(
+        'Seed de projeto de pesquisa ignorado: estrutura de projeto_pesquisa no banco está desatualizada em relação ao schema Prisma.',
+      );
+    } else {
+      throw error;
+    }
   }
+
+  // if (!projetoSeed.corpo_projeto) {
+  //   await prisma.corpo_projeto.create({
+  //     data: {
+  //       resumo: 'Resumo seed',
+  //       abstract: 'Seed abstract',
+  //       introducao: 'Introdução seed',
+  //       objetivos: 'Objetivos seed',
+  //       metodologia: 'Metodologia seed',
+  //       referencias: 'Referências seed',
+  //       resultados_esperados: 'Resultados esperados seed',
+  //       projeto_pesquisa_id: projetoSeed.id,
+  //     },
+  //   });
+  // }
 
   console.log('Seed de entidades relacionadas a pesquisa finalizado com sucesso!');
 }

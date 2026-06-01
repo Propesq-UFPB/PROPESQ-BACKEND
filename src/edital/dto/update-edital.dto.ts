@@ -104,10 +104,10 @@ export class UpdateEditalDto {
   @IsBoolean()
   tec_admin_coord_proj?: boolean;
 
-  @ApiPropertyOptional({ enum: CategoriaProjeto })
+  @ApiPropertyOptional({ type: 'integer' })
   @IsOptional()
-  @IsEnum(CategoriaProjeto)
-  categoria?: CategoriaProjeto;
+  @IsInt()
+  categoria_id?: number;
 
   @ApiPropertyOptional({
     nullable: true,

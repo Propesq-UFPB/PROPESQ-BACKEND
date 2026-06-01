@@ -26,6 +26,7 @@ export class ResearchService {
     await this.assertAcademicUnitExists(createResearchDto.unidade_id);
     await this.assertCorpoProjetoExists(createResearchDto.corpo_projeto_id);
     await this.assertPalavrasChaveExist(createResearchDto.palavras_chave_ids);
+    await this.assertCategoria(createResearchDto.categoria_id);
 
     if (Array.isArray(createResearchDto.pesquisa_objetivo_ids)) {
       await this.assertObjetivosSustentavelExist(createResearchDto.pesquisa_objetivo_ids);
@@ -44,7 +45,11 @@ export class ResearchService {
         data_cadastro: new Date(),
         titulo: createResearchDto.titulo,
         title: createResearchDto.title,
-        categoria: createResearchDto.categoria,
+        categoria: {
+          connect: {
+            id: createResearchDto.categoria_id,
+          },
+        },
         email: createResearchDto.email,
         situacao: SituacaoProjeto.SUBMETIDO,
         data_inicio: createResearchDto.data_inicio,
@@ -228,13 +233,23 @@ export class ResearchService {
       );
     }
 
+    if (updateResearchDto.categoria_id) {
+      await this.assertCategoria(updateResearchDto.categoria_id);
+    }
+
     return this.prisma.projeto_pesquisa.update({
       where: { id: id },
       data: {
         tipo: updateResearchDto.tipo,
         titulo: updateResearchDto.titulo,
         title: updateResearchDto.title,
-        categoria: updateResearchDto.categoria,
+        ...(updateResearchDto.categoria_id !== undefined && {
+          categoria: {
+            connect: {
+              id: updateResearchDto.categoria_id,
+            },
+          },
+        }),
         email: updateResearchDto.email,
         data_inicio: updateResearchDto.data_inicio,
         data_fim: updateResearchDto.data_fim,
@@ -264,8 +279,11 @@ export class ResearchService {
             connect: { id: updateResearchDto.corpo_projeto_id },
           },
         }),
-
-        unidade_id: updateResearchDto.unidade_id,
+        unidade_academica: {
+          connect: {
+            id: updateResearchDto.unidade_id,
+          },
+        },
       },
       include: { corpo_projeto: true, palavra_chave: true },
     });
@@ -277,7 +295,7 @@ export class ResearchService {
       tipo: TipoProjetoMapper[research.tipo],
       titulo: research.titulo,
       title: research.title,
-      categoria: CategoriaProjetoMapper[research.categoria],
+      categoria: research.categoria.denominacao,
       codigo: research.codigo,
       email: research.email,
       situacao: SituacaoProjetoMapper[research.situacao],
@@ -562,6 +580,14 @@ export class ResearchService {
       throw new NotFoundException(
         `Atividade(s) de projeto de pesquisa não encontrada(s) para os ids: ${missingIds.join(', ')}`,
       );
+    }
+  }
+
+  private async assertCategoria(id: number): Promise<void> {
+    const categoria = await this.prisma.categoria_edital.findUnique({ where: { id: id } });
+
+    if (!categoria) {
+      throw new NotFoundException(`Categoria id ${id} não existente`);
     }
   }
 }

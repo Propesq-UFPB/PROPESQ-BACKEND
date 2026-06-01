@@ -104,9 +104,9 @@ model docente {
 }
 
 model edital {
-  id                              Int              @id @default(autoincrement())
-  codigo                          String?          @unique @db.VarChar(255)
-  descricao                       String           @db.Text
+  id                              Int            @id @default(autoincrement())
+  codigo                          String?        @unique @db.VarChar(255)
+  descricao                       String         @db.Text
   // id_cota                        Int
   titulacao_min                   TitulacaoMin
   tipo                            TipoEdital
@@ -123,7 +123,7 @@ model edital {
   periodo_submissoes_id           Int
   periodo_correcao_plano_id       Int?
   periodo_execucao_id             Int
-  categoria                       CategoriaProjeto
+  categoria_id                    Int
   data_cadastro                   DateTime
 
   periodo_submissoes       periodo_edital             @relation("periodo_submissoes", fields: [periodo_submissoes_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -131,6 +131,7 @@ model edital {
   periodo_execucao_rel     periodo_edital             @relation("periodo_execucao", fields: [periodo_execucao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   edital_cota_distribuicao edital_cota_distribuicao[]
   projetos_pesquisa        projeto_pesquisa[]
+  categoria                categoria_edital           @relation(fields: [categoria_id], references: [id])
 }
 
 model edital_cota_distribuicao {
@@ -203,17 +204,17 @@ model plano_trabalho {
 }
 
 model projeto_pesquisa {
-  id              Int              @id @default(autoincrement())
+  id              Int             @id @default(autoincrement())
   codigo          String
   tipo            TipoProjeto
   titulo          String
   title           String
-  categoria       CategoriaProjeto
-  situacao        SituacaoProjeto  @map("situação")
+  categoria_id    Int
+  situacao        SituacaoProjeto @map("situação")
   email           String
-  data_inicio     DateTime?        @db.Timestamp(6)
-  data_fim        DateTime?        @db.Timestamp(6)
-  vigencia        DateTime         @db.Timestamp(6)
+  data_inicio     DateTime?       @db.Timestamp(6)
+  data_fim        DateTime?       @db.Timestamp(6)
+  vigencia        DateTime        @db.Timestamp(6)
   data_cadastro   DateTime
   edital          String?
   cota            String?
@@ -238,6 +239,7 @@ model projeto_pesquisa {
   palavra_chave       palavra_chave[]
   plano_trabalho      plano_trabalho[]
   historico_avaliacao historico_avaliacao[]
+  categoria           categoria_edital             @relation(fields: [categoria_id], references: [id])
 }
 
 model historico_avaliacao {
@@ -344,10 +346,12 @@ model bolsa {
 }
 
 model categoria_edital {
-  id          Int     @id @default(autoincrement())
-  denominacao String  @unique @db.VarChar(255)
-  ordem       Int     @unique
-  ativo       Boolean
+  id                Int                @id @default(autoincrement())
+  denominacao       String             @unique @db.VarChar(255)
+  ordem             Int                @unique
+  ativo             Boolean
+  editais           edital[]
+  projetos_pesquisa projeto_pesquisa[]
 }
 
 // ENUMS 

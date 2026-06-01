@@ -6,6 +6,7 @@ import {
   IsBoolean,
   IsDateString,
   IsEnum,
+  isInt,
   IsInt,
   IsNumber,
   IsOptional,
@@ -14,6 +15,8 @@ import {
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
+import { UpdateEditalCotaDistribuicaoDto } from './update-cota-distribuicao.dto';
+import { CreateEditalCotaDistribuicaoDto } from './create-cota-distribuicao.dto';
 
 class UpdatePeriodoEditalDto {
   @ApiPropertyOptional({ type: 'string', format: 'date-time' })
@@ -25,59 +28,6 @@ class UpdatePeriodoEditalDto {
   @IsOptional()
   @IsDateString()
   fim?: Date;
-}
-
-class UpdateEditalCotaDistribuicaoDto {
-  @ApiPropertyOptional({ type: Boolean })
-  @IsOptional()
-  @IsBoolean()
-  divulgar_resultado?: boolean;
-
-  @ApiPropertyOptional({ type: Number })
-  @IsOptional()
-  @IsInt()
-  quantidade?: number;
-
-  @ApiPropertyOptional({ type: Number })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  fppi_min?: number;
-
-  @ApiPropertyOptional({ type: Number })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  fppi_max?: number;
-
-  @ApiPropertyOptional({ type: Number })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  media_min_proj?: number;
-
-  @ApiPropertyOptional({ type: Boolean })
-  @IsOptional()
-  @IsBoolean()
-  exige_doutorado?: boolean;
-
-  @ApiPropertyOptional({ type: Number })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  percentual_cotas_novos_doutorandos?: number;
-
-  @ApiPropertyOptional({ type: Number })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  fppi_min_novos_doutorandos?: number;
-
-  @ApiPropertyOptional({ type: Number })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  fppi_max_novos_doutorandos?: number;
 }
 
 export class UpdateEditalDto {
@@ -162,15 +112,21 @@ export class UpdateEditalDto {
   @ApiPropertyOptional({
     nullable: true,
     type: [UpdateEditalCotaDistribuicaoDto],
-    description:
-      'null = não altera distribuição de cotas. [] ou array com itens = substitui distribuição de cotas.',
+    description: 'Array para editar distribuições de cota já existentes e que serão editados',
   })
   @IsOptional()
   @ValidateIf((_, value) => value !== null)
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => UpdateEditalCotaDistribuicaoDto)
-  edital_cota_distribuicao?: UpdateEditalCotaDistribuicaoDto[] | null;
+  update_edital_cota_distribuicao?: UpdateEditalCotaDistribuicaoDto[] | null;
+
+  @ApiPropertyOptional({
+    type: [CreateEditalCotaDistribuicaoDto],
+    description: 'Array para cadastrar novas distribuições de cotas',
+  })
+  @IsOptional()
+  create_edital_cota_distribuicao?: CreateEditalCotaDistribuicaoDto[];
 
   @ApiPropertyOptional({ type: UpdatePeriodoEditalDto })
   @IsOptional()
@@ -189,4 +145,12 @@ export class UpdateEditalDto {
   @ValidateNested()
   @Type(() => UpdatePeriodoEditalDto)
   periodo_execucao?: UpdatePeriodoEditalDto;
+
+  @ApiPropertyOptional({
+    type: 'array',
+    format: 'number',
+    nullable: true,
+    description: "Array que contém id's de distribuições de cotas a serem excluídas",
+  })
+  delete_cota_distribuicao: number[];
 }

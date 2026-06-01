@@ -4,6 +4,7 @@ import { CreateEditalDto } from './dto/create-edital.dto';
 import { PaginatedResult } from '../common/dto/paginated.dto';
 import { UpdateEditalDto } from './dto/update-edital.dto';
 import { TitulacaoMinMapper } from '../common/mapper/titulacao-min.mapper';
+import type { UpdateEditalCotaDistribuicaoDto } from './dto/update-cota-distribuicao.dto';
 
 @Injectable()
 export class EditalService {
@@ -166,7 +167,7 @@ export class EditalService {
     await this.findOne(id);
     await this.assertEditalExistsByCodigo(updateEditalDto.codigo, id);
 
-    return this.prisma.edital.update({
+    await this.prisma.edital.update({
       where: { id },
       data: {
         codigo: updateEditalDto.codigo,
@@ -205,8 +206,37 @@ export class EditalService {
             },
           },
         }),
+        ...(this.updateEditalCotaDistribuicao(id, updateEditalDto) ?? {}),
       },
     });
+  }
+
+  updateEditalCotaDistribuicao(id: number, updateEditalDto: UpdateEditalDto) {
+    const update_data =
+      updateEditalDto.update_edital_cota_distribuicao
+        ?.filter(cota => cota.id !== undefined)
+        .map(cota => {
+          const { id: cota_id, ...data } = cota;
+          return {
+            where: { id: cota_id },
+            data,
+          };
+        }) ?? [];
+
+    const create_data = updateEditalDto.create_edital_cota_distribuicao ?? [];
+    const delete_ids = updateEditalDto.delete_cota_distribuicao ?? [];
+
+    if (!update_data.length && !create_data.length && !delete_ids.length) {
+      return undefined;
+    }
+
+    return {
+      edital_cota_distribuicao: {
+        ...(update_data.length && { update: update_data }),
+        ...(create_data.length && { createMany: { data: create_data } }),
+        ...(delete_ids.length && { deleteMany: { id: { in: delete_ids }, id_edital: id } }),
+      },
+    };
   }
 
   // Verifica se código já existe, se sim, existe um conflito

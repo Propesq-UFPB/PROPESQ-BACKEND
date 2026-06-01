@@ -34,7 +34,7 @@ export class EditalController {
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('GESTOR')
+  @Roles('ADMIN', 'GESTOR')
   @ApiCreatedResponse({ description: 'Edital cadastrado com sucesso.' })
   async create(@Body() createEditalDto: CreateEditalDto) {
     return this.editalService.create(createEditalDto);
@@ -57,7 +57,7 @@ export class EditalController {
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles('GESTOR')
+  @Roles('ADMIN', 'GESTOR')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({ description: 'Edital deletado com sucesso' })
   @ApiNotFoundResponse({ description: 'Edital não encontrado' })
@@ -67,7 +67,7 @@ export class EditalController {
 
   @Patch(':id')
   @UseGuards(RolesGuard)
-  @Roles('GESTOR')
+  @Roles('ADMIN', 'GESTOR')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({ description: 'Edital atualizado com sucesso' })
   @ApiNotFoundResponse({ description: 'Edital não encontrado' })

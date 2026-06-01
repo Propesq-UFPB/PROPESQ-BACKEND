@@ -5,7 +5,7 @@ import { Prisma, unidade_academica } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AcademicUnitResponseDto } from './dto/academic-unit-response.dto';
 import { AcademicUnitLookupDto } from './dto/academic-unit-lookup.dto';
-import { PaginatedDto } from '../common/dto/paginated.dto';
+import { PaginatedResult } from '../common/dto/paginated.dto';
 
 @Injectable()
 export class AcademicUnitService {
@@ -40,7 +40,7 @@ export class AcademicUnitService {
     }
   }
 
-  async findAll(limit: number, offset: number): Promise<PaginatedDto<AcademicUnitResponseDto>> {
+  async findAll(limit: number, offset: number): Promise<PaginatedResult<AcademicUnitResponseDto>> {
     const [total, units] = await this.prisma.$transaction([
       this.prisma.unidade_academica.count(),
       this.prisma.unidade_academica.findMany({

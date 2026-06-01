@@ -4,6 +4,6 @@ import { EditalController } from './edital.controller';
 
 @Module({
   providers: [EditalService],
-  controllers: [EditalController]
+  controllers: [EditalController],
 })
 export class EditalModule {}

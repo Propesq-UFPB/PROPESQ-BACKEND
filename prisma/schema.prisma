@@ -13,8 +13,8 @@ model anexo {
   usuario_id    Int
   arquivo       Bytes
   tipo          String   @db.VarChar(255)
-  criado_em     DateTime @db.Timestamp(6)
-  atualizado_em DateTime @db.Timestamp(6)
+  criado_em     DateTime @default(now()) @db.Timestamp(6)
+  atualizado_em DateTime @default(now()) @updatedAt @db.Timestamp(6)
   usuario       usuario  @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
@@ -181,7 +181,7 @@ model permissao {
   nome             String             @unique
   descricao        String?
   criado_em        DateTime           @default(now()) @db.Timestamp(6)
-  atualizado_em    DateTime           @default(now()) @db.Timestamp(6)
+  atualizado_em    DateTime           @default(now()) @updatedAt @db.Timestamp(6)
   funcao_permissao funcao_permissao[]
 }
 
@@ -240,6 +240,7 @@ model projeto_pesquisa {
   plano_trabalho      plano_trabalho[]
   historico_avaliacao historico_avaliacao[]
   categoria           categoria_edital             @relation(fields: [categoria_id], references: [id])
+  projeto_avaliacao   projeto_avaliacao[]
 }
 
 model historico_avaliacao {
@@ -252,6 +253,43 @@ model historico_avaliacao {
 
   projeto_pesquisa projeto_pesquisa @relation(fields: [projeto_id], references: [id], onDelete: Cascade)
   avaliador        usuario          @relation("avaliador_historico", fields: [avaliador_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model projeto_avaliacao {
+  id            Int      @id @default(autoincrement())
+  avaliador_id  Int
+  projeto_id    Int
+  descricao     String?  @db.Text
+  criado_em     DateTime @default(now()) @db.Timestamp(6)
+  atualizado_em DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
+  avaliador        usuario          @relation("avaliador_projeto_avaliacao", fields: [avaliador_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  projeto_pesquisa projeto_pesquisa @relation(fields: [projeto_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  notas            avaliacao_nota[]
+}
+
+model criterio_avaliacao {
+  id            Int       @id @default(autoincrement())
+  nome          String    @unique
+  descricao     String?   @db.Text
+  peso          Float
+  nota_maxima   Float
+  ativo         Boolean   @default(true)
+  criado_em     DateTime  @default(now()) @db.Timestamp(6)
+  atualizado_em DateTime  @default(now()) @updatedAt @db.Timestamp(6)
+  desativado_em DateTime? @db.Timestamp(6)
+
+  notas avaliacao_nota[]
+}
+
+model avaliacao_nota {
+  id                    Int    @id @default(autoincrement())
+  avaliacao_id          Int?
+  criterio_avaliacao_id Int?
+  nota                  Float?
+
+  avaliacao          projeto_avaliacao?  @relation(fields: [avaliacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  criterio_avaliacao criterio_avaliacao? @relation(fields: [criterio_avaliacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model objetivo_desenvolvimento_sustentavel {
@@ -274,7 +312,7 @@ model funcao {
   nome             String             @unique
   descricao        String?
   criado_em        DateTime           @default(now()) @db.Timestamp(6)
-  atualizado_em    DateTime           @default(now()) @db.Timestamp(6)
+  atualizado_em    DateTime           @default(now()) @updatedAt @db.Timestamp(6)
   funcao_permissao funcao_permissao[]
   usuario          usuario[]
 }
@@ -293,8 +331,8 @@ model usuario {
   nome          String
   email         String
   senha         String
-  criado_em     DateTime @db.Timestamp(6)
-  atualizado_em DateTime @db.Timestamp(6)
+  criado_em     DateTime @default(now()) @db.Timestamp(6)
+  atualizado_em DateTime @default(now()) @updatedAt @db.Timestamp(6)
 
   funcao_id Int
   funcao    funcao @relation(fields: [funcao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -305,6 +343,7 @@ model usuario {
   plano_trabalho      plano_trabalho[]
   projetos_avaliados  projeto_pesquisa[]    @relation("avaliador_projeto")
   historico_avaliacao historico_avaliacao[] @relation("avaliador_historico")
+  projeto_avaliacao   projeto_avaliacao[]   @relation("avaliador_projeto_avaliacao")
 }
 
 model cota_bolsa {

@@ -10,6 +10,7 @@ import { AcademicUnitModule } from './academic-unit/academic-unit.module';
 import { EditalModule } from './edital/edital.module';
 import { ScholarshipModule } from './scholarship/scholarship.module';
 import { CategoryModule } from './category/category.module';
+import { EvaluationCriteriaModule } from './evaluation-criteria/evaluation-criteria.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { CategoryModule } from './category/category.module';
     EditalModule,
     ScholarshipModule,
     CategoryModule,
+    EvaluationCriteriaModule,
   ],
   providers: [
     {

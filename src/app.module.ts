@@ -11,6 +11,7 @@ import { EditalModule } from './edital/edital.module';
 import { ScholarshipModule } from './scholarship/scholarship.module';
 import { CategoryModule } from './category/category.module';
 import { EvaluationCriteriaModule } from './evaluation-criteria/evaluation-criteria.module';
+import { ResearchEvaluationModule } from './research-evaluation/research-evaluation.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { EvaluationCriteriaModule } from './evaluation-criteria/evaluation-crite
     ScholarshipModule,
     CategoryModule,
     EvaluationCriteriaModule,
+    ResearchEvaluationModule,
   ],
   providers: [
     {

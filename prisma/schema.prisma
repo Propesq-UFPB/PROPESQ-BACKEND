@@ -350,10 +350,13 @@ model cota_bolsa {
   id                           Int                @id @default(autoincrement())
   codigo                       String?            @unique @db.VarChar(255)
   relatorio_anual              Boolean
+  orgao_financiador            String             @db.Text
   descricao                    String             @db.Text
+  periodo_validade_id          Int
   envio_relatorios_parciais_id Int
   envio_relatorios_finais_id   Int
   cadastro_plano_voluntario_id Int
+  periodo_validade             periodo_cota_bolsa @relation("periodo_validade", fields: [periodo_validade_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   periodo_relatorio_parcial    periodo_cota_bolsa @relation("periodo_relatorio_parcial", fields: [envio_relatorios_parciais_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   periodo_relatorio_final      periodo_cota_bolsa @relation("periodo_relatorio_final", fields: [envio_relatorios_finais_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   periodo_cadastro_voluntario  periodo_cota_bolsa @relation("periodo_cadastro_voluntario", fields: [cadastro_plano_voluntario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -363,6 +366,7 @@ model periodo_cota_bolsa {
   id                              Int          @id @default(autoincrement())
   inicio                          DateTime     @db.Date
   fim                             DateTime     @db.Date
+  cotas_validade                  cota_bolsa[] @relation("periodo_validade")
   cotas_relatorio_parcial         cota_bolsa[] @relation("periodo_relatorio_parcial")
   cotas_relatorio_final           cota_bolsa[] @relation("periodo_relatorio_final")
   cotas_cadastro_plano_voluntario cota_bolsa[] @relation("periodo_cadastro_voluntario")
@@ -393,7 +397,7 @@ model categoria_edital {
   projetos_pesquisa projeto_pesquisa[]
 }
 
-// ENUMS 
+// ENUMS
 enum Idioma {
   PT
   EN

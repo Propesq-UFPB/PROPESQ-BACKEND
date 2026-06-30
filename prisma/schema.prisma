@@ -33,6 +33,7 @@ model area_conhecimento {
   sub_area         String
   especialidade    String
   projeto_pesquisa projeto_pesquisa[]
+  docentes         docente[]
 }
 
 model atividade_projeto_pesquisa {
@@ -98,9 +99,11 @@ model discente {
 }
 
 model docente {
-  id         Int     @id @default(autoincrement())
-  usuario_id Int
-  usuario    usuario @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                   Int                @id @default(autoincrement())
+  usuario_id           Int
+  usuario              usuario            @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  area_conhecimento    area_conhecimento? @relation(fields: [area_conhecimento_id], references: [id])
+  area_conhecimento_id Int?
 }
 
 model edital {

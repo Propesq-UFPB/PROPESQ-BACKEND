@@ -12,6 +12,7 @@ import { ScholarshipModule } from './scholarship/scholarship.module';
 import { CategoryModule } from './category/category.module';
 import { EvaluationCriteriaModule } from './evaluation-criteria/evaluation-criteria.module';
 import { ResearchEvaluationModule } from './research-evaluation/research-evaluation.module';
+import { DistribuicaoModule } from './distribuicao/distribuicao.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { ResearchEvaluationModule } from './research-evaluation/research-evaluat
     CategoryModule,
     EvaluationCriteriaModule,
     ResearchEvaluationModule,
+    DistribuicaoModule,
   ],
   providers: [
     {

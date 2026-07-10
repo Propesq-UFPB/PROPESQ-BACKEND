@@ -20,16 +20,12 @@ export class EditalService {
         descricao: createEditalDto.descricao,
         titulacao_min: createEditalDto.titulacao_min,
         tipo: createEditalDto.tipo,
-        validar_indice_min: createEditalDto.validar_indice_min,
-        valor_indice_min: createEditalDto.valor_indice_min,
         limite_solicitacoes_orientador: createEditalDto.limite_solicitacoes_orientador,
         limite_planos_orientador: createEditalDto.limite_planos_orientador,
-        edital_para_voluntarios: createEditalDto.edital_para_voluntarios,
         avaliacao_vigente: createEditalDto.avaliacao_vigente,
         apenas_orient_coordena_plano: createEditalDto.apenas_orient_coordena_plano,
-        apenas_colab_vol_cadastra_plano: createEditalDto.apenas_colab_vol_cadastra_plano,
-        prof_subst_cadastra_proj: createEditalDto.prof_subst_cadastra_proj,
         tec_admin_coord_proj: createEditalDto.tec_admin_coord_proj,
+        divulgar_resultado: createEditalDto.divulgar_resultado,
         categoria: {
           connect: {
             id: createEditalDto.categoria_id,
@@ -52,14 +48,6 @@ export class EditalService {
             fim: createEditalDto.periodo_execucao.fim,
           },
         },
-        ...(createEditalDto.periodo_correcao && {
-          periodo_correcao: {
-            create: {
-              inicio: createEditalDto.periodo_correcao.inicio,
-              fim: createEditalDto.periodo_correcao.fim,
-            },
-          },
-        }),
       },
     });
   }
@@ -124,16 +112,12 @@ export class EditalService {
         descricao: true,
         titulacao_min: true,
         tipo: true,
-        validar_indice_min: true,
-        valor_indice_min: true,
         limite_solicitacoes_orientador: true,
         limite_planos_orientador: true,
-        edital_para_voluntarios: true,
         avaliacao_vigente: true,
         apenas_orient_coordena_plano: true,
-        apenas_colab_vol_cadastra_plano: true,
-        prof_subst_cadastra_proj: true,
         tec_admin_coord_proj: true,
+        divulgar_resultado: true,
         categoria: {
           select: {
             id: true,
@@ -141,13 +125,6 @@ export class EditalService {
           },
         },
         periodo_submissoes: {
-          select: {
-            id: true,
-            inicio: true,
-            fim: true,
-          },
-        },
-        periodo_correcao: {
           select: {
             id: true,
             inicio: true,
@@ -183,16 +160,12 @@ export class EditalService {
         descricao: updateEditalDto.descricao,
         titulacao_min: updateEditalDto.titulacao_min,
         tipo: updateEditalDto.tipo,
-        validar_indice_min: updateEditalDto.validar_indice_min,
-        valor_indice_min: updateEditalDto.valor_indice_min,
         limite_solicitacoes_orientador: updateEditalDto.limite_solicitacoes_orientador,
         limite_planos_orientador: updateEditalDto.limite_planos_orientador,
-        edital_para_voluntarios: updateEditalDto.edital_para_voluntarios,
         avaliacao_vigente: updateEditalDto.avaliacao_vigente,
         apenas_orient_coordena_plano: updateEditalDto.apenas_orient_coordena_plano,
-        apenas_colab_vol_cadastra_plano: updateEditalDto.apenas_colab_vol_cadastra_plano,
-        prof_subst_cadastra_proj: updateEditalDto.prof_subst_cadastra_proj,
         tec_admin_coord_proj: updateEditalDto.tec_admin_coord_proj,
+        divulgar_resultado: updateEditalDto.divulgar_resultado,
         categoria: {
           connect: {
             id: updateEditalDto.categoria_id,
@@ -209,13 +182,6 @@ export class EditalService {
           periodo_execucao_rel: {
             update: {
               data: updateEditalDto.periodo_execucao,
-            },
-          },
-        }),
-        ...(updateEditalDto.periodo_correcao && {
-          periodo_correcao: {
-            update: {
-              data: updateEditalDto.periodo_correcao,
             },
           },
         }),

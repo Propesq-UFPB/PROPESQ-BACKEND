@@ -1,4 +1,4 @@
-import { CategoriaProjeto, TipoEdital, TipoIndiceMin, TitulacaoMin } from '@prisma/client';
+import { TipoEdital, TitulacaoMin } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -49,17 +49,6 @@ export class CreateEditalDto {
   @IsEnum(TipoEdital)
   tipo: TipoEdital;
 
-  @ApiProperty({ required: false, enum: TipoIndiceMin })
-  @IsOptional()
-  @IsEnum(TipoIndiceMin)
-  validar_indice_min?: TipoIndiceMin;
-
-  @ApiProperty({ required: false, type: Number })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  valor_indice_min?: number;
-
   @ApiProperty({ required: true, type: Number })
   @Type(() => Number)
   @IsNotEmpty()
@@ -75,11 +64,6 @@ export class CreateEditalDto {
   @ApiProperty({ required: true })
   @IsNotEmpty()
   @IsBoolean()
-  edital_para_voluntarios: boolean;
-
-  @ApiProperty({ required: true })
-  @IsNotEmpty()
-  @IsBoolean()
   avaliacao_vigente: boolean;
 
   @ApiProperty({ required: true })
@@ -90,29 +74,18 @@ export class CreateEditalDto {
   @ApiProperty({ required: true })
   @IsNotEmpty()
   @IsBoolean()
-  apenas_colab_vol_cadastra_plano: boolean;
-
-  @ApiProperty({ required: true })
-  @IsNotEmpty()
-  @IsBoolean()
-  prof_subst_cadastra_proj: boolean;
-
-  @ApiProperty({ required: true })
-  @IsNotEmpty()
-  @IsBoolean()
   tec_admin_coord_proj: boolean;
+
+  @ApiProperty({ required: true })
+  @IsNotEmpty()
+  @IsBoolean()
+  divulgar_resultado: boolean;
 
   @ApiProperty({ required: true, type: Number })
   @Type(() => Number)
   @IsNotEmpty()
   @IsInt()
   periodo_submissoes_id: number;
-
-  @ApiProperty({ required: false, type: Number })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  periodo_correcao_plano?: number;
 
   @ApiProperty({ required: true, type: 'integer' })
   @IsNotEmpty()
@@ -129,11 +102,6 @@ export class CreateEditalDto {
   @ValidateNested()
   @Type(() => PeriodoEditalDto)
   periodo_submissao: PeriodoEditalDto;
-
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => PeriodoEditalDto)
-  periodo_correcao?: PeriodoEditalDto;
 
   @IsNotEmpty()
   @ValidateNested()

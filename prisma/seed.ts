@@ -333,7 +333,9 @@ async function main() {
   });
 
   if (!categoriaPadrao) {
-    throw new Error('Categoria padrão não encontrada; execute o seed de categoria_edital primeiro.');
+    throw new Error(
+      'Categoria padrão não encontrada; execute o seed de categoria_edital primeiro.',
+    );
   }
 
   try {

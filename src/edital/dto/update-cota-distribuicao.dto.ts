@@ -7,11 +7,6 @@ export class UpdateEditalCotaDistribuicaoDto {
   @Min(1)
   id?: number;
 
-  @ApiPropertyOptional({ type: Boolean })
-  @IsOptional()
-  @IsBoolean()
-  divulgar_resultado?: boolean;
-
   @ApiPropertyOptional({ type: Number })
   @IsOptional()
   @IsInt()

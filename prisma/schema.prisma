@@ -107,22 +107,22 @@ model docente {
 }
 
 model edital {
-  id                              Int            @id @default(autoincrement())
-  codigo                          String?        @unique @db.VarChar(255)
-  descricao                       String         @db.Text
+  id                             Int          @id @default(autoincrement())
+  codigo                         String?      @unique @db.VarChar(255)
+  descricao                      String       @db.Text
   // id_cota                        Int
-  titulacao_min                   TitulacaoMin
-  tipo                            TipoEdital
-  limite_solicitacoes_orientador  Int
-  limite_planos_orientador        Int
-  avaliacao_vigente               Boolean
-  apenas_orient_coordena_plano    Boolean
-  tec_admin_coord_proj            Boolean
-  divulgar_resultado              Boolean        @default(false)
-  periodo_submissoes_id           Int
-  periodo_execucao_id             Int
-  categoria_id                    Int
-  data_cadastro                   DateTime
+  titulacao_min                  TitulacaoMin
+  tipo                           TipoEdital
+  limite_solicitacoes_orientador Int
+  limite_planos_orientador       Int
+  avaliacao_vigente              Boolean
+  apenas_orient_coordena_plano   Boolean
+  tec_admin_coord_proj           Boolean
+  divulgar_resultado             Boolean      @default(false)
+  periodo_submissoes_id          Int
+  periodo_execucao_id            Int
+  categoria_id                   Int
+  data_cadastro                  DateTime
 
   periodo_submissoes       periodo_edital             @relation("periodo_submissoes", fields: [periodo_submissoes_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   periodo_execucao_rel     periodo_edital             @relation("periodo_execucao", fields: [periodo_execucao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -148,11 +148,11 @@ model edital_cota_distribuicao {
 }
 
 model periodo_edital {
-  id                     Int      @id @default(autoincrement())
-  inicio                 DateTime @db.Date
-  fim                    DateTime @db.Date
-  editais_submissoes     edital[] @relation("periodo_submissoes")
-  editais_execucao       edital[] @relation("periodo_execucao")
+  id                 Int      @id @default(autoincrement())
+  inicio             DateTime @db.Date
+  fim                DateTime @db.Date
+  editais_submissoes edital[] @relation("periodo_submissoes")
+  editais_execucao   edital[] @relation("periodo_execucao")
 }
 
 model unidade_academica {
@@ -478,6 +478,7 @@ enum TitulacaoMin {
 
 enum TipoEdital {
   PESQUISA
-  APOIO_GRP_PESQ
-  APOIO_NOVO_PESQ
+  EXTENSAO
+  ENSINO_POS_GRADUACAO
+  OUTRO
 }

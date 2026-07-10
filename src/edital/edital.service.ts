@@ -4,11 +4,20 @@ import { CreateEditalDto } from './dto/create-edital.dto';
 import { PaginatedResult } from '../common/dto/paginated.dto';
 import { UpdateEditalDto } from './dto/update-edital.dto';
 import { TitulacaoMinMapper } from '../common/mapper/titulacao-min.mapper';
-import type { UpdateEditalCotaDistribuicaoDto } from './dto/update-cota-distribuicao.dto';
+import { TipoEdital } from '@prisma/client';
+import { TipoEditalMapper } from '../common/mapper/tipo-edital.mapper';
+import { EditalTypeLookupDto } from './dto/edital-type-lookup.dto';
 
 @Injectable()
 export class EditalService {
   constructor(private prisma: PrismaService) {}
+
+  getTypeLookup(): EditalTypeLookupDto[] {
+    return Object.values(TipoEdital).map(tipo => ({
+      id: tipo,
+      name: TipoEditalMapper[tipo],
+    }));
+  }
 
   async create(createEditalDto: CreateEditalDto) {
     await this.assertEditalExistsByCodigo(createEditalDto.codigo);

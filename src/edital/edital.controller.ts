@@ -25,6 +25,7 @@ import { EditalService } from './edital.service';
 import { UpdateEditalDto } from './dto/update-edital.dto';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { EditalTypeLookupDto } from './dto/edital-type-lookup.dto';
 
 @ApiBearerAuth('bearer')
 @ApiTags('Edital')
@@ -38,6 +39,15 @@ export class EditalController {
   @ApiCreatedResponse({ description: 'Edital cadastrado com sucesso.' })
   async create(@Body() createEditalDto: CreateEditalDto) {
     return this.editalService.create(createEditalDto);
+  }
+
+  @Get('tipo/lookup')
+  @ApiOkResponse({
+    description: 'Tipos de edital retornados com sucesso.',
+    type: [EditalTypeLookupDto],
+  })
+  getTypeLookup(): EditalTypeLookupDto[] {
+    return this.editalService.getTypeLookup();
   }
 
   @Get(':id')
@@ -74,4 +84,6 @@ export class EditalController {
   async update(@Param('id') id: number, @Body() updateEditalDto: UpdateEditalDto) {
     return this.editalService.update(id, updateEditalDto);
   }
+
+  //@Get()
 }

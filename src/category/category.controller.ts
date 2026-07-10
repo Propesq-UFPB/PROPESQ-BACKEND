@@ -30,6 +30,7 @@ import { CategoryResponseDto } from './dto/category-response.dto';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { CategoryService } from './category.service';
+import { CategoryLookupDto } from './dto/category-lookup.dto';
 
 @ApiBearerAuth('bearer')
 @ApiTags('Categorias')
@@ -63,6 +64,16 @@ export class CategoryController {
     @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
   ): Promise<PaginatedResult<CategoryResponseDto>> {
     return this.categoryService.findAll(limit, offset);
+  }
+
+  @ApiOperation({ summary: 'Lista categorias ativas para select/dropdown (id e nome)' })
+  @ApiOkResponse({
+    description: 'Lista de opções de lookup, ordenada por ordem de exibição.',
+    type: [CategoryLookupDto],
+  })
+  @Get('lookup')
+  getLookup(): Promise<CategoryLookupDto[]> {
+    return this.categoryService.getLookup();
   }
 
   @ApiOperation({ summary: 'Obtém uma categoria pelo ID' })

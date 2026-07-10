@@ -1,4 +1,10 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEditalDto } from './dto/create-edital.dto';
 import { PaginatedResult } from '../common/dto/paginated.dto';
@@ -7,6 +13,13 @@ import { TitulacaoMinMapper } from '../common/mapper/titulacao-min.mapper';
 import { TipoEdital } from '@prisma/client';
 import { TipoEditalMapper } from '../common/mapper/tipo-edital.mapper';
 import { EditalTypeLookupDto } from './dto/edital-type-lookup.dto';
+import { EditalAttachmentResponseDto } from './dto/edital-attachment-response.dto';
+
+type UploadedEditalFile = {
+  buffer?: Buffer;
+  mimetype?: string;
+  originalname?: string;
+};
 
 @Injectable()
 export class EditalService {
@@ -57,6 +70,45 @@ export class EditalService {
             fim: createEditalDto.periodo_execucao.fim,
           },
         },
+      },
+    });
+  }
+
+  async uploadAttachment(
+    id: number,
+    file: UploadedEditalFile | undefined,
+  ): Promise<EditalAttachmentResponseDto> {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('Arquivo do edital não informado.');
+    }
+
+    if (!this.isPdfFile(file)) {
+      throw new BadRequestException('Apenas arquivos PDF são permitidos.');
+    }
+
+    await this.assertEditalExists(id);
+    const arquivo = Uint8Array.from(file.buffer);
+    const nome = this.generateAttachmentName(file.originalname);
+    const tipo = 'pdf';
+
+    return this.prisma.anexo_edital.upsert({
+      where: { edital_id: id },
+      create: {
+        edital_id: id,
+        nome,
+        arquivo,
+        tipo,
+      },
+      update: {
+        nome,
+        arquivo,
+        tipo,
+      },
+      select: {
+        id: true,
+        edital_id: true,
+        nome: true,
+        tipo: true,
       },
     });
   }
@@ -236,5 +288,32 @@ export class EditalService {
     if (edital && edital.id != id) {
       throw new ConflictException(`Edital com código ${codigo} já existe`);
     }
+  }
+
+  private async assertEditalExists(id: number): Promise<void> {
+    const edital = await this.prisma.edital.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!edital) {
+      throw new NotFoundException(`Edital com ID ${id} não encontrado`);
+    }
+  }
+
+  private isPdfFile(file: UploadedEditalFile): boolean {
+    const hasPdfMimeType = file.mimetype === 'application/pdf';
+    const hasPdfExtension = file.originalname?.toLowerCase().endsWith('.pdf') ?? false;
+    const hasPdfSignature = file.buffer?.subarray(0, 4).toString('utf8') === '%PDF';
+
+    return hasPdfMimeType && hasPdfExtension && hasPdfSignature;
+  }
+
+  private generateAttachmentName(originalName = 'edital.pdf'): string {
+    const randomSuffix = randomBytes(8).toString('hex');
+    const maxOriginalNameLength = 255 - randomSuffix.length - 1;
+    const normalizedOriginalName = originalName.slice(0, maxOriginalNameLength);
+
+    return `${normalizedOriginalName}-${randomSuffix}`;
   }
 }

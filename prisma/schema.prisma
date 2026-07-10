@@ -107,9 +107,9 @@ model docente {
 }
 
 model edital {
-  id                             Int          @id @default(autoincrement())
-  codigo                         String?      @unique @db.VarChar(255)
-  descricao                      String       @db.Text
+  id                             Int           @id @default(autoincrement())
+  codigo                         String?       @unique @db.VarChar(255)
+  descricao                      String        @db.Text
   // id_cota                        Int
   titulacao_min                  TitulacaoMin
   tipo                           TipoEdital
@@ -118,17 +118,27 @@ model edital {
   avaliacao_vigente              Boolean
   apenas_orient_coordena_plano   Boolean
   tec_admin_coord_proj           Boolean
-  divulgar_resultado             Boolean      @default(false)
+  divulgar_resultado             Boolean       @default(false)
   periodo_submissoes_id          Int
   periodo_execucao_id            Int
   categoria_id                   Int
   data_cadastro                  DateTime
+  anexo                          anexo_edital?
 
   periodo_submissoes       periodo_edital             @relation("periodo_submissoes", fields: [periodo_submissoes_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   periodo_execucao_rel     periodo_edital             @relation("periodo_execucao", fields: [periodo_execucao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   edital_cota_distribuicao edital_cota_distribuicao[]
   projetos_pesquisa        projeto_pesquisa[]
   categoria                categoria_edital           @relation(fields: [categoria_id], references: [id])
+}
+
+model anexo_edital {
+  id        Int     @id @default(autoincrement())
+  edital_id Int     @unique
+  nome      String  @unique @db.VarChar(255)
+  arquivo   Bytes
+  tipo      String  @db.VarChar(255)
+  edital    edital? @relation(references: [id], fields: [edital_id], onDelete: Cascade)
 }
 
 model edital_cota_distribuicao {

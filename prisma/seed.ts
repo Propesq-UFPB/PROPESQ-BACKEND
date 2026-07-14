@@ -2,6 +2,7 @@ import 'dotenv/config';
 import {
   CategoriaProjeto,
   Idioma,
+  Prisma,
   PrismaClient,
   SituacaoProjeto,
   TipoProjeto,
@@ -69,6 +70,15 @@ async function main() {
     { nome: 'FAPERJ' },
   ];
 
+  const bolsasSeed = [
+    { descricao: 'PIBIC', orgaoNome: 'CNPq', valor: 700, permite_acumulo: false },
+    { descricao: 'PIBITI', orgaoNome: 'CNPq', valor: 700, permite_acumulo: false },
+    { descricao: 'PIBIC-EM', orgaoNome: 'CNPq', valor: 100, permite_acumulo: true },
+    { descricao: 'PROBIC', orgaoNome: 'FUNCAP', valor: 700, permite_acumulo: false },
+    { descricao: 'Mestrado', orgaoNome: 'CAPES', valor: 2100, permite_acumulo: false },
+    { descricao: 'Doutorado', orgaoNome: 'CAPES', valor: 3100, permite_acumulo: false },
+  ];
+
   console.log('Iniciando seed de funções...');
 
   for (const f of funcoes) {
@@ -114,6 +124,50 @@ async function main() {
   }
 
   console.log('Seed de órgãos financiadores finalizado com sucesso!');
+
+  console.log('Iniciando seed de bolsas...');
+
+  const year = new Date().getFullYear();
+
+  for (const bolsaSeed of bolsasSeed) {
+    const orgao = await prisma.orgao_financiador.findUnique({
+      where: { nome: bolsaSeed.orgaoNome },
+    });
+
+    if (!orgao) {
+      throw new Error(
+        `Órgão financiador "${bolsaSeed.orgaoNome}" não encontrado; execute o seed de órgãos primeiro.`,
+      );
+    }
+
+    const existingBolsa = await prisma.bolsa.findFirst({
+      where: { descricao: bolsaSeed.descricao },
+    });
+
+    if (!existingBolsa) {
+      await prisma.bolsa.create({
+        data: {
+          descricao: bolsaSeed.descricao,
+          categoria: bolsaSeed.descricao,
+          dia_limite_indicacao: 15,
+          dia_limite_finalizacao: 20,
+          niveis: '111',
+          vinculado_cota: false,
+          necessita_relatorio: false,
+          necessidade_dados_bancarios: false,
+          possui_bancos_exclusivos: false,
+          possui_tipo_conta_excls: false,
+          envio_relatorio_inicio: new Date(`${year}-01-01`),
+          envio_relatorio_fim: new Date(`${year}-12-31`),
+          orgao_id: orgao.id,
+          valor: new Prisma.Decimal(bolsaSeed.valor),
+          permite_acumulo: bolsaSeed.permite_acumulo,
+        },
+      });
+    }
+  }
+
+  console.log('Seed de bolsas finalizado com sucesso!');
   console.log('Seed de funções finalizado com sucesso!');
 
   console.log('Iniciando seed do usuario admin...');

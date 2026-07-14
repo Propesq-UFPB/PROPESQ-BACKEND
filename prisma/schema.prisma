@@ -375,20 +375,32 @@ model periodo_cota_bolsa {
   cotas_cadastro_plano_voluntario cota_bolsa[] @relation("periodo_cadastro_voluntario")
 }
 
+model orgao_financiador {
+  id            Int      @id @default(autoincrement())
+  nome          String   @unique @db.VarChar(255)
+  criado_em     DateTime @default(now()) @db.Timestamp(6)
+  atualizado_em DateTime @default(now()) @updatedAt @db.Timestamp(6)
+  bolsas        bolsa[]
+}
+
 model bolsa {
-  id                          Int      @id @default(autoincrement())
-  descricao                   String   @db.Text
-  categoria                   String   @db.Text
+  id                          Int                 @id @default(autoincrement())
+  descricao                   String              @db.Text
+  categoria                   String              @db.Text
   dia_limite_indicacao        Int
   dia_limite_finalizacao      Int
-  niveis                      String   @db.Bit(3)
+  niveis                      String              @db.Bit(3)
   vinculado_cota              Boolean
   necessita_relatorio         Boolean
   necessidade_dados_bancarios Boolean
   possui_bancos_exclusivos    Boolean
   possui_tipo_conta_excls     Boolean
-  envio_relatorio_inicio      DateTime @db.Date
-  envio_relatorio_fim         DateTime @db.Date
+  envio_relatorio_inicio      DateTime            @db.Date
+  envio_relatorio_fim         DateTime            @db.Date
+  orgao_id                    Int?
+  orgao                       orgao_financiador?  @relation(fields: [orgao_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  valor                       Decimal?            @db.Decimal(12, 2)
+  permite_acumulo             Boolean             @default(false)
 }
 
 model categoria_edital {

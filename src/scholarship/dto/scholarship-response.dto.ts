@@ -1,4 +1,12 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+export class ScholarshipOrgaoSummaryDto {
+  @ApiProperty({ example: 1 })
+  id!: number;
+
+  @ApiProperty({ example: 'CNPq' })
+  nome!: string;
+}
 
 export class ScholarshipResponseDto {
   @ApiProperty({ example: 1, description: 'Identificador único da bolsa.' })
@@ -46,4 +54,28 @@ export class ScholarshipResponseDto {
 
   @ApiProperty({ example: '2026-12-31', format: 'date', description: 'Fim do envio de relatório.' })
   envio_relatorio_fim!: string;
+
+  @ApiPropertyOptional({
+    example: 1,
+    nullable: true,
+    description: 'ID do órgão financiador.',
+  })
+  orgao_id!: number | null;
+
+  @ApiPropertyOptional({
+    example: 700,
+    nullable: true,
+    description: 'Valor mensal da bolsa.',
+  })
+  valor!: number | null;
+
+  @ApiProperty({ example: false, description: 'Indica se a bolsa permite acúmulo.' })
+  permite_acumulo!: boolean;
+
+  @ApiPropertyOptional({
+    type: ScholarshipOrgaoSummaryDto,
+    nullable: true,
+    description: 'Órgão financiador associado.',
+  })
+  orgao!: ScholarshipOrgaoSummaryDto | null;
 }

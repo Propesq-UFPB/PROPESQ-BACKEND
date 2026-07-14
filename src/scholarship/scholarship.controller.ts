@@ -11,6 +11,7 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -21,7 +22,10 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Paginated, PaginatedResult } from '../common/dto/paginated.dto';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { CreateScholarshipDto } from './dto/create-scholarship.dto';
+import { CreateScholarshipFromSettingsDto } from './dto/create-scholarship-from-settings.dto';
 import { UpdateScholarshipDto } from './dto/update-scholarship.dto';
 import { ScholarshipResponseDto } from './dto/scholarship-response.dto';
 import { ScholarshipLookupDto } from './dto/scholarship-lookup.dto';
@@ -44,8 +48,29 @@ export class ScholarshipController {
     description: 'Dados inválidos para criação da bolsa.',
   })
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'GESTOR')
   create(@Body() createDto: CreateScholarshipDto): Promise<ScholarshipResponseDto> {
     return this.scholarshipService.create(createDto);
+  }
+
+  @ApiOperation({
+    summary: 'Cria uma bolsa a partir da tela de configurações (campos mínimos + defaults)',
+  })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Bolsa criada com defaults técnicos.',
+    type: ScholarshipResponseDto,
+  })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Dados inválidos.' })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Órgão financiador não encontrado.' })
+  @Post('from-settings')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'GESTOR')
+  createFromSettings(
+    @Body() createDto: CreateScholarshipFromSettingsDto,
+  ): Promise<ScholarshipResponseDto> {
+    return this.scholarshipService.createFromSettings(createDto);
   }
 
   @ApiOperation({ summary: 'Lista bolsas com paginação' })
@@ -121,6 +146,8 @@ export class ScholarshipController {
     description: 'Dados de atualização inválidos.',
   })
   @Patch(':id')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'GESTOR')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateDto: UpdateScholarshipDto,
@@ -149,6 +176,8 @@ export class ScholarshipController {
   })
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'GESTOR')
   async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     await this.scholarshipService.remove(id);
   }

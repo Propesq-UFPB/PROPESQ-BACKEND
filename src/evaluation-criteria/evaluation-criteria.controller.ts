@@ -53,10 +53,8 @@ export class EvaluationCriteriaController {
   })
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('GESTOR','ADMIN')
-  create(
-    @Body() createDto: CreateEvaluationCriterionDto,
-  ): Promise<EvaluationCriterionResponseDto> {
+  @Roles('GESTOR', 'ADMIN')
+  create(@Body() createDto: CreateEvaluationCriterionDto): Promise<EvaluationCriterionResponseDto> {
     return this.evaluationCriteriaService.create(createDto);
   }
 

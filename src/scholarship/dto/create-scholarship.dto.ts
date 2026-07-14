@@ -1,9 +1,11 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
   IsDateString,
   IsInt,
   IsNotEmpty,
+  IsNumber,
+  IsOptional,
   IsString,
   Matches,
   Max,
@@ -92,4 +94,31 @@ export class CreateScholarshipDto {
     { message: 'A data de fim do envio de relatório deve ser válida (YYYY-MM-DD).' },
   )
   envio_relatorio_fim!: string;
+
+  @ApiPropertyOptional({
+    example: 1,
+    nullable: true,
+    description: 'ID do órgão financiador (opcional).',
+  })
+  @IsOptional()
+  @IsInt({ message: 'O órgão financiador deve ser um número inteiro.' })
+  orgao_id?: number | null;
+
+  @ApiPropertyOptional({
+    example: 700,
+    nullable: true,
+    description: 'Valor mensal da bolsa (opcional).',
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'O valor deve ser um número.' })
+  @Min(0, { message: 'O valor deve ser no mínimo 0.' })
+  valor?: number | null;
+
+  @ApiPropertyOptional({
+    example: false,
+    description: 'Indica se a bolsa permite acúmulo.',
+  })
+  @IsOptional()
+  @IsBoolean({ message: 'O campo permite_acumulo deve ser verdadeiro ou falso.' })
+  permite_acumulo?: boolean;
 }

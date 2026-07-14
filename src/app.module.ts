@@ -14,6 +14,7 @@ import { CategoryModule } from './category/category.module';
 import { EvaluationCriteriaModule } from './evaluation-criteria/evaluation-criteria.module';
 import { ResearchEvaluationModule } from './research-evaluation/research-evaluation.module';
 import { DistribuicaoModule } from './distribuicao/distribuicao.module';
+import { FundingAgencyModule } from './funding-agency/funding-agency.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { DistribuicaoModule } from './distribuicao/distribuicao.module';
     EvaluationCriteriaModule,
     ResearchEvaluationModule,
     DistribuicaoModule,
+    FundingAgencyModule,
   ],
   providers: [
     {

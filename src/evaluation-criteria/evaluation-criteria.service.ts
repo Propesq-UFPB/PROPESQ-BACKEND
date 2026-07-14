@@ -11,9 +11,7 @@ import { EvaluationCriterionLookupDto } from './dto/evaluation-criterion-lookup.
 export class EvaluationCriteriaService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(
-    createDto: CreateEvaluationCriterionDto,
-  ): Promise<EvaluationCriterionResponseDto> {
+  async create(createDto: CreateEvaluationCriterionDto): Promise<EvaluationCriterionResponseDto> {
     try {
       const created = await this.prisma.criterio_avaliacao.create({
         data: {
@@ -37,8 +35,7 @@ export class EvaluationCriteriaService {
     offset: number,
     ativo?: boolean,
   ): Promise<PaginatedResult<EvaluationCriterionResponseDto>> {
-    const where: Prisma.criterio_avaliacaoWhereInput =
-      ativo !== undefined ? { ativo } : {};
+    const where: Prisma.criterio_avaliacaoWhereInput = ativo !== undefined ? { ativo } : {};
 
     const [total, rows] = await this.prisma.$transaction([
       this.prisma.criterio_avaliacao.count({ where }),
@@ -127,13 +124,12 @@ export class EvaluationCriteriaService {
   private handleUniqueNomeConflict(error: unknown, nome?: string): void {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       const msg =
-        (error.meta as { driverAdapterError?: { cause?: { originalMessage?: string } } })
-          ?.driverAdapterError?.cause?.originalMessage?.toLowerCase() || '';
+        (
+          error.meta as { driverAdapterError?: { cause?: { originalMessage?: string } } }
+        )?.driverAdapterError?.cause?.originalMessage?.toLowerCase() || '';
 
       if (nome && msg.includes('criterio_avaliacao_nome_key')) {
-        throw new ConflictException(
-          `Já existe um critério de avaliação com o nome "${nome}".`,
-        );
+        throw new ConflictException(`Já existe um critério de avaliação com o nome "${nome}".`);
       }
 
       throw new ConflictException(

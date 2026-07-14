@@ -60,6 +60,15 @@ async function main() {
     ativo: true,
   }));
 
+  const orgaosFinanciadores = [
+    { nome: 'CNPq' },
+    { nome: 'CAPES' },
+    { nome: 'FINEP' },
+    { nome: 'FUNCAP' },
+    { nome: 'FAPESP' },
+    { nome: 'FAPERJ' },
+  ];
+
   console.log('Iniciando seed de funções...');
 
   for (const f of funcoes) {
@@ -94,6 +103,17 @@ async function main() {
     });
   }
 
+  console.log('Iniciando seed de órgãos financiadores...');
+
+  for (const orgao of orgaosFinanciadores) {
+    await prisma.orgao_financiador.upsert({
+      where: { nome: orgao.nome },
+      update: {},
+      create: { nome: orgao.nome },
+    });
+  }
+
+  console.log('Seed de órgãos financiadores finalizado com sucesso!');
   console.log('Seed de funções finalizado com sucesso!');
 
   console.log('Iniciando seed do usuario admin...');

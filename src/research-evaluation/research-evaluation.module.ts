@@ -4,6 +4,6 @@ import { ResearchEvaluationController } from './research-evaluation.controller';
 
 @Module({
   providers: [ResearchEvaluationService],
-  controllers: [ResearchEvaluationController]
+  controllers: [ResearchEvaluationController],
 })
 export class ResearchEvaluationModule {}

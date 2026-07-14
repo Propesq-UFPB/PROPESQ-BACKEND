@@ -98,5 +98,13 @@
       ".*\\.entity\\.ts$",
       "main\\.ts$"
     ]
+  },
+  "allowScripts": {
+    "prisma@6.19.3": true,
+    "@prisma/client@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "unrs-resolver@1.11.1": true,
+    "@nestjs/core": false,
+    "@scarf/scarf": false
   }
 }

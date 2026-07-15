@@ -89,6 +89,11 @@ export class EditalService {
             fim: createEditalDto.periodo_execucao.fim,
           },
         },
+        cota_bolsa: {
+          connect: {
+            id: createEditalDto.cota_bolsa_id,
+          },
+        },
       },
     });
   }

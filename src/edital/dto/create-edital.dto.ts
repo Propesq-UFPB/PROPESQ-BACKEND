@@ -55,6 +55,11 @@ export class CreateEditalDto {
   @IsInt()
   limite_solicitacoes_orientador: number;
 
+  @IsNotEmpty()
+  @IsInt()
+  @Min(1)
+  cota_bolsa_id: number;
+
   @ApiProperty({ required: true, type: Number })
   @Type(() => Number)
   @IsNotEmpty()

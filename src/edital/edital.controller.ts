@@ -34,6 +34,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { EditalTypeLookupDto } from './dto/edital-type-lookup.dto';
 import { EditalAttachmentResponseDto } from './dto/edital-attachment-response.dto';
+import { EditalLookupDto } from './dto/edital-lookup.dto';
 
 type UploadedEditalFile = {
   buffer?: Buffer;
@@ -62,6 +63,15 @@ export class EditalController {
   })
   getTypeLookup(): EditalTypeLookupDto[] {
     return this.editalService.getTypeLookup();
+  }
+
+  @Get('lookup')
+  @ApiOkResponse({
+    description: 'Editais retornados com sucesso para lookup.',
+    type: [EditalLookupDto],
+  })
+  getLookup(): Promise<EditalLookupDto[]> {
+    return this.editalService.getLookup();
   }
 
   @Post(':id/anexo')

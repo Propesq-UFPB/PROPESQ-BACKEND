@@ -81,12 +81,6 @@ export class CreateEditalDto {
   @IsBoolean()
   divulgar_resultado: boolean;
 
-  @ApiProperty({ required: true, type: Number })
-  @Type(() => Number)
-  @IsNotEmpty()
-  @IsInt()
-  periodo_submissoes_id: number;
-
   @ApiProperty({ required: true, type: 'integer' })
   @IsNotEmpty()
   @IsInt()

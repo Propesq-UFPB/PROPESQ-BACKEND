@@ -36,7 +36,7 @@ services:
   frontend:
     container_name: 'propesq_frontend'
     build:
-      context: ../PROPESQ-PROTOTIPO
+      context: ../PROPESQ-FRONTEND
       dockerfile: Dockerfile
     ports:
       - '3100:3100'

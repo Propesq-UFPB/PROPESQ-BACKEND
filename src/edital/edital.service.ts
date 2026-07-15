@@ -14,6 +14,7 @@ import { TipoEdital } from '@prisma/client';
 import { TipoEditalMapper } from '../common/mapper/tipo-edital.mapper';
 import { EditalTypeLookupDto } from './dto/edital-type-lookup.dto';
 import { EditalAttachmentResponseDto } from './dto/edital-attachment-response.dto';
+import { EditalLookupDto } from './dto/edital-lookup.dto';
 
 type UploadedEditalFile = {
   buffer?: Buffer;
@@ -29,6 +30,24 @@ export class EditalService {
     return Object.values(TipoEdital).map(tipo => ({
       id: tipo,
       name: TipoEditalMapper[tipo],
+    }));
+  }
+
+  async getLookup(): Promise<EditalLookupDto[]> {
+    const rows = await this.prisma.edital.findMany({
+      select: {
+        id: true,
+        codigo: true,
+        descricao: true,
+      },
+      orderBy: [{ data_cadastro: 'desc' }, { id: 'desc' }],
+    });
+
+    return rows.map(row => ({
+      id: row.id,
+      codigo: row.codigo,
+      descricao: row.descricao,
+      name: row.codigo ? `${row.codigo} - ${row.descricao}` : row.descricao,
     }));
   }
 

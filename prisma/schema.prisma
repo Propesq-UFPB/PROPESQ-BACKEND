@@ -483,9 +483,10 @@ enum CategoriaProjeto {
 }
 
 enum TitulacaoMin {
-  SEM_RESTRICOES @map("SEM RESTRICOES")
-  MESTRES
-  DOUTORES
+  GRADUACAO
+  ESPECIALIZACAO
+  MESTRADO
+  DOUTORADO
 }
 
 enum TipoEdital {

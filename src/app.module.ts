@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { WorkPlanModule } from './work-plan/work-plan.module';
 import { AcademicUnitModule } from './academic-unit/academic-unit.module';
+import { DepartmentModule } from './department/department.module';
 import { EditalModule } from './edital/edital.module';
 import { CotaBolsaModule } from './cota_bolsa/cota_bolsa.module';
 import { ScholarshipModule } from './scholarship/scholarship.module';
@@ -19,6 +20,7 @@ import { FundingAgencyModule } from './funding-agency/funding-agency.module';
 @Module({
   imports: [
     AcademicUnitModule,
+    DepartmentModule,
     AuthModule,
     PrismaModule,
     ResearchModule,

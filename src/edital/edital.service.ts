@@ -4,11 +4,10 @@ import { CreateEditalDto } from './dto/create-edital.dto';
 import { PaginatedResult } from '../common/dto/paginated.dto';
 import { UpdateEditalDto } from './dto/update-edital.dto';
 import { TitulacaoMinMapper } from '../common/mapper/titulacao-min.mapper';
-import type { UpdateEditalCotaDistribuicaoDto } from './dto/update-cota-distribuicao.dto';
 
 @Injectable()
 export class EditalService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(createEditalDto: CreateEditalDto) {
     await this.assertEditalExistsByCodigo(createEditalDto.codigo);
@@ -65,33 +64,34 @@ export class EditalService {
   }
 
   async findMany(limit: number, offset: number): Promise<PaginatedResult<unknown>> {
-    const [data, total] = await Promise.all([
-      (
-        await this.prisma.edital.findMany({
-          select: {
-            descricao: true,
-            periodo_submissoes: {
-              select: {
-                inicio: true,
-                fim: true,
-              },
+    const [editais, total] = await Promise.all([
+      this.prisma.edital.findMany({
+        select: {
+          id: true,
+          descricao: true,
+          periodo_submissoes: {
+            select: {
+              inicio: true,
+              fim: true,
             },
-            titulacao_min: true,
           },
-          skip: offset,
-          take: limit,
-        })
-      ).map(edital => {
-        return this.formatEdital(edital);
+          titulacao_min: true,
+          edital_unidade_academica: {
+            select: { unidade_id: true },
+          },
+        },
+        skip: offset,
+        take: limit,
+        orderBy: { id: 'asc' },
       }),
       this.prisma.edital.count(),
     ]);
 
     return {
-      limit: limit,
-      offset: offset,
-      total: total,
-      results: data,
+      limit,
+      offset,
+      total,
+      results: editais.map(edital => this.formatEdital(edital)),
     };
   }
 
@@ -102,6 +102,9 @@ export class EditalService {
       periodo_submissoes_inicio: edital.periodo_submissoes.inicio.toLocaleDateString('pt-br'),
       periodo_submissoes_fim: edital.periodo_submissoes.fim.toLocaleDateString('pt-br'),
       titulacao_min: TitulacaoMinMapper[edital.titulacao_min],
+      unidade_ids: (edital.edital_unidade_academica ?? []).map(
+        (row: { unidade_id: number }) => row.unidade_id,
+      ),
     };
   }
 
@@ -162,6 +165,9 @@ export class EditalService {
           },
         },
         edital_cota_distribuicao: true,
+        edital_unidade_academica: {
+          select: { unidade_id: true },
+        },
       },
     });
 
@@ -169,7 +175,45 @@ export class EditalService {
       throw new NotFoundException(`Edital com ID ${id} não encontrado`);
     }
 
-    return edital;
+    const { edital_unidade_academica, ...rest } = edital;
+
+    return {
+      ...rest,
+      unidade_ids: edital_unidade_academica.map(row => row.unidade_id),
+    };
+  }
+
+  async setAcademicUnits(id: number, unidadeIds: number[]): Promise<void> {
+    await this.findOne(id);
+
+    if (unidadeIds.length > 0) {
+      const units = await this.prisma.unidade_academica.findMany({
+        where: { id: { in: unidadeIds } },
+        select: { id: true },
+      });
+
+      if (units.length !== unidadeIds.length) {
+        const found = new Set(units.map(unit => unit.id));
+        const missing = unidadeIds.filter(unitId => !found.has(unitId));
+        throw new NotFoundException(
+          `Unidade(s) acadêmica(s) não encontrada(s): ${missing.join(', ')}.`,
+        );
+      }
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.edital_unidade_academica.deleteMany({ where: { edital_id: id } }),
+      ...(unidadeIds.length
+        ? [
+            this.prisma.edital_unidade_academica.createMany({
+              data: unidadeIds.map(unidade_id => ({
+                edital_id: id,
+                unidade_id,
+              })),
+            }),
+          ]
+        : []),
+    ]);
   }
 
   async update(id: number, updateEditalDto: UpdateEditalDto) {
@@ -219,7 +263,7 @@ export class EditalService {
             },
           },
         }),
-        ...(this.updateEditalCotaDistribuicao(id, updateEditalDto) ?? {}),
+        ...(this.updateEditalCotaDistribuicao(id, updateEditalDto)),
       },
     });
   }

@@ -110,7 +110,7 @@ model edital {
   id                             Int           @id @default(autoincrement())
   codigo                         String?       @unique @db.VarChar(255)
   descricao                      String        @db.Text
-  // id_cota                        Int
+  cota_bolsa_id                  Int
   titulacao_min                  TitulacaoMin
   tipo                           TipoEdital
   limite_solicitacoes_orientador Int
@@ -130,6 +130,7 @@ model edital {
   edital_cota_distribuicao edital_cota_distribuicao[]
   projetos_pesquisa        projeto_pesquisa[]
   categoria                categoria_edital           @relation(fields: [categoria_id], references: [id])
+  cota_bolsa               cota_bolsa                 @relation(fields: [cota_bolsa_id], references: [id])
 }
 
 model anexo_edital {
@@ -361,6 +362,7 @@ model cota_bolsa {
   envio_relatorios_parciais_id Int
   envio_relatorios_finais_id   Int
   cadastro_plano_voluntario_id Int
+  editais                      edital[]
   periodo_validade             periodo_cota_bolsa @relation("periodo_validade", fields: [periodo_validade_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   periodo_relatorio_parcial    periodo_cota_bolsa @relation("periodo_relatorio_parcial", fields: [envio_relatorios_parciais_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   periodo_relatorio_final      periodo_cota_bolsa @relation("periodo_relatorio_final", fields: [envio_relatorios_finais_id], references: [id], onDelete: NoAction, onUpdate: NoAction)

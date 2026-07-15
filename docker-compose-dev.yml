@@ -38,10 +38,14 @@ services:
     build:
       context: ../PROPESQ-FRONTEND
       dockerfile: Dockerfile
+    env_file:
+      - ../PROPESQ-FRONTEND/.env.example
+    environment:
+      VITE_API_URL: 'http://localhost:3000'
     ports:
       - '3100:3100'
     volumes:
-      - ../PROPESQ-PROTOTIPO:/usr/src/app
+      - ../PROPESQ-FRONTEND:/usr/src/app
       - /usr/src/app/node_modules
 
 networks:

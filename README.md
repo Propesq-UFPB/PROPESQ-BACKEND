@@ -17,6 +17,7 @@ API NestJS do **PROPESQ** — gestão acadêmica de editais, projetos de pesquis
 | Bolsas | `/scholarships` |
 | Categorias de edital | `/categories` |
 | Unidades acadêmicas | `/academic-units` |
+| Departamentos | `/academic-units/:unitId/departments` |
 | Planos de trabalho | `/work-plans` |
 
 Papéis: `ADMIN`, `GESTOR`, `COORDENADOR`, `ALUNO`. A maioria das rotas exige Bearer JWT; o Swagger documenta o esquema.

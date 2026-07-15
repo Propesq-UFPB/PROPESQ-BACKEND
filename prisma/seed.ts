@@ -5,7 +5,9 @@ import {
   Prisma,
   PrismaClient,
   SituacaoProjeto,
+  TipoEdital,
   TipoProjeto,
+  TitulacaoMin,
 } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
@@ -15,121 +17,137 @@ const adapter = new PrismaPg({
 
 const prisma = new PrismaClient({ adapter });
 
-async function main() {
-  const funcoes = [
-    {
-      nome: 'ADMIN',
-      descricao: 'Acesso total ao sistema',
-    },
-    {
-      nome: 'GESTOR',
-      descricao: 'Acesso às funcionalidades de gestor',
-    },
-    {
-      nome: 'COORDENADOR',
-      descricao: 'Acesso às funcionalidades de coordenador',
-    },
-    {
-      nome: 'ALUNO',
-      descricao: 'Acesso às funcionalidades de aluno',
-    },
-  ];
+const FUNCOES = [
+  { nome: 'ADMIN', descricao: 'Acesso total ao sistema' },
+  { nome: 'GESTOR', descricao: 'Acesso às funcionalidades de gestor' },
+  { nome: 'COORDENADOR', descricao: 'Acesso às funcionalidades de coordenador' },
+  { nome: 'ALUNO', descricao: 'Acesso às funcionalidades de aluno' },
+];
 
-  const objetivos_sustentavel = [
-    { tipo: 'Erradicação da Pobreza' },
-    { tipo: 'Fome Zero e Agricultura Sustentável' },
-    { tipo: 'Saúde e Bem-Estar' },
-    { tipo: 'Educação de Qualidade' },
-    { tipo: 'Igualdade de Gênero' },
-    { tipo: 'Água Potável e Saneamento' },
-    { tipo: 'Energia Limpa e Acessível' },
-    { tipo: 'Trabalho Decente e Crescimento Econômico' },
-    { tipo: 'Indústria, Inovação e Infraestrutura' },
-    { tipo: 'Redução das Desigualdades' },
-    { tipo: 'Cidades e Comunidades Sustentáveis' },
-    { tipo: 'Consumo e Produção Responsáveis' },
-    { tipo: 'Ação Contra a Mudança Global do Clima' },
-    { tipo: 'Vida na Água' },
-    { tipo: 'Vida Terrestre' },
-    { tipo: 'Paz, Justiça e Instituições Eficazes' },
-    { tipo: 'Parcerias e Meios de Implementação' },
-  ];
+const OBJETIVOS_SUSTENTAVEL = [
+  { tipo: 'Erradicação da Pobreza' },
+  { tipo: 'Fome Zero e Agricultura Sustentável' },
+  { tipo: 'Saúde e Bem-Estar' },
+  { tipo: 'Educação de Qualidade' },
+  { tipo: 'Igualdade de Gênero' },
+  { tipo: 'Água Potável e Saneamento' },
+  { tipo: 'Energia Limpa e Acessível' },
+  { tipo: 'Trabalho Decente e Crescimento Econômico' },
+  { tipo: 'Indústria, Inovação e Infraestrutura' },
+  { tipo: 'Redução das Desigualdades' },
+  { tipo: 'Cidades e Comunidades Sustentáveis' },
+  { tipo: 'Consumo e Produção Responsáveis' },
+  { tipo: 'Ação Contra a Mudança Global do Clima' },
+  { tipo: 'Vida na Água' },
+  { tipo: 'Vida Terrestre' },
+  { tipo: 'Paz, Justiça e Instituições Eficazes' },
+  { tipo: 'Parcerias e Meios de Implementação' },
+];
 
-  const categoriasEdital = Object.values(CategoriaProjeto).map((denominacao, index) => ({
-    denominacao,
-    ordem: index + 1,
-    ativo: true,
-  }));
+const CATEGORIAS_EDITAL = Object.values(CategoriaProjeto).map((denominacao, index) => ({
+  denominacao,
+  ordem: index + 1,
+  ativo: true,
+}));
 
-  const orgaosFinanciadores = [
-    { nome: 'CNPq' },
-    { nome: 'CAPES' },
-    { nome: 'FINEP' },
-    { nome: 'FUNCAP' },
-    { nome: 'FAPESP' },
-    { nome: 'FAPERJ' },
-  ];
+const ORGAOS_FINANCIADORES = [
+  { nome: 'CNPq' },
+  { nome: 'CAPES' },
+  { nome: 'FINEP' },
+  { nome: 'FUNCAP' },
+  { nome: 'FAPESP' },
+  { nome: 'FAPERJ' },
+];
 
-  const bolsasSeed = [
-    { descricao: 'PIBIC', orgaoNome: 'CNPq', valor: 700, permite_acumulo: false },
-    { descricao: 'PIBITI', orgaoNome: 'CNPq', valor: 700, permite_acumulo: false },
-    { descricao: 'PIBIC-EM', orgaoNome: 'CNPq', valor: 100, permite_acumulo: true },
-    { descricao: 'PROBIC', orgaoNome: 'FUNCAP', valor: 700, permite_acumulo: false },
-    { descricao: 'Mestrado', orgaoNome: 'CAPES', valor: 2100, permite_acumulo: false },
-    { descricao: 'Doutorado', orgaoNome: 'CAPES', valor: 3100, permite_acumulo: false },
-  ];
+const BOLSAS_SEED = [
+  { descricao: 'PIBIC', orgaoNome: 'CNPq', valor: 700, permite_acumulo: false },
+  { descricao: 'PIBITI', orgaoNome: 'CNPq', valor: 700, permite_acumulo: false },
+  { descricao: 'PIBIC-EM', orgaoNome: 'CNPq', valor: 100, permite_acumulo: true },
+  { descricao: 'PROBIC', orgaoNome: 'FUNCAP', valor: 700, permite_acumulo: false },
+  { descricao: 'Mestrado', orgaoNome: 'CAPES', valor: 2100, permite_acumulo: false },
+  { descricao: 'Doutorado', orgaoNome: 'CAPES', valor: 3100, permite_acumulo: false },
+];
 
+const USUARIOS_SEED = [
+  {
+    roleName: 'ADMIN',
+    email: 'dev@example.com',
+    nome: 'Dev Admin',
+    senha: 'changeme',
+    label: 'admin',
+  },
+  {
+    roleName: 'COORDENADOR',
+    email: 'coordenador@exemplo.com',
+    nome: 'Usuario Coordenador',
+    senha: 'senha123',
+    label: 'coordenador',
+  },
+  {
+    roleName: 'GESTOR',
+    email: 'gestor@exemplo.com',
+    nome: 'Usuario Gestor',
+    senha: 'senha123',
+    label: 'gestor',
+  },
+  {
+    roleName: 'ALUNO',
+    email: 'aluno@exemplo.com',
+    nome: 'Usuario Aluno',
+    senha: 'senha123',
+    label: 'aluno',
+  },
+];
+
+async function seedFuncoes() {
   console.log('Iniciando seed de funções...');
-
-  for (const f of funcoes) {
+  for (const f of FUNCOES) {
     await prisma.funcao.upsert({
       where: { nome: f.nome },
-      update: {}, // Se já existir, não altera nada
-      create: {
-        nome: f.nome,
-        descricao: f.descricao,
-      },
+      update: {},
+      create: { nome: f.nome, descricao: f.descricao },
     });
   }
+  console.log('Seed de funções finalizado com sucesso!');
+}
 
-  for (const obj of objetivos_sustentavel) {
+async function seedObjetivosSustentavel() {
+  for (const obj of OBJETIVOS_SUSTENTAVEL) {
     await prisma.objetivo_desenvolvimento_sustentavel.upsert({
       where: { tipo: obj.tipo },
       update: {},
-      create: {
-        tipo: obj.tipo,
-      },
+      create: { tipo: obj.tipo },
     });
   }
+}
 
-  for (const categoria of categoriasEdital) {
+async function seedCategoriasEdital() {
+  for (const categoria of CATEGORIAS_EDITAL) {
     await prisma.categoria_edital.upsert({
       where: { denominacao: categoria.denominacao },
-      update: {
-        ordem: categoria.ordem,
-        ativo: categoria.ativo,
-      },
+      update: { ordem: categoria.ordem, ativo: categoria.ativo },
       create: categoria,
     });
   }
+}
 
+async function seedOrgaosFinanciadores() {
   console.log('Iniciando seed de órgãos financiadores...');
-
-  for (const orgao of orgaosFinanciadores) {
+  for (const orgao of ORGAOS_FINANCIADORES) {
     await prisma.orgao_financiador.upsert({
       where: { nome: orgao.nome },
       update: {},
       create: { nome: orgao.nome },
     });
   }
-
   console.log('Seed de órgãos financiadores finalizado com sucesso!');
+}
 
+async function seedBolsas() {
   console.log('Iniciando seed de bolsas...');
-
   const year = new Date().getFullYear();
 
-  for (const bolsaSeed of bolsasSeed) {
+  for (const bolsaSeed of BOLSAS_SEED) {
     const orgao = await prisma.orgao_financiador.findUnique({
       where: { nome: bolsaSeed.orgaoNome },
     });
@@ -144,200 +162,227 @@ async function main() {
       where: { descricao: bolsaSeed.descricao },
     });
 
-    if (!existingBolsa) {
-      await prisma.bolsa.create({
-        data: {
-          descricao: bolsaSeed.descricao,
-          categoria: bolsaSeed.descricao,
-          dia_limite_indicacao: 15,
-          dia_limite_finalizacao: 20,
-          niveis: '111',
-          vinculado_cota: false,
-          necessita_relatorio: false,
-          necessidade_dados_bancarios: false,
-          possui_bancos_exclusivos: false,
-          possui_tipo_conta_excls: false,
-          envio_relatorio_inicio: new Date(`${year}-01-01`),
-          envio_relatorio_fim: new Date(`${year}-12-31`),
-          orgao_id: orgao.id,
-          valor: new Prisma.Decimal(bolsaSeed.valor),
-          permite_acumulo: bolsaSeed.permite_acumulo,
-        },
-      });
+    if (existingBolsa) {
+      continue;
     }
+
+    await prisma.bolsa.create({
+      data: {
+        descricao: bolsaSeed.descricao,
+        categoria: bolsaSeed.descricao,
+        dia_limite_indicacao: 15,
+        dia_limite_finalizacao: 20,
+        niveis: '111',
+        vinculado_cota: false,
+        necessita_relatorio: false,
+        necessidade_dados_bancarios: false,
+        possui_bancos_exclusivos: false,
+        possui_tipo_conta_excls: false,
+        envio_relatorio_inicio: new Date(`${year}-01-01`),
+        envio_relatorio_fim: new Date(`${year}-12-31`),
+        orgao_id: orgao.id,
+        valor: new Prisma.Decimal(bolsaSeed.valor),
+        permite_acumulo: bolsaSeed.permite_acumulo,
+      },
+    });
   }
 
   console.log('Seed de bolsas finalizado com sucesso!');
-  console.log('Seed de funções finalizado com sucesso!');
+}
 
-  console.log('Iniciando seed do usuario admin...');
+async function upsertUsuarioSeed(user: (typeof USUARIOS_SEED)[number]) {
+  console.log(`Iniciando seed do usuario ${user.label}...`);
 
-  const adminRole = await prisma.funcao.findUnique({
-    where: { nome: 'ADMIN' },
+  const role = await prisma.funcao.findUnique({
+    where: { nome: user.roleName },
   });
 
-  if (!adminRole) {
-    throw new Error('Função ADMIN não encontrada; execute o seed de funções primeiro.');
+  if (!role) {
+    throw new Error(
+      `Função ${user.roleName} não encontrada; execute o seed de funções primeiro.`,
+    );
   }
 
-  const existingAdmin = await prisma.usuario.findFirst({
-    where: { email: 'dev@example.com' },
+  const existing = await prisma.usuario.findFirst({
+    where: { email: user.email },
   });
 
-  if (!existingAdmin) {
+  if (!existing) {
     await prisma.usuario.create({
       data: {
-        nome: 'Dev Admin',
-        email: 'dev@example.com',
-        senha: 'changeme',
-        funcao_id: adminRole.id,
+        nome: user.nome,
+        email: user.email,
+        senha: user.senha,
+        funcao_id: role.id,
         criado_em: new Date(),
         atualizado_em: new Date(),
       },
     });
-
-    console.log('Usuario admin criado com sucesso!');
-  } else {
-    await prisma.usuario.update({
-      where: { id: existingAdmin.id },
-      data: {
-        nome: 'Dev Admin',
-        email: 'dev@example.com',
-        senha: 'changeme',
-        funcao_id: adminRole.id,
-        atualizado_em: new Date(),
-      },
-    });
-
-    console.log('Usuario admin existente atualizado com sucesso!');
+    console.log(`Usuario ${user.label} criado com sucesso!`);
+    return;
   }
 
-  console.log('Iniciando seed do usuario coordenador...');
+  await prisma.usuario.update({
+    where: { id: existing.id },
+    data: {
+      nome: user.nome,
+      email: user.email,
+      senha: user.senha,
+      funcao_id: role.id,
+      atualizado_em: new Date(),
+    },
+  });
+  console.log(`Usuario ${user.label} existente atualizado com sucesso!`);
+}
 
-  const coordinatorRole = await prisma.funcao.findUnique({
-    where: { nome: 'COORDENADOR' },
+async function seedUsuarios() {
+  for (const user of USUARIOS_SEED) {
+    await upsertUsuarioSeed(user);
+  }
+}
+
+async function ensureCategoriaPadrao() {
+  const categoria = await prisma.categoria_edital.findUnique({
+    where: { denominacao: CategoriaProjeto.CATEGORIA_PADRAO },
   });
 
-  if (!coordinatorRole) {
-    throw new Error('Função COORDENADOR não encontrada; execute o seed de funções primeiro.');
+  if (!categoria) {
+    throw new Error('Categoria padrão não encontrada; execute o seed de categoria_edital primeiro.');
   }
 
-  const existingCoordinator = await prisma.usuario.findFirst({
-    where: { email: 'coordenador@exemplo.com' },
+  return categoria;
+}
+
+async function seedEdital(categoriaId: number) {
+  const editalCodigoSeed = 'SEED-EDITAL-001';
+  const editalExistente = await prisma.edital.findUnique({
+    where: { codigo: editalCodigoSeed },
   });
 
-  if (!existingCoordinator) {
-    await prisma.usuario.create({
-      data: {
-        nome: 'Usuario Coordenador',
-        email: 'coordenador@exemplo.com',
-        senha: 'senha123',
-        funcao_id: coordinatorRole.id,
-        criado_em: new Date(),
-        atualizado_em: new Date(),
-      },
-    });
-
-    console.log('Usuario coordenador criado com sucesso!');
-  } else {
-    await prisma.usuario.update({
-      where: { id: existingCoordinator.id },
-      data: {
-        nome: 'Usuario Coordenador',
-        email: 'coordenador@exemplo.com',
-        senha: 'senha123',
-        funcao_id: coordinatorRole.id,
-        atualizado_em: new Date(),
-      },
-    });
-
-    console.log('Usuario coordenador existente atualizado com sucesso!');
+  if (editalExistente) {
+    console.log(`Edital seed já existente: ${editalExistente.codigo}`);
+    return editalExistente;
   }
 
-  console.log('Iniciando seed do usuario gestor...');
-
-  const managerRole = await prisma.funcao.findUnique({
-    where: { nome: 'GESTOR' },
+  const year = new Date().getFullYear();
+  const periodoSubmissao = await prisma.periodo_edital.create({
+    data: {
+      inicio: new Date(`${year}-01-01`),
+      fim: new Date(`${year}-06-30`),
+    },
+  });
+  const periodoExecucao = await prisma.periodo_edital.create({
+    data: {
+      inicio: new Date(`${year}-07-01`),
+      fim: new Date(`${year}-12-31`),
+    },
   });
 
-  if (!managerRole) {
-    throw new Error('Função GESTOR não encontrada; execute o seed de funções primeiro.');
-  }
-
-  const existingManager = await prisma.usuario.findFirst({
-    where: { email: 'gestor@exemplo.com' },
+  const editalSeed = await prisma.edital.create({
+    data: {
+      codigo: editalCodigoSeed,
+      descricao: `Edital PROPESQ 01/${year} (seed)`,
+      titulacao_min: TitulacaoMin.SEM_RESTRICOES,
+      tipo: TipoEdital.PESQUISA,
+      limite_solicitacoes_orientador: 5,
+      limite_planos_orientador: 5,
+      edital_para_voluntarios: true,
+      avaliacao_vigente: false,
+      apenas_orient_coordena_plano: false,
+      apenas_colab_vol_cadastra_plano: false,
+      prof_subst_cadastra_proj: false,
+      tec_admin_coord_proj: false,
+      periodo_submissoes_id: periodoSubmissao.id,
+      periodo_execucao_id: periodoExecucao.id,
+      categoria_id: categoriaId,
+      data_cadastro: new Date(),
+    },
   });
 
-  if (!existingManager) {
-    await prisma.usuario.create({
-      data: {
-        nome: 'Usuario Gestor',
-        email: 'gestor@exemplo.com',
-        senha: 'senha123',
-        funcao_id: managerRole.id,
-        criado_em: new Date(),
-        atualizado_em: new Date(),
-      },
-    });
+  console.log(`Edital seed criado: ${editalSeed.codigo}`);
+  return editalSeed;
+}
 
-    console.log('Usuario gestor criado com sucesso!');
-  } else {
-    await prisma.usuario.update({
-      where: { id: existingManager.id },
-      data: {
-        nome: 'Usuario Gestor',
-        email: 'gestor@exemplo.com',
-        senha: 'senha123',
-        funcao_id: managerRole.id,
-        atualizado_em: new Date(),
-      },
-    });
-
-    console.log('Usuario gestor existente atualizado com sucesso!');
-  }
-
-  console.log('Iniciando seed do usuario aluno...');
-
-  const studentRole = await prisma.funcao.findUnique({
-    where: { nome: 'ALUNO' },
+async function ensurePalavraChave(palavra_chave: string, lingua: Idioma) {
+  const existing = await prisma.palavra_chave.findFirst({
+    where: {
+      palavra_chave,
+      lingua,
+      projeto_pesquisaId: null,
+    },
   });
 
-  if (!studentRole) {
-    throw new Error('Função ALUNO não encontrada; execute o seed de funções primeiro.');
+  if (existing) {
+    return;
   }
 
-  const existingStudent = await prisma.usuario.findFirst({
-    where: { email: 'aluno@exemplo.com' },
+  await prisma.palavra_chave.create({
+    data: { palavra_chave, lingua },
+  });
+}
+
+async function ensureAtividadeSeed() {
+  const existing = await prisma.atividade_projeto_pesquisa.findFirst({
+    where: {
+      descricao: 'Atividade seed de projeto de pesquisa',
+      projeto_pesquisa_id: null,
+    },
   });
 
-  if (!existingStudent) {
-    await prisma.usuario.create({
-      data: {
-        nome: 'Usuario Aluno',
-        email: 'aluno@exemplo.com',
-        senha: 'senha123',
-        funcao_id: studentRole.id,
-        criado_em: new Date(),
-        atualizado_em: new Date(),
-      },
-    });
-
-    console.log('Usuario aluno criado com sucesso!');
-  } else {
-    await prisma.usuario.update({
-      where: { id: existingStudent.id },
-      data: {
-        nome: 'Usuario Aluno',
-        email: 'aluno@exemplo.com',
-        senha: 'senha123',
-        funcao_id: studentRole.id,
-        atualizado_em: new Date(),
-      },
-    });
-
-    console.log('Usuario aluno existente atualizado com sucesso!');
+  if (existing) {
+    return;
   }
 
+  await prisma.atividade_projeto_pesquisa.create({
+    data: { descricao: 'Atividade seed de projeto de pesquisa' },
+  });
+}
+
+async function seedProjetoPesquisa(unidadeId: number, categoriaId: number) {
+  try {
+    const projetoSeed = await prisma.projeto_pesquisa.findFirst({
+      where: { codigo: 'SEED-PROJ-001' },
+    });
+
+    if (!projetoSeed) {
+      await prisma.projeto_pesquisa.create({
+        data: {
+          codigo: 'SEED-PROJ-001',
+          tipo: TipoProjeto.INTERNO,
+          titulo: 'Projeto Seed',
+          title: 'Seed Project',
+          categoria_id: categoriaId,
+          situacao: SituacaoProjeto.SUBMETIDO,
+          email: 'dev@example.com',
+          unidade_id: unidadeId,
+          vigencia: new Date(),
+          data_cadastro: new Date(),
+        },
+      });
+      return;
+    }
+
+    if (projetoSeed.categoria_id === categoriaId) {
+      return;
+    }
+
+    await prisma.projeto_pesquisa.update({
+      where: { id: projetoSeed.id },
+      data: { categoria_id: categoriaId },
+    });
+  } catch (error: unknown) {
+    const prismaError = error as { code?: string };
+    if (prismaError?.code === 'P2022') {
+      console.warn(
+        'Seed de projeto de pesquisa ignorado: estrutura de projeto_pesquisa no banco está desatualizada em relação ao schema Prisma.',
+      );
+      return;
+    }
+    throw error;
+  }
+}
+
+async function seedEntidadesPesquisa() {
   console.log('Iniciando seed de entidades relacionadas a pesquisa...');
 
   const unidadeAcademica = await prisma.unidade_academica.upsert({
@@ -353,118 +398,58 @@ async function main() {
     },
   });
 
-  const palavraChavePt = await prisma.palavra_chave.findFirst({
+  await prisma.departamento.upsert({
     where: {
-      palavra_chave: 'pesquisa',
-      lingua: Idioma.PT,
-      projeto_pesquisaId: null,
+      unidade_id_sigla: {
+        unidade_id: unidadeAcademica.id,
+        sigla: 'DPROP',
+      },
+    },
+    update: {
+      nome: 'Departamento PROPESQ',
+      ativo: true,
+    },
+    create: {
+      unidade_id: unidadeAcademica.id,
+      sigla: 'DPROP',
+      nome: 'Departamento PROPESQ',
+      ativo: true,
     },
   });
 
-  if (!palavraChavePt) {
-    await prisma.palavra_chave.create({
-      data: {
-        palavra_chave: 'pesquisa',
-        lingua: Idioma.PT,
-      },
-    });
-  }
+  const categoriaPadrao = await ensureCategoriaPadrao();
+  const editalSeed = await seedEdital(categoriaPadrao.id);
 
-  const palavraChaveEn = await prisma.palavra_chave.findFirst({
+  await prisma.edital_unidade_academica.upsert({
     where: {
-      palavra_chave: 'research',
-      lingua: Idioma.EN,
-      projeto_pesquisaId: null,
+      edital_id_unidade_id: {
+        edital_id: editalSeed.id,
+        unidade_id: unidadeAcademica.id,
+      },
+    },
+    update: {},
+    create: {
+      edital_id: editalSeed.id,
+      unidade_id: unidadeAcademica.id,
     },
   });
 
-  if (!palavraChaveEn) {
-    await prisma.palavra_chave.create({
-      data: {
-        palavra_chave: 'research',
-        lingua: Idioma.EN,
-      },
-    });
-  }
-
-  const atividadeSeed = await prisma.atividade_projeto_pesquisa.findFirst({
-    where: {
-      descricao: 'Atividade seed de projeto de pesquisa',
-      projeto_pesquisa_id: null,
-    },
-  });
-
-  if (!atividadeSeed) {
-    await prisma.atividade_projeto_pesquisa.create({
-      data: {
-        descricao: 'Atividade seed de projeto de pesquisa',
-      },
-    });
-  }
-
-  const categoriaPadrao = await prisma.categoria_edital.findUnique({
-    where: { denominacao: CategoriaProjeto.CATEGORIA_PADRAO },
-  });
-
-  if (!categoriaPadrao) {
-    throw new Error('Categoria padrão não encontrada; execute o seed de categoria_edital primeiro.');
-  }
-
-  try {
-    let projetoSeed = await prisma.projeto_pesquisa.findFirst({
-      where: { codigo: 'SEED-PROJ-001' },
-      include: { corpo_projeto: true },
-    });
-
-    if (!projetoSeed) {
-      projetoSeed = await prisma.projeto_pesquisa.create({
-        data: {
-          codigo: 'SEED-PROJ-001',
-          tipo: TipoProjeto.INTERNO,
-          titulo: 'Projeto Seed',
-          title: 'Seed Project',
-          categoria_id: categoriaPadrao.id,
-          situacao: SituacaoProjeto.SUBMETIDO,
-          email: 'dev@example.com',
-          unidade_id: unidadeAcademica.id,
-          vigencia: new Date(),
-          data_cadastro: new Date(),
-        },
-        include: { corpo_projeto: true },
-      });
-    } else if (projetoSeed.categoria_id !== categoriaPadrao.id) {
-      projetoSeed = await prisma.projeto_pesquisa.update({
-        where: { id: projetoSeed.id },
-        data: { categoria_id: categoriaPadrao.id },
-        include: { corpo_projeto: true },
-      });
-    }
-  } catch (error: any) {
-    if (error?.code === 'P2022') {
-      console.warn(
-        'Seed de projeto de pesquisa ignorado: estrutura de projeto_pesquisa no banco está desatualizada em relação ao schema Prisma.',
-      );
-    } else {
-      throw error;
-    }
-  }
-
-  // if (!projetoSeed.corpo_projeto) {
-  //   await prisma.corpo_projeto.create({
-  //     data: {
-  //       resumo: 'Resumo seed',
-  //       abstract: 'Seed abstract',
-  //       introducao: 'Introdução seed',
-  //       objetivos: 'Objetivos seed',
-  //       metodologia: 'Metodologia seed',
-  //       referencias: 'Referências seed',
-  //       resultados_esperados: 'Resultados esperados seed',
-  //       projeto_pesquisa_id: projetoSeed.id,
-  //     },
-  //   });
-  // }
+  await ensurePalavraChave('pesquisa', Idioma.PT);
+  await ensurePalavraChave('research', Idioma.EN);
+  await ensureAtividadeSeed();
+  await seedProjetoPesquisa(unidadeAcademica.id, categoriaPadrao.id);
 
   console.log('Seed de entidades relacionadas a pesquisa finalizado com sucesso!');
+}
+
+async function main() {
+  await seedFuncoes();
+  await seedObjetivosSustentavel();
+  await seedCategoriasEdital();
+  await seedOrgaosFinanciadores();
+  await seedBolsas();
+  await seedUsuarios();
+  await seedEntidadesPesquisa();
 }
 
 main()

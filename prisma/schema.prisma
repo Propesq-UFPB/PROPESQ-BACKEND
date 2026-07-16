@@ -408,6 +408,16 @@ model orgao_financiador {
   bolsas        bolsa[]
 }
 
+model funcao_projeto {
+  id            Int                   @id @default(autoincrement())
+  nome          String                @unique @db.VarChar(255)
+  descricao     String?               @db.Text
+  categoria     CategoriaFuncaoProjeto
+  ativo         Boolean               @default(true)
+  criado_em     DateTime              @default(now()) @db.Timestamp(6)
+  atualizado_em DateTime              @default(now()) @updatedAt @db.Timestamp(6)
+}
+
 model bolsa {
   id                          Int                 @id @default(autoincrement())
   descricao                   String              @db.Text
@@ -536,4 +546,12 @@ enum TipoPeriodoEdital {
   SUBMISSAO
   CORRECAO_PLANO_TRABALHO
   EXECUCAO_PROJETO
+}
+
+enum CategoriaFuncaoProjeto {
+  ACADEMICO
+  BOLSA
+  EXTERNO
+  GESTAO
+  OUTRO
 }

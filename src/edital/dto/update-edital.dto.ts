@@ -1,4 +1,4 @@
-import { CategoriaProjeto, TipoEdital, TipoIndiceMin, TitulacaoMin } from '@prisma/client';
+import { TipoEdital, TitulacaoMin } from '@prisma/client';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -8,7 +8,6 @@ import {
   IsEnum,
   isInt,
   IsInt,
-  IsNumber,
   IsOptional,
   IsString,
   Min,
@@ -51,17 +50,6 @@ export class UpdateEditalDto {
   @IsEnum(TipoEdital)
   tipo?: TipoEdital;
 
-  @ApiPropertyOptional({ enum: TipoIndiceMin })
-  @IsOptional()
-  @IsEnum(TipoIndiceMin)
-  validar_indice_min?: TipoIndiceMin;
-
-  @ApiPropertyOptional({ type: Number })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  valor_indice_min?: number;
-
   @ApiPropertyOptional({ type: Number })
   @IsOptional()
   @Type(() => Number)
@@ -77,11 +65,6 @@ export class UpdateEditalDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
-  edital_para_voluntarios?: boolean;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
   avaliacao_vigente?: boolean;
 
   @ApiPropertyOptional()
@@ -92,17 +75,12 @@ export class UpdateEditalDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
-  apenas_colab_vol_cadastra_plano?: boolean;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  prof_subst_cadastra_proj?: boolean;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
   tec_admin_coord_proj?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  divulgar_resultado?: boolean;
 
   @ApiPropertyOptional({ type: 'integer' })
   @IsOptional()
@@ -133,12 +111,6 @@ export class UpdateEditalDto {
   @ValidateNested()
   @Type(() => UpdatePeriodoEditalDto)
   periodo_submissao?: UpdatePeriodoEditalDto;
-
-  @ApiPropertyOptional({ type: UpdatePeriodoEditalDto })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => UpdatePeriodoEditalDto)
-  periodo_correcao?: UpdatePeriodoEditalDto;
 
   @ApiPropertyOptional({ type: UpdatePeriodoEditalDto })
   @IsOptional()

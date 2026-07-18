@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateCotaBolsaDto } from './dto/create-cota-bolsa.dto';
 import { UpdateCotaBolsaDto } from './dto/update-cota-bolsa.dto';
 import { PaginatedDto } from '../common/dto/paginated.dto';
+import { CotaBolsaLookupDto } from './dto/cota-bolsa-lookup.dto';
 
 @Injectable()
 export class CotaBolsaService {
@@ -61,6 +62,35 @@ export class CotaBolsaService {
       total,
       results: data,
     };
+  }
+
+  async getLookup(): Promise<CotaBolsaLookupDto[]> {
+    const rows = await this.prisma.cota_bolsa.findMany({
+      select: {
+        id: true,
+        codigo: true,
+        descricao: true,
+        periodo_validade: {
+          select: {
+            inicio: true,
+            fim: true,
+          },
+        },
+      },
+      orderBy: [{ descricao: 'asc' }, { id: 'asc' }],
+    });
+
+    return rows.map(row => {
+      const inicio = row.periodo_validade.inicio.getUTCFullYear();
+      const fim = row.periodo_validade.fim.getUTCFullYear();
+
+      return {
+        id: row.id,
+        codigo: row.codigo,
+        descricao: row.descricao,
+        name: `${inicio}-${fim} ${row.descricao}`,
+      };
+    });
   }
 
   async findOne(id: number) {

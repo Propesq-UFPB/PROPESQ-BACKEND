@@ -2,11 +2,6 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsBoolean, IsInt, IsNotEmpty, IsNumber, IsOptional, Min } from 'class-validator';
 
 export class CreateEditalCotaDistribuicaoDto {
-  @ApiProperty({ required: true, type: Boolean })
-  @IsNotEmpty()
-  @IsBoolean()
-  divulgar_resultado: boolean;
-
   @ApiProperty({ required: true, type: Number })
   @IsNotEmpty()
   @IsInt()

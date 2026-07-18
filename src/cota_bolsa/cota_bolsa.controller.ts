@@ -15,6 +15,7 @@ import { CotaBolsaService } from './cota_bolsa.service';
 import { CreateCotaBolsaDto } from './dto/create-cota-bolsa.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import {
+  ApiOperation,
   ApiCreatedResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
@@ -23,6 +24,7 @@ import {
 } from '@nestjs/swagger';
 import { RolesGuard } from '../auth/roles.guard';
 import { UpdateCotaBolsaDto } from './dto/update-cota-bolsa.dto';
+import { CotaBolsaLookupDto } from './dto/cota-bolsa-lookup.dto';
 
 @Controller('cota-bolsa')
 export class CotaBolsaController {
@@ -34,6 +36,16 @@ export class CotaBolsaController {
   @ApiCreatedResponse({ description: 'Cota bolsa cadastrada com sucesso.' })
   async create(@Body() createCotaBolsaDto: CreateCotaBolsaDto) {
     return this.cotaBolsaService.create(createCotaBolsaDto);
+  }
+
+  @Get('lookup')
+  @ApiOperation({ summary: 'Lista cotas bolsa para select/dropdown' })
+  @ApiOkResponse({
+    description: 'Cotas bolsa retornadas com sucesso para lookup.',
+    type: [CotaBolsaLookupDto],
+  })
+  async getLookup(): Promise<CotaBolsaLookupDto[]> {
+    return this.cotaBolsaService.getLookup();
   }
 
   @Get(':id')

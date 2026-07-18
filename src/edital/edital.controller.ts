@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Put,
   Query,
   UploadedFile,
   UseGuards,
@@ -30,6 +31,7 @@ import {
 } from '@nestjs/swagger';
 import { EditalService } from './edital.service';
 import { UpdateEditalDto } from './dto/update-edital.dto';
+import { SetEditalAcademicUnitsDto } from './dto/set-edital-academic-units.dto';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { EditalTypeLookupDto } from './dto/edital-type-lookup.dto';
@@ -140,5 +142,16 @@ export class EditalController {
     return this.editalService.update(id, updateEditalDto);
   }
 
-  //@Get()
+  @Put(':id/academic-units')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'GESTOR')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse({ description: 'Unidades acadêmicas do edital atualizadas com sucesso.' })
+  @ApiNotFoundResponse({ description: 'Edital ou unidade acadêmica não encontrada.' })
+  async setAcademicUnits(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: SetEditalAcademicUnitsDto,
+  ) {
+    await this.editalService.setAcademicUnits(id, dto.unidade_ids);
+  }
 }

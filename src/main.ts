@@ -7,17 +7,11 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const corsOrigins = process.env.CORS_ORIGINS?.split(',')
-    .map(origin => origin.trim())
-    .filter(Boolean) ?? ['http://localhost:3100', 'http://127.0.0.1:3100'];
-
   app.enableCors({
-    origin: corsOrigins,
-    credentials: true,
-    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    origin: process.env.CORS_ORIGIN ?? 'http://localhost:3100',
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
-
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
@@ -28,9 +22,9 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle('PROPESQ Backend API')
     .setDescription(
-      'API do PROPESQ para gestão de autenticação, usuários, projetos de pesquisa, unidades acadêmicas e planos de trabalho.',
+      'API do PROPESQ para gestão de autenticação, usuários, projetos de pesquisa, editais, unidades acadêmicas, departamentos e planos de trabalho.',
     )
-    .setVersion('1.0.0')
+    .setVersion('1.1.0')
     .addBearerAuth(
       {
         type: 'http',

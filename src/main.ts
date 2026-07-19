@@ -22,9 +22,9 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle('PROPESQ Backend API')
     .setDescription(
-      'API do PROPESQ para gestão de autenticação, usuários, projetos de pesquisa, editais, unidades acadêmicas, departamentos e planos de trabalho.',
+      'API do PROPESQ para gestão de autenticação, usuários, projetos de pesquisa, editais, unidades acadêmicas, departamentos, funções de projeto e planos de trabalho.',
     )
-    .setVersion('1.1.0')
+    .setVersion('1.2.0')
     .addBearerAuth(
       {
         type: 'http',

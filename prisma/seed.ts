@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import {
+  CategoriaFuncaoProjeto,
   CategoriaProjeto,
   Idioma,
   Prisma,
@@ -57,6 +58,54 @@ const ORGAOS_FINANCIADORES = [
   { nome: 'FUNCAP' },
   { nome: 'FAPESP' },
   { nome: 'FAPERJ' },
+];
+
+const FUNCOES_PROJETO = [
+  {
+    nome: 'Orientador',
+    categoria: CategoriaFuncaoProjeto.ACADEMICO,
+    descricao: 'Docente responsável pela orientação do projeto.',
+  },
+  {
+    nome: 'Coorientador',
+    categoria: CategoriaFuncaoProjeto.ACADEMICO,
+    descricao: 'Apoia a orientação do projeto.',
+  },
+  {
+    nome: 'Bolsista',
+    categoria: CategoriaFuncaoProjeto.BOLSA,
+    descricao: 'Discente com bolsa vinculada ao projeto.',
+  },
+  {
+    nome: 'Voluntário',
+    categoria: CategoriaFuncaoProjeto.BOLSA,
+    descricao: 'Discente sem bolsa, com participação voluntária.',
+  },
+  {
+    nome: 'Colaborador Externo',
+    categoria: CategoriaFuncaoProjeto.EXTERNO,
+    descricao: 'Participante sem vínculo institucional direto.',
+  },
+  {
+    nome: 'Coordenador',
+    categoria: CategoriaFuncaoProjeto.GESTAO,
+    descricao: 'Responsável pela coordenação do projeto.',
+  },
+  {
+    nome: 'Coordenador Adjunto',
+    categoria: CategoriaFuncaoProjeto.GESTAO,
+    descricao: 'Apoia a coordenação do projeto.',
+  },
+  {
+    nome: 'Pesquisador',
+    categoria: CategoriaFuncaoProjeto.ACADEMICO,
+    descricao: 'Pesquisador integrante da equipe do projeto.',
+  },
+  {
+    nome: 'Colaborador',
+    categoria: CategoriaFuncaoProjeto.OUTRO,
+    descricao: 'Colaborador da equipe do projeto.',
+  },
 ];
 
 const BOLSAS_SEED = [
@@ -141,6 +190,23 @@ async function seedOrgaosFinanciadores() {
     });
   }
   console.log('Seed de órgãos financiadores finalizado com sucesso!');
+}
+
+async function seedFuncoesProjeto() {
+  console.log('Iniciando seed de funções de projeto...');
+  for (const funcao of FUNCOES_PROJETO) {
+    await prisma.funcao_projeto.upsert({
+      where: { nome: funcao.nome },
+      update: {},
+      create: {
+        nome: funcao.nome,
+        categoria: funcao.categoria,
+        descricao: funcao.descricao,
+        ativo: true,
+      },
+    });
+  }
+  console.log('Seed de funções de projeto finalizado com sucesso!');
 }
 
 async function seedBolsas() {
@@ -549,6 +615,7 @@ async function main() {
   await seedObjetivosSustentavel();
   await seedCategoriasEdital();
   await seedOrgaosFinanciadores();
+  await seedFuncoesProjeto();
   await seedBolsas();
   await seedUsuarios();
   await seedEntidadesPesquisa();

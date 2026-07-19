@@ -1,13 +1,55 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEditalDto } from './dto/create-edital.dto';
 import { PaginatedResult } from '../common/dto/paginated.dto';
 import { UpdateEditalDto } from './dto/update-edital.dto';
 import { TitulacaoMinMapper } from '../common/mapper/titulacao-min.mapper';
+import { TipoEdital } from '@prisma/client';
+import { TipoEditalMapper } from '../common/mapper/tipo-edital.mapper';
+import { EditalTypeLookupDto } from './dto/edital-type-lookup.dto';
+import { EditalAttachmentResponseDto } from './dto/edital-attachment-response.dto';
+import { EditalLookupDto } from './dto/edital-lookup.dto';
+
+type UploadedEditalFile = {
+  buffer?: Buffer;
+  mimetype?: string;
+  originalname?: string;
+};
 
 @Injectable()
 export class EditalService {
   constructor(private readonly prisma: PrismaService) {}
+
+  getTypeLookup(): EditalTypeLookupDto[] {
+    return Object.values(TipoEdital).map(tipo => ({
+      id: tipo,
+      name: TipoEditalMapper[tipo],
+    }));
+  }
+
+  async getLookup(): Promise<EditalLookupDto[]> {
+    const rows = await this.prisma.edital.findMany({
+      select: {
+        id: true,
+        codigo: true,
+        descricao: true,
+      },
+      orderBy: [{ data_cadastro: 'desc' }, { id: 'desc' }],
+    });
+
+    return rows.map(row => ({
+      id: row.id,
+      codigo: row.codigo,
+      descricao: row.descricao,
+      name: row.codigo ? `${row.codigo} - ${row.descricao}` : row.descricao,
+    }));
+  }
 
   async create(createEditalDto: CreateEditalDto) {
     await this.assertEditalExistsByCodigo(createEditalDto.codigo);
@@ -19,16 +61,12 @@ export class EditalService {
         descricao: createEditalDto.descricao,
         titulacao_min: createEditalDto.titulacao_min,
         tipo: createEditalDto.tipo,
-        validar_indice_min: createEditalDto.validar_indice_min,
-        valor_indice_min: createEditalDto.valor_indice_min,
         limite_solicitacoes_orientador: createEditalDto.limite_solicitacoes_orientador,
         limite_planos_orientador: createEditalDto.limite_planos_orientador,
-        edital_para_voluntarios: createEditalDto.edital_para_voluntarios,
         avaliacao_vigente: createEditalDto.avaliacao_vigente,
         apenas_orient_coordena_plano: createEditalDto.apenas_orient_coordena_plano,
-        apenas_colab_vol_cadastra_plano: createEditalDto.apenas_colab_vol_cadastra_plano,
-        prof_subst_cadastra_proj: createEditalDto.prof_subst_cadastra_proj,
         tec_admin_coord_proj: createEditalDto.tec_admin_coord_proj,
+        divulgar_resultado: createEditalDto.divulgar_resultado,
         categoria: {
           connect: {
             id: createEditalDto.categoria_id,
@@ -51,14 +89,50 @@ export class EditalService {
             fim: createEditalDto.periodo_execucao.fim,
           },
         },
-        ...(createEditalDto.periodo_correcao && {
-          periodo_correcao: {
-            create: {
-              inicio: createEditalDto.periodo_correcao.inicio,
-              fim: createEditalDto.periodo_correcao.fim,
-            },
+        cota_bolsa: {
+          connect: {
+            id: createEditalDto.cota_bolsa_id,
           },
-        }),
+        },
+      },
+    });
+  }
+
+  async uploadAttachment(
+    id: number,
+    file: UploadedEditalFile | undefined,
+  ): Promise<EditalAttachmentResponseDto> {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('Arquivo do edital não informado.');
+    }
+
+    if (!this.isPdfFile(file)) {
+      throw new BadRequestException('Apenas arquivos PDF são permitidos.');
+    }
+
+    await this.assertEditalExists(id);
+    const arquivo = Uint8Array.from(file.buffer);
+    const nome = this.generateAttachmentName(file.originalname);
+    const tipo = 'pdf';
+
+    return this.prisma.anexo_edital.upsert({
+      where: { edital_id: id },
+      create: {
+        edital_id: id,
+        nome,
+        arquivo,
+        tipo,
+      },
+      update: {
+        nome,
+        arquivo,
+        tipo,
+      },
+      select: {
+        id: true,
+        edital_id: true,
+        nome: true,
+        tipo: true,
       },
     });
   }
@@ -127,16 +201,12 @@ export class EditalService {
         descricao: true,
         titulacao_min: true,
         tipo: true,
-        validar_indice_min: true,
-        valor_indice_min: true,
         limite_solicitacoes_orientador: true,
         limite_planos_orientador: true,
-        edital_para_voluntarios: true,
         avaliacao_vigente: true,
         apenas_orient_coordena_plano: true,
-        apenas_colab_vol_cadastra_plano: true,
-        prof_subst_cadastra_proj: true,
         tec_admin_coord_proj: true,
+        divulgar_resultado: true,
         categoria: {
           select: {
             id: true,
@@ -144,13 +214,6 @@ export class EditalService {
           },
         },
         periodo_submissoes: {
-          select: {
-            id: true,
-            inicio: true,
-            fim: true,
-          },
-        },
-        periodo_correcao: {
           select: {
             id: true,
             inicio: true,
@@ -227,16 +290,12 @@ export class EditalService {
         descricao: updateEditalDto.descricao,
         titulacao_min: updateEditalDto.titulacao_min,
         tipo: updateEditalDto.tipo,
-        validar_indice_min: updateEditalDto.validar_indice_min,
-        valor_indice_min: updateEditalDto.valor_indice_min,
         limite_solicitacoes_orientador: updateEditalDto.limite_solicitacoes_orientador,
         limite_planos_orientador: updateEditalDto.limite_planos_orientador,
-        edital_para_voluntarios: updateEditalDto.edital_para_voluntarios,
         avaliacao_vigente: updateEditalDto.avaliacao_vigente,
         apenas_orient_coordena_plano: updateEditalDto.apenas_orient_coordena_plano,
-        apenas_colab_vol_cadastra_plano: updateEditalDto.apenas_colab_vol_cadastra_plano,
-        prof_subst_cadastra_proj: updateEditalDto.prof_subst_cadastra_proj,
         tec_admin_coord_proj: updateEditalDto.tec_admin_coord_proj,
+        divulgar_resultado: updateEditalDto.divulgar_resultado,
         categoria: {
           connect: {
             id: updateEditalDto.categoria_id,
@@ -256,14 +315,7 @@ export class EditalService {
             },
           },
         }),
-        ...(updateEditalDto.periodo_correcao && {
-          periodo_correcao: {
-            update: {
-              data: updateEditalDto.periodo_correcao,
-            },
-          },
-        }),
-        ...(this.updateEditalCotaDistribuicao(id, updateEditalDto)),
+        ...this.updateEditalCotaDistribuicao(id, updateEditalDto),
       },
     });
   }
@@ -305,5 +357,32 @@ export class EditalService {
     if (edital && edital.id != id) {
       throw new ConflictException(`Edital com código ${codigo} já existe`);
     }
+  }
+
+  private async assertEditalExists(id: number): Promise<void> {
+    const edital = await this.prisma.edital.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!edital) {
+      throw new NotFoundException(`Edital com ID ${id} não encontrado`);
+    }
+  }
+
+  private isPdfFile(file: UploadedEditalFile): boolean {
+    const hasPdfMimeType = file.mimetype === 'application/pdf';
+    const hasPdfExtension = file.originalname?.toLowerCase().endsWith('.pdf') ?? false;
+    const hasPdfSignature = file.buffer?.subarray(0, 4).toString('utf8') === '%PDF';
+
+    return hasPdfMimeType && hasPdfExtension && hasPdfSignature;
+  }
+
+  private generateAttachmentName(originalName = 'edital.pdf'): string {
+    const randomSuffix = randomBytes(8).toString('hex');
+    const maxOriginalNameLength = 255 - randomSuffix.length - 1;
+    const normalizedOriginalName = originalName.slice(0, maxOriginalNameLength);
+
+    return `${normalizedOriginalName}-${randomSuffix}`;
   }
 }

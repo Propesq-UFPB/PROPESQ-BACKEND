@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CategoryResponseDto } from './dto/category-response.dto';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { CategoryLookupDto } from './dto/category-lookup.dto';
 
 @Injectable()
 export class CategoryService {
@@ -31,6 +32,16 @@ export class CategoryService {
       offset,
       results: rows.map(row => this.toResponseDto(row)),
     };
+  }
+
+  async getLookup(): Promise<CategoryLookupDto[]> {
+    const rows = await this.prisma.categoria_edital.findMany({
+      where: { ativo: true },
+      select: { id: true, denominacao: true },
+      orderBy: [{ ordem: 'asc' }, { denominacao: 'asc' }],
+    });
+
+    return rows.map(row => ({ id: row.id, name: row.denominacao }));
   }
 
   async findOne(id: number): Promise<CategoryResponseDto> {

@@ -264,9 +264,7 @@ async function upsertUsuarioSeed(user: (typeof USUARIOS_SEED)[number]) {
   });
 
   if (!role) {
-    throw new Error(
-      `Função ${user.roleName} não encontrada; execute o seed de funções primeiro.`,
-    );
+    throw new Error(`Função ${user.roleName} não encontrada; execute o seed de funções primeiro.`);
   }
 
   const existing = await prisma.usuario.findFirst({
@@ -305,68 +303,6 @@ async function seedUsuarios() {
   for (const user of USUARIOS_SEED) {
     await upsertUsuarioSeed(user);
   }
-}
-
-async function ensureCategoriaPadrao() {
-  const categoria = await prisma.categoria_edital.findUnique({
-    where: { denominacao: CategoriaProjeto.CATEGORIA_PADRAO },
-  });
-
-  if (!categoria) {
-    throw new Error('Categoria padrão não encontrada; execute o seed de categoria_edital primeiro.');
-  }
-
-  return categoria;
-}
-
-async function seedEdital(categoriaId: number) {
-  const editalCodigoSeed = 'SEED-EDITAL-001';
-  const editalExistente = await prisma.edital.findUnique({
-    where: { codigo: editalCodigoSeed },
-  });
-
-  if (editalExistente) {
-    console.log(`Edital seed já existente: ${editalExistente.codigo}`);
-    return editalExistente;
-  }
-
-  const year = new Date().getFullYear();
-  const periodoSubmissao = await prisma.periodo_edital.create({
-    data: {
-      inicio: new Date(`${year}-01-01`),
-      fim: new Date(`${year}-06-30`),
-    },
-  });
-  const periodoExecucao = await prisma.periodo_edital.create({
-    data: {
-      inicio: new Date(`${year}-07-01`),
-      fim: new Date(`${year}-12-31`),
-    },
-  });
-
-  const editalSeed = await prisma.edital.create({
-    data: {
-      codigo: editalCodigoSeed,
-      descricao: `Edital PROPESQ 01/${year} (seed)`,
-      titulacao_min: TitulacaoMin.SEM_RESTRICOES,
-      tipo: TipoEdital.PESQUISA,
-      limite_solicitacoes_orientador: 5,
-      limite_planos_orientador: 5,
-      edital_para_voluntarios: true,
-      avaliacao_vigente: false,
-      apenas_orient_coordena_plano: false,
-      apenas_colab_vol_cadastra_plano: false,
-      prof_subst_cadastra_proj: false,
-      tec_admin_coord_proj: false,
-      periodo_submissoes_id: periodoSubmissao.id,
-      periodo_execucao_id: periodoExecucao.id,
-      categoria_id: categoriaId,
-      data_cadastro: new Date(),
-    },
-  });
-
-  console.log(`Edital seed criado: ${editalSeed.codigo}`);
-  return editalSeed;
 }
 
 async function ensurePalavraChave(palavra_chave: string, lingua: Idioma) {
@@ -483,8 +419,175 @@ async function seedEntidadesPesquisa() {
     },
   });
 
-  const categoriaPadrao = await ensureCategoriaPadrao();
-  const editalSeed = await seedEdital(categoriaPadrao.id);
+  const categoriaPadrao = await prisma.categoria_edital.findUnique({
+    where: { denominacao: CategoriaProjeto.CATEGORIA_PADRAO },
+  });
+
+  if (!categoriaPadrao) {
+    throw new Error(
+      'Categoria padrão não encontrada; execute o seed de categoria_edital primeiro.',
+    );
+  }
+
+  const cotaBolsaSeed = await prisma.cota_bolsa.upsert({
+    where: { codigo: 'SEED-COTA-001' },
+    update: {
+      relatorio_anual: true,
+      orgao_financiador: 'PROPESQ',
+      descricao: 'Cota bolsa seed',
+      periodo_validade: {
+        update: {
+          inicio: new Date('2026-04-01T00:00:00.000Z'),
+          fim: new Date('2027-03-31T00:00:00.000Z'),
+        },
+      },
+      periodo_relatorio_parcial: {
+        update: {
+          inicio: new Date('2026-09-01T00:00:00.000Z'),
+          fim: new Date('2026-09-30T00:00:00.000Z'),
+        },
+      },
+      periodo_relatorio_final: {
+        update: {
+          inicio: new Date('2027-03-01T00:00:00.000Z'),
+          fim: new Date('2027-03-31T00:00:00.000Z'),
+        },
+      },
+      periodo_cadastro_voluntario: {
+        update: {
+          inicio: new Date('2026-04-01T00:00:00.000Z'),
+          fim: new Date('2026-04-30T00:00:00.000Z'),
+        },
+      },
+    },
+    create: {
+      codigo: 'SEED-COTA-001',
+      relatorio_anual: true,
+      orgao_financiador: 'PROPESQ',
+      descricao: 'Cota bolsa seed',
+      periodo_validade: {
+        create: {
+          inicio: new Date('2026-04-01T00:00:00.000Z'),
+          fim: new Date('2027-03-31T00:00:00.000Z'),
+        },
+      },
+      periodo_relatorio_parcial: {
+        create: {
+          inicio: new Date('2026-09-01T00:00:00.000Z'),
+          fim: new Date('2026-09-30T00:00:00.000Z'),
+        },
+      },
+      periodo_relatorio_final: {
+        create: {
+          inicio: new Date('2027-03-01T00:00:00.000Z'),
+          fim: new Date('2027-03-31T00:00:00.000Z'),
+        },
+      },
+      periodo_cadastro_voluntario: {
+        create: {
+          inicio: new Date('2026-04-01T00:00:00.000Z'),
+          fim: new Date('2026-04-30T00:00:00.000Z'),
+        },
+      },
+    },
+  });
+
+  await prisma.edital.upsert({
+    where: { codigo: 'SEED-EDITAL-001' },
+    update: {
+      descricao: 'Edital seed de iniciação científica',
+      titulacao_min: TitulacaoMin.DOUTORADO,
+      tipo: TipoEdital.PESQUISA,
+      limite_solicitacoes_orientador: 2,
+      limite_planos_orientador: 4,
+      avaliacao_vigente: true,
+      apenas_orient_coordena_plano: false,
+      tec_admin_coord_proj: false,
+      divulgar_resultado: false,
+      categoria: {
+        connect: {
+          id: categoriaPadrao.id,
+        },
+      },
+      cota_bolsa: {
+        connect: {
+          id: cotaBolsaSeed.id,
+        },
+      },
+      periodo_submissoes: {
+        update: {
+          inicio: new Date('2026-02-01T00:00:00.000Z'),
+          fim: new Date('2026-03-15T00:00:00.000Z'),
+        },
+      },
+      periodo_execucao_rel: {
+        update: {
+          inicio: new Date('2026-04-01T00:00:00.000Z'),
+          fim: new Date('2027-03-31T00:00:00.000Z'),
+        },
+      },
+      edital_cota_distribuicao: {
+        deleteMany: {},
+        create: [
+          {
+            quantidade: 10,
+            fppi_min: 0,
+            media_min_proj: 7,
+            exige_doutorado: true,
+          },
+        ],
+      },
+    },
+    create: {
+      codigo: 'SEED-EDITAL-001',
+      descricao: 'Edital seed de iniciação científica',
+      titulacao_min: TitulacaoMin.DOUTORADO,
+      tipo: TipoEdital.PESQUISA,
+      limite_solicitacoes_orientador: 2,
+      limite_planos_orientador: 4,
+      avaliacao_vigente: true,
+      apenas_orient_coordena_plano: false,
+      tec_admin_coord_proj: false,
+      divulgar_resultado: false,
+      data_cadastro: new Date(),
+      categoria: {
+        connect: {
+          id: categoriaPadrao.id,
+        },
+      },
+      cota_bolsa: {
+        connect: {
+          id: cotaBolsaSeed.id,
+        },
+      },
+      periodo_submissoes: {
+        create: {
+          inicio: new Date('2026-02-01T00:00:00.000Z'),
+          fim: new Date('2026-03-15T00:00:00.000Z'),
+        },
+      },
+      periodo_execucao_rel: {
+        create: {
+          inicio: new Date('2026-04-01T00:00:00.000Z'),
+          fim: new Date('2027-03-31T00:00:00.000Z'),
+        },
+      },
+      edital_cota_distribuicao: {
+        create: [
+          {
+            quantidade: 10,
+            fppi_min: 0,
+            media_min_proj: 7,
+            exige_doutorado: true,
+          },
+        ],
+      },
+    },
+  });
+
+  const editalSeed = await prisma.edital.findUniqueOrThrow({
+    where: { codigo: 'SEED-EDITAL-001' },
+  });
 
   await prisma.edital_unidade_academica.upsert({
     where: {
@@ -499,7 +602,6 @@ async function seedEntidadesPesquisa() {
       unidade_id: unidadeAcademica.id,
     },
   });
-
   await ensurePalavraChave('pesquisa', Idioma.PT);
   await ensurePalavraChave('research', Idioma.EN);
   await ensureAtividadeSeed();

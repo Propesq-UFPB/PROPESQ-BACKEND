@@ -16,6 +16,7 @@ import { EvaluationCriteriaModule } from './evaluation-criteria/evaluation-crite
 import { ResearchEvaluationModule } from './research-evaluation/research-evaluation.module';
 import { DistribuicaoModule } from './distribuicao/distribuicao.module';
 import { FundingAgencyModule } from './funding-agency/funding-agency.module';
+import { UserTypeModule } from './user-type/user-type.module';
 import { ProjectRolesModule } from './project-roles/project-roles.module';
 
 @Module({
@@ -36,6 +37,7 @@ import { ProjectRolesModule } from './project-roles/project-roles.module';
     DistribuicaoModule,
     FundingAgencyModule,
     ProjectRolesModule,
+    UserTypeModule,
   ],
   providers: [
     {

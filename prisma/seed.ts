@@ -5,6 +5,7 @@ import {
   Idioma,
   Prisma,
   PrismaClient,
+  PublicoAlvo,
   SituacaoProjeto,
   TipoEdital,
   TipoProjeto,
@@ -108,6 +109,32 @@ const FUNCOES_PROJETO = [
   },
 ];
 
+const TIPOS_USUARIO_SEED = [
+  {
+    nome: 'Coordenador de Projeto',
+    descricao: 'Pode criar/gerenciar projetos e submeter propostas em editais.',
+    publicos: [
+      PublicoAlvo.DOCENTE,
+      PublicoAlvo.TECNICO_ADMINISTRATIVO,
+      PublicoAlvo.POS_DOUTORANDO,
+    ],
+  },
+  {
+    nome: 'Discente',
+    descricao: 'Participação em projetos como bolsista/voluntário.',
+    publicos: [
+      PublicoAlvo.DISCENTE_UFPB_MEDIO,
+      PublicoAlvo.DISCENTE_UFPB_SUPERIOR,
+      PublicoAlvo.DISCENTE_EXTERNO_SEM_SIGAA,
+    ],
+  },
+  {
+    nome: 'Gestor',
+    descricao: 'Gestão de editais, relatórios e acompanhamento institucional.',
+    publicos: [PublicoAlvo.TECNICO_ADMINISTRATIVO, PublicoAlvo.DOCENTE],
+  },
+];
+
 const BOLSAS_SEED = [
   { descricao: 'PIBIC', orgaoNome: 'CNPq', valor: 700, permite_acumulo: false },
   { descricao: 'PIBITI', orgaoNome: 'CNPq', valor: 700, permite_acumulo: false },
@@ -207,6 +234,23 @@ async function seedFuncoesProjeto() {
     });
   }
   console.log('Seed de funções de projeto finalizado com sucesso!');
+}
+
+async function seedTiposUsuario() {
+  console.log('Iniciando seed de tipos de usuário...');
+  for (const tipo of TIPOS_USUARIO_SEED) {
+    await prisma.tipo_usuario.upsert({
+      where: { nome: tipo.nome },
+      update: {},
+      create: {
+        nome: tipo.nome,
+        descricao: tipo.descricao,
+        publicos: tipo.publicos,
+        ativo: true,
+      },
+    });
+  }
+  console.log('Seed de tipos de usuário finalizado com sucesso!');
 }
 
 async function seedBolsas() {
@@ -616,6 +660,7 @@ async function main() {
   await seedCategoriasEdital();
   await seedOrgaosFinanciadores();
   await seedFuncoesProjeto();
+  await seedTiposUsuario();
   await seedBolsas();
   await seedUsuarios();
   await seedEntidadesPesquisa();

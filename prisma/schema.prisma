@@ -451,10 +451,27 @@ model categoria_edital {
   projetos_pesquisa projeto_pesquisa[]
 }
 
+model tipo_usuario {
+  id        Int           @id @default(autoincrement())
+  nome      String        @unique @db.VarChar(255)
+  descricao String?       @db.Text
+  publicos  PublicoAlvo[]
+  ativo     Boolean       @default(true)
+}
+
 // ENUMS
 enum Idioma {
   PT
   EN
+}
+
+enum PublicoAlvo {
+  DOCENTE
+  TECNICO_ADMINISTRATIVO
+  POS_DOUTORANDO
+  DISCENTE_UFPB_MEDIO
+  DISCENTE_UFPB_SUPERIOR
+  DISCENTE_EXTERNO_SEM_SIGAA
 }
 
 enum TipoProjeto {

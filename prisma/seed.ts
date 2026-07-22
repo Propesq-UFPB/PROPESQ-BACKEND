@@ -7,8 +7,10 @@ import {
   PrismaClient,
   PublicoAlvo,
   SituacaoProjeto,
+  StatusRelatorio,
   TipoEdital,
   TipoProjeto,
+  TipoRelatorio,
   TitulacaoMin,
 } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -384,37 +386,46 @@ async function ensureAtividadeSeed() {
   });
 }
 
-async function seedProjetoPesquisa(unidadeId: number, categoriaId: number) {
+async function seedProjetoPesquisa(unidadeId: number, categoriaId: number, editalId: number) {
   try {
     const projetoSeed = await prisma.projeto_pesquisa.findFirst({
       where: { codigo: 'SEED-PROJ-001' },
     });
 
+    const dataFim = new Date('2026-08-15T00:00:00.000Z');
+
     if (!projetoSeed) {
-      await prisma.projeto_pesquisa.create({
+      return prisma.projeto_pesquisa.create({
         data: {
           codigo: 'SEED-PROJ-001',
           tipo: TipoProjeto.INTERNO,
-          titulo: 'Projeto Seed',
-          title: 'Seed Project',
+          titulo: 'Projeto Seed Ativo',
+          title: 'Active Seed Project',
           categoria_id: categoriaId,
-          situacao: SituacaoProjeto.SUBMETIDO,
+          situacao: SituacaoProjeto.EM_EXECUCAO,
           email: 'dev@example.com',
           unidade_id: unidadeId,
-          vigencia: new Date(),
+          edital_id: editalId,
+          data_inicio: new Date('2026-04-01T00:00:00.000Z'),
+          data_fim: dataFim,
+          vigencia: dataFim,
           data_cadastro: new Date(),
         },
       });
-      return;
     }
 
-    if (projetoSeed.categoria_id === categoriaId) {
-      return;
-    }
-
-    await prisma.projeto_pesquisa.update({
+    return prisma.projeto_pesquisa.update({
       where: { id: projetoSeed.id },
-      data: { categoria_id: categoriaId },
+      data: {
+        categoria_id: categoriaId,
+        situacao: SituacaoProjeto.EM_EXECUCAO,
+        edital_id: editalId,
+        titulo: 'Projeto Seed Ativo',
+        title: 'Active Seed Project',
+        data_inicio: new Date('2026-04-01T00:00:00.000Z'),
+        data_fim: dataFim,
+        vigencia: dataFim,
+      },
     });
   } catch (error: unknown) {
     const prismaError = error as { code?: string };
@@ -422,10 +433,120 @@ async function seedProjetoPesquisa(unidadeId: number, categoriaId: number) {
       console.warn(
         'Seed de projeto de pesquisa ignorado: estrutura de projeto_pesquisa no banco está desatualizada em relação ao schema Prisma.',
       );
-      return;
+      return null;
     }
     throw error;
   }
+}
+
+async function seedDashboardDados(projetoId: number) {
+  console.log('Iniciando seed de dados do dashboard...');
+
+  const aluno = await prisma.usuario.findFirst({
+    where: { email: 'aluno@exemplo.com' },
+  });
+  const coordenador = await prisma.usuario.findFirst({
+    where: { email: 'coordenador@exemplo.com' },
+  });
+  const funcaoBolsista = await prisma.funcao_projeto.findUnique({
+    where: { nome: 'Bolsista' },
+  });
+
+  if (!aluno || !coordenador || !funcaoBolsista) {
+    throw new Error(
+      'Usuários ou função Bolsista não encontrados; execute o seed de usuários/funções de projeto primeiro.',
+    );
+  }
+
+  await prisma.membro_projeto.upsert({
+    where: {
+      projeto_pesquisa_id_usuario_id_funcao_projeto_id: {
+        projeto_pesquisa_id: projetoId,
+        usuario_id: aluno.id,
+        funcao_projeto_id: funcaoBolsista.id,
+      },
+    },
+    update: { ativo: true },
+    create: {
+      projeto_pesquisa_id: projetoId,
+      usuario_id: aluno.id,
+      funcao_projeto_id: funcaoBolsista.id,
+      ativo: true,
+    },
+  });
+
+  const relatorioParcial = await prisma.relatorio.findFirst({
+    where: {
+      projeto_pesquisa_id: projetoId,
+      tipo: TipoRelatorio.PARCIAL,
+      status: StatusRelatorio.PENDENTE,
+    },
+  });
+
+  if (!relatorioParcial) {
+    await prisma.relatorio.create({
+      data: {
+        projeto_pesquisa_id: projetoId,
+        tipo: TipoRelatorio.PARCIAL,
+        status: StatusRelatorio.PENDENTE,
+        prazo_fim: new Date('2026-08-20T00:00:00.000Z'),
+      },
+    });
+  }
+
+  const relatorioFinal = await prisma.relatorio.findFirst({
+    where: {
+      projeto_pesquisa_id: projetoId,
+      tipo: TipoRelatorio.FINAL,
+    },
+  });
+
+  if (!relatorioFinal) {
+    await prisma.relatorio.create({
+      data: {
+        projeto_pesquisa_id: projetoId,
+        tipo: TipoRelatorio.FINAL,
+        status: StatusRelatorio.PENDENTE,
+        prazo_fim: new Date('2026-09-30T00:00:00.000Z'),
+      },
+    });
+  }
+
+  await prisma.certificado.upsert({
+    where: { codigo: 'SEED-CERT-001' },
+    update: {
+      usuario_id: aluno.id,
+      projeto_pesquisa_id: projetoId,
+      tipo: 'Participação como Bolsista',
+      emitido_em: new Date('2026-06-01T00:00:00.000Z'),
+    },
+    create: {
+      codigo: 'SEED-CERT-001',
+      usuario_id: aluno.id,
+      projeto_pesquisa_id: projetoId,
+      tipo: 'Participação como Bolsista',
+      emitido_em: new Date('2026-06-01T00:00:00.000Z'),
+    },
+  });
+
+  await prisma.certificado.upsert({
+    where: { codigo: 'SEED-CERT-002' },
+    update: {
+      usuario_id: coordenador.id,
+      projeto_pesquisa_id: projetoId,
+      tipo: 'Orientação de Projeto',
+      emitido_em: new Date('2026-06-15T00:00:00.000Z'),
+    },
+    create: {
+      codigo: 'SEED-CERT-002',
+      usuario_id: coordenador.id,
+      projeto_pesquisa_id: projetoId,
+      tipo: 'Orientação de Projeto',
+      emitido_em: new Date('2026-06-15T00:00:00.000Z'),
+    },
+  });
+
+  console.log('Seed de dados do dashboard finalizado com sucesso!');
 }
 
 async function seedEntidadesPesquisa() {
@@ -649,7 +770,11 @@ async function seedEntidadesPesquisa() {
   await ensurePalavraChave('pesquisa', Idioma.PT);
   await ensurePalavraChave('research', Idioma.EN);
   await ensureAtividadeSeed();
-  await seedProjetoPesquisa(unidadeAcademica.id, categoriaPadrao.id);
+  const projeto = await seedProjetoPesquisa(unidadeAcademica.id, categoriaPadrao.id, editalSeed.id);
+
+  if (projeto) {
+    await seedDashboardDados(projeto.id);
+  }
 
   console.log('Seed de entidades relacionadas a pesquisa finalizado com sucesso!');
 }

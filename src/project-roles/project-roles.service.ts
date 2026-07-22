@@ -100,7 +100,16 @@ export class ProjectRolesService {
   async remove(id: number): Promise<void> {
     await this.findOne(id);
 
-    // Quando houver FK de membros de projeto, validar uso e retornar 409.
+    const membersCount = await this.prisma.membro_projeto.count({
+      where: { funcao_projeto_id: id },
+    });
+
+    if (membersCount > 0) {
+      throw new ConflictException(
+        'Não é possível remover a função: ela está em uso em membros de projeto.',
+      );
+    }
+
     await this.prisma.funcao_projeto.delete({
       where: { id },
     });

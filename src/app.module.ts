@@ -18,6 +18,10 @@ import { DistribuicaoModule } from './distribuicao/distribuicao.module';
 import { FundingAgencyModule } from './funding-agency/funding-agency.module';
 import { UserTypeModule } from './user-type/user-type.module';
 import { ProjectRolesModule } from './project-roles/project-roles.module';
+import { ProjectMembersModule } from './project-members/project-members.module';
+import { ReportsModule } from './reports/reports.module';
+import { CertificatesModule } from './certificates/certificates.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -38,6 +42,10 @@ import { ProjectRolesModule } from './project-roles/project-roles.module';
     FundingAgencyModule,
     ProjectRolesModule,
     UserTypeModule,
+    ProjectMembersModule,
+    ReportsModule,
+    CertificatesModule,
+    DashboardModule,
   ],
   providers: [
     {

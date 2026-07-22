@@ -272,6 +272,9 @@ model projeto_pesquisa {
   historico_avaliacao historico_avaliacao[]
   categoria           categoria_edital             @relation(fields: [categoria_id], references: [id])
   projeto_avaliacao   projeto_avaliacao[]
+  membros             membro_projeto[]
+  relatorios          relatorio[]
+  certificados        certificado[]
 }
 
 model historico_avaliacao {
@@ -375,6 +378,8 @@ model usuario {
   projetos_avaliados  projeto_pesquisa[]    @relation("avaliador_projeto")
   historico_avaliacao historico_avaliacao[] @relation("avaliador_historico")
   projeto_avaliacao   projeto_avaliacao[]   @relation("avaliador_projeto_avaliacao")
+  membros_projeto     membro_projeto[]
+  certificados        certificado[]
 }
 
 model cota_bolsa {
@@ -420,6 +425,47 @@ model funcao_projeto {
   ativo         Boolean                @default(true)
   criado_em     DateTime               @default(now()) @db.Timestamp(6)
   atualizado_em DateTime               @default(now()) @updatedAt @db.Timestamp(6)
+  membros       membro_projeto[]
+}
+
+model membro_projeto {
+  id                  Int              @id @default(autoincrement())
+  projeto_pesquisa_id Int
+  usuario_id          Int
+  funcao_projeto_id   Int
+  ativo               Boolean          @default(true)
+  criado_em           DateTime         @default(now()) @db.Timestamp(6)
+
+  projeto_pesquisa projeto_pesquisa @relation(fields: [projeto_pesquisa_id], references: [id], onDelete: Cascade)
+  usuario          usuario          @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  funcao_projeto   funcao_projeto   @relation(fields: [funcao_projeto_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([projeto_pesquisa_id, usuario_id, funcao_projeto_id])
+}
+
+model relatorio {
+  id                  Int             @id @default(autoincrement())
+  projeto_pesquisa_id Int
+  tipo                TipoRelatorio
+  status              StatusRelatorio @default(PENDENTE)
+  prazo_fim           DateTime        @db.Date
+  enviado_em          DateTime?       @db.Timestamp(6)
+  criado_em           DateTime        @default(now()) @db.Timestamp(6)
+
+  projeto_pesquisa projeto_pesquisa @relation(fields: [projeto_pesquisa_id], references: [id], onDelete: Cascade)
+}
+
+model certificado {
+  id                  Int       @id @default(autoincrement())
+  usuario_id          Int
+  projeto_pesquisa_id Int?
+  tipo                String    @db.VarChar(255)
+  codigo              String    @unique @db.VarChar(255)
+  emitido_em          DateTime  @db.Timestamp(6)
+  criado_em           DateTime  @default(now()) @db.Timestamp(6)
+
+  usuario          usuario           @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  projeto_pesquisa projeto_pesquisa? @relation(fields: [projeto_pesquisa_id], references: [id], onDelete: SetNull)
 }
 
 model bolsa {
@@ -566,4 +612,17 @@ enum CategoriaFuncaoProjeto {
   EXTERNO
   GESTAO
   OUTRO
+}
+
+enum TipoRelatorio {
+  PARCIAL
+  FINAL
+  ANUAL
+}
+
+enum StatusRelatorio {
+  PENDENTE
+  ENVIADO
+  APROVADO
+  REJEITADO
 }

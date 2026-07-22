@@ -22,6 +22,7 @@ import { ProjectMembersModule } from './project-members/project-members.module';
 import { ReportsModule } from './reports/reports.module';
 import { CertificatesModule } from './certificates/certificates.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { ResearchModuleParametersModule } from './research-module-parameters/research-module-parameters.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     ReportsModule,
     CertificatesModule,
     DashboardModule,
+    ResearchModuleParametersModule,
   ],
   providers: [
     {

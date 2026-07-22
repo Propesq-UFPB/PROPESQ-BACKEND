@@ -779,6 +779,29 @@ async function seedEntidadesPesquisa() {
   console.log('Seed de entidades relacionadas a pesquisa finalizado com sucesso!');
 }
 
+async function seedParametrosModuloPesquisa() {
+  console.log('Iniciando seed de parâmetros do módulo de pesquisa...');
+  await prisma.parametro_modulo_pesquisa.upsert({
+    where: { id: 1 },
+    update: {},
+    create: {
+      id: 1,
+      late_submission_tolerance_days: 0,
+      max_renewals_per_project: 0,
+      max_project_duration_months: 12,
+      max_quota_requests_per_project: 1,
+      max_work_plans_per_advisor: 5,
+      scholarship_change_cutoff_day: 20,
+      email_scholarship_changes: '',
+      email_invention_notifications: '',
+      allow_partial_reports_ic: false,
+      allow_independent_enic_summaries: false,
+      enic_summaries_per_reviewer: 5,
+    },
+  });
+  console.log('Seed de parâmetros do módulo de pesquisa finalizado com sucesso!');
+}
+
 async function main() {
   await seedFuncoes();
   await seedObjetivosSustentavel();
@@ -789,6 +812,7 @@ async function main() {
   await seedBolsas();
   await seedUsuarios();
   await seedEntidadesPesquisa();
+  await seedParametrosModuloPesquisa();
 }
 
 main()

@@ -468,6 +468,22 @@ model certificado {
   projeto_pesquisa projeto_pesquisa? @relation(fields: [projeto_pesquisa_id], references: [id], onDelete: SetNull)
 }
 
+model parametro_modulo_pesquisa {
+  id                               Int      @id @default(1)
+  late_submission_tolerance_days   Int      @default(0)
+  max_renewals_per_project         Int      @default(0)
+  max_project_duration_months      Int      @default(12)
+  max_quota_requests_per_project   Int      @default(1)
+  max_work_plans_per_advisor       Int      @default(5)
+  scholarship_change_cutoff_day    Int      @default(20)
+  email_scholarship_changes        String   @default("") @db.VarChar(255)
+  email_invention_notifications    String   @default("") @db.VarChar(255)
+  allow_partial_reports_ic         Boolean  @default(false)
+  allow_independent_enic_summaries Boolean  @default(false)
+  enic_summaries_per_reviewer      Int      @default(5)
+  atualizado_em                    DateTime @default(now()) @updatedAt @db.Timestamp(6)
+}
+
 model bolsa {
   id                          Int                @id @default(autoincrement())
   descricao                   String             @db.Text

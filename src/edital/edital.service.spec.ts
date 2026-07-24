@@ -194,8 +194,8 @@ describe('EditalService', () => {
     await service.update(1, {
       titulo: 'Novo título',
       periodo_execucao: {
-        inicio: new Date('2026-09-01'),
-        fim: new Date('2027-08-31'),
+        inicio: '2026-09-01',
+        fim: '2027-08-31',
       },
       status: StatusEdital.PUBLICADO,
     });
@@ -208,8 +208,8 @@ describe('EditalService', () => {
         periodo_execucao_rel: {
           update: {
             data: {
-              inicio: new Date('2026-09-01'),
-              fim: new Date('2027-08-31'),
+              inicio: new Date('2026-09-01T00:00:00.000Z'),
+              fim: new Date('2027-08-31T00:00:00.000Z'),
             },
           },
         },

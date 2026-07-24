@@ -297,6 +297,7 @@ export class EditalService {
 
   async update(id: number, updateEditalDto: UpdateEditalDto) {
     await this.findOne(id);
+    const periodoExecucao = this.normalizeExecutionPeriod(updateEditalDto.periodo_execucao);
 
     await this.prisma.edital.update({
       where: { id },
@@ -307,10 +308,10 @@ export class EditalService {
         ...(updateEditalDto.status !== undefined && {
           status: updateEditalDto.status,
         }),
-        ...(updateEditalDto.periodo_execucao && {
+        ...(periodoExecucao && {
           periodo_execucao_rel: {
             update: {
-              data: updateEditalDto.periodo_execucao,
+              data: periodoExecucao,
             },
           },
         }),
@@ -397,5 +398,29 @@ export class EditalService {
       .normalize('NFD')
       .replace(/\p{Diacritic}/gu, '')
       .toLocaleLowerCase('pt-BR');
+  }
+
+  private normalizeExecutionPeriod(period?: {
+    inicio?: string;
+    fim?: string;
+  }): { inicio?: Date; fim?: Date } | undefined {
+    if (!period) return undefined;
+
+    const normalized = {
+      ...(period.inicio !== undefined && {
+        inicio: this.toPrismaDate(period.inicio),
+      }),
+      ...(period.fim !== undefined && {
+        fim: this.toPrismaDate(period.fim),
+      }),
+    };
+
+    return Object.keys(normalized).length > 0 ? normalized : undefined;
+  }
+
+  private toPrismaDate(value: string): Date {
+    const normalizedValue = /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00.000Z` : value;
+
+    return new Date(normalizedValue);
   }
 }

@@ -19,7 +19,7 @@ class UpdatePeriodoExecucaoDto {
   })
   @IsOptional()
   @IsDateString()
-  inicio?: Date;
+  inicio?: string;
 
   @ApiPropertyOptional({
     type: 'string',
@@ -29,7 +29,7 @@ class UpdatePeriodoExecucaoDto {
   })
   @IsOptional()
   @IsDateString()
-  fim?: Date;
+  fim?: string;
 }
 
 export class UpdateEditalDto {

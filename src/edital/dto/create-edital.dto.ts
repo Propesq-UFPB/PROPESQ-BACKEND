@@ -1,4 +1,4 @@
-import { TipoEdital, TitulacaoMin } from '@prisma/client';
+import { StatusEdital, TipoEdital, TitulacaoMin } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -6,8 +6,8 @@ import {
   IsDateString,
   IsEnum,
   IsInt,
+  IsIn,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
   Min,
@@ -38,6 +38,15 @@ export class CreateEditalDto {
   @IsNotEmpty()
   @IsString()
   descricao: string;
+
+  @ApiProperty({
+    required: true,
+    enum: [StatusEdital.RASCUNHO, StatusEdital.PUBLICADO],
+    description: 'Define se o edital será salvo como rascunho ou publicado imediatamente.',
+  })
+  @IsNotEmpty()
+  @IsIn([StatusEdital.RASCUNHO, StatusEdital.PUBLICADO])
+  status: StatusEdital;
 
   @ApiProperty({ required: true, enum: TitulacaoMin })
   @IsNotEmpty()

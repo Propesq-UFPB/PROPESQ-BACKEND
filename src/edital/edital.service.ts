@@ -9,12 +9,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateEditalDto } from './dto/create-edital.dto';
 import { PaginatedResult } from '../common/dto/paginated.dto';
 import { UpdateEditalDto } from './dto/update-edital.dto';
-import { TitulacaoMinMapper } from '../common/mapper/titulacao-min.mapper';
-import { TipoEdital } from '@prisma/client';
+import { Prisma, StatusEdital, TipoEdital } from '@prisma/client';
 import { TipoEditalMapper } from '../common/mapper/tipo-edital.mapper';
 import { EditalTypeLookupDto } from './dto/edital-type-lookup.dto';
 import { EditalAttachmentResponseDto } from './dto/edital-attachment-response.dto';
 import { EditalLookupDto } from './dto/edital-lookup.dto';
+import { EditalStatusLookupDto } from './dto/edital-status-lookup.dto';
+import { StatusEditalMapper } from '../common/mapper/status-edital.mapper';
+import { EditalListItemDto } from './dto/edital-list-item.dto';
 
 type UploadedEditalFile = {
   buffer?: Buffer;
@@ -30,6 +32,13 @@ export class EditalService {
     return Object.values(TipoEdital).map(tipo => ({
       id: tipo,
       name: TipoEditalMapper[tipo],
+    }));
+  }
+
+  getStatusLookup(): EditalStatusLookupDto[] {
+    return Object.values(StatusEdital).map(status => ({
+      id: status,
+      name: StatusEditalMapper[status],
     }));
   }
 
@@ -59,6 +68,7 @@ export class EditalService {
         data_cadastro: new Date(),
         codigo: createEditalDto.codigo,
         descricao: createEditalDto.descricao,
+        status: createEditalDto.status,
         titulacao_min: createEditalDto.titulacao_min,
         tipo: createEditalDto.tipo,
         limite_solicitacoes_orientador: createEditalDto.limite_solicitacoes_orientador,
@@ -137,28 +147,32 @@ export class EditalService {
     });
   }
 
-  async findMany(limit: number, offset: number): Promise<PaginatedResult<unknown>> {
+  async findMany(
+    limit: number,
+    offset: number,
+    search?: string,
+  ): Promise<PaginatedResult<EditalListItemDto>> {
+    const where = this.buildSearchWhere(search);
+
     const [editais, total] = await Promise.all([
       this.prisma.edital.findMany({
+        ...(where && { where }),
         select: {
           id: true,
           descricao: true,
-          periodo_submissoes: {
+          status: true,
+          periodo_execucao_rel: {
             select: {
               inicio: true,
               fim: true,
             },
-          },
-          titulacao_min: true,
-          edital_unidade_academica: {
-            select: { unidade_id: true },
           },
         },
         skip: offset,
         take: limit,
         orderBy: { id: 'asc' },
       }),
-      this.prisma.edital.count(),
+      this.prisma.edital.count(where ? { where } : undefined),
     ]);
 
     return {
@@ -169,16 +183,17 @@ export class EditalService {
     };
   }
 
-  private formatEdital(edital: any) {
+  private formatEdital(edital: {
+    id: number;
+    descricao: string;
+    status: StatusEdital;
+    periodo_execucao_rel: { inicio: Date; fim: Date };
+  }): EditalListItemDto {
     return {
       id: edital.id,
-      descricao: edital.descricao,
-      periodo_submissoes_inicio: edital.periodo_submissoes.inicio.toLocaleDateString('pt-br'),
-      periodo_submissoes_fim: edital.periodo_submissoes.fim.toLocaleDateString('pt-br'),
-      titulacao_min: TitulacaoMinMapper[edital.titulacao_min],
-      unidade_ids: (edital.edital_unidade_academica ?? []).map(
-        (row: { unidade_id: number }) => row.unidade_id,
-      ),
+      titulo: edital.descricao,
+      periodo_execucao: `${this.formatDate(edital.periodo_execucao_rel.inicio)} a ${this.formatDate(edital.periodo_execucao_rel.fim)}`,
+      status: edital.status,
     };
   }
 
@@ -199,6 +214,7 @@ export class EditalService {
         id: true,
         codigo: true,
         descricao: true,
+        status: true,
         titulacao_min: true,
         tipo: true,
         limite_solicitacoes_orientador: true,
@@ -281,71 +297,26 @@ export class EditalService {
 
   async update(id: number, updateEditalDto: UpdateEditalDto) {
     await this.findOne(id);
-    await this.assertEditalExistsByCodigo(updateEditalDto.codigo, id);
+    const periodoExecucao = this.normalizeExecutionPeriod(updateEditalDto.periodo_execucao);
 
     await this.prisma.edital.update({
       where: { id },
       data: {
-        codigo: updateEditalDto.codigo,
-        descricao: updateEditalDto.descricao,
-        titulacao_min: updateEditalDto.titulacao_min,
-        tipo: updateEditalDto.tipo,
-        limite_solicitacoes_orientador: updateEditalDto.limite_solicitacoes_orientador,
-        limite_planos_orientador: updateEditalDto.limite_planos_orientador,
-        avaliacao_vigente: updateEditalDto.avaliacao_vigente,
-        apenas_orient_coordena_plano: updateEditalDto.apenas_orient_coordena_plano,
-        tec_admin_coord_proj: updateEditalDto.tec_admin_coord_proj,
-        divulgar_resultado: updateEditalDto.divulgar_resultado,
-        categoria: {
-          connect: {
-            id: updateEditalDto.categoria_id,
-          },
-        },
-        ...(updateEditalDto.periodo_submissao && {
-          periodo_submissoes: {
-            update: {
-              data: updateEditalDto.periodo_submissao,
-            },
-          },
+        ...(updateEditalDto.titulo !== undefined && {
+          descricao: updateEditalDto.titulo,
         }),
-        ...(updateEditalDto.periodo_execucao && {
+        ...(updateEditalDto.status !== undefined && {
+          status: updateEditalDto.status,
+        }),
+        ...(periodoExecucao && {
           periodo_execucao_rel: {
             update: {
-              data: updateEditalDto.periodo_execucao,
+              data: periodoExecucao,
             },
           },
         }),
-        ...this.updateEditalCotaDistribuicao(id, updateEditalDto),
       },
     });
-  }
-
-  updateEditalCotaDistribuicao(id: number, updateEditalDto: UpdateEditalDto) {
-    const update_data =
-      updateEditalDto.update_edital_cota_distribuicao
-        ?.filter(cota => cota.id !== undefined)
-        .map(cota => {
-          const { id: cota_id, ...data } = cota;
-          return {
-            where: { id: cota_id },
-            data,
-          };
-        }) ?? [];
-
-    const create_data = updateEditalDto.create_edital_cota_distribuicao ?? [];
-    const delete_ids = updateEditalDto.delete_cota_distribuicao ?? [];
-
-    if (!update_data.length && !create_data.length && !delete_ids.length) {
-      return undefined;
-    }
-
-    return {
-      edital_cota_distribuicao: {
-        ...(update_data.length && { update: update_data }),
-        ...(create_data.length && { createMany: { data: create_data } }),
-        ...(delete_ids.length && { deleteMany: { id: { in: delete_ids }, id_edital: id } }),
-      },
-    };
   }
 
   // Verifica se código já existe, se sim, existe um conflito
@@ -384,5 +355,72 @@ export class EditalService {
     const normalizedOriginalName = originalName.slice(0, maxOriginalNameLength);
 
     return `${normalizedOriginalName}-${randomSuffix}`;
+  }
+
+  private formatDate(date: Date): string {
+    return date.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+  }
+
+  private buildSearchWhere(search?: string): Prisma.editalWhereInput | undefined {
+    const term = search?.trim();
+    if (!term) return undefined;
+
+    const normalizedTerm = this.normalizeSearchTerm(term);
+    const matchingStatuses = Object.values(StatusEdital).filter(status =>
+      [status, StatusEditalMapper[status]].some(value =>
+        this.normalizeSearchTerm(value).includes(normalizedTerm),
+      ),
+    );
+
+    return {
+      OR: [
+        {
+          descricao: {
+            contains: term,
+            mode: 'insensitive',
+          },
+        },
+        ...(matchingStatuses.length > 0
+          ? [
+              {
+                status: {
+                  in: matchingStatuses,
+                },
+              },
+            ]
+          : []),
+      ],
+    };
+  }
+
+  private normalizeSearchTerm(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .toLocaleLowerCase('pt-BR');
+  }
+
+  private normalizeExecutionPeriod(period?: {
+    inicio?: string;
+    fim?: string;
+  }): { inicio?: Date; fim?: Date } | undefined {
+    if (!period) return undefined;
+
+    const normalized = {
+      ...(period.inicio !== undefined && {
+        inicio: this.toPrismaDate(period.inicio),
+      }),
+      ...(period.fim !== undefined && {
+        fim: this.toPrismaDate(period.fim),
+      }),
+    };
+
+    return Object.keys(normalized).length > 0 ? normalized : undefined;
+  }
+
+  private toPrismaDate(value: string): Date {
+    const normalizedValue = /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00.000Z` : value;
+
+    return new Date(normalizedValue);
   }
 }

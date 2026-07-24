@@ -110,6 +110,7 @@ model edital {
   id                             Int           @id @default(autoincrement())
   codigo                         String?       @unique @db.VarChar(255)
   descricao                      String        @db.Text
+  status                         StatusEdital  @default(RASCUNHO)
   cota_bolsa_id                  Int
   titulacao_min                  TitulacaoMin
   tipo                           TipoEdital
@@ -620,6 +621,13 @@ enum TipoEdital {
   EXTENSAO
   ENSINO_POS_GRADUACAO
   OUTRO
+}
+
+enum StatusEdital {
+  RASCUNHO
+  PUBLICADO
+  ENCERRADO
+  ARQUIVADO
 }
 
 enum CategoriaFuncaoProjeto {

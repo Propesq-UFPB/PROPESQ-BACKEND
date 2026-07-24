@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Delete,
   Get,
   HttpCode,
@@ -25,6 +26,7 @@ import {
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
+  ApiOperation,
   ApiParam,
   ApiQuery,
   ApiTags,
@@ -37,6 +39,9 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { EditalTypeLookupDto } from './dto/edital-type-lookup.dto';
 import { EditalAttachmentResponseDto } from './dto/edital-attachment-response.dto';
 import { EditalLookupDto } from './dto/edital-lookup.dto';
+import { EditalStatusLookupDto } from './dto/edital-status-lookup.dto';
+import { EditalListItemDto } from './dto/edital-list-item.dto';
+import { Paginated, PaginatedResult } from '../common/dto/paginated.dto';
 
 type UploadedEditalFile = {
   buffer?: Buffer;
@@ -53,6 +58,9 @@ export class EditalController {
   @Post()
   @UseGuards(RolesGuard)
   @Roles('ADMIN', 'GESTOR')
+  @ApiOperation({
+    summary: 'Cadastra um edital como rascunho ou o publica imediatamente',
+  })
   @ApiCreatedResponse({ description: 'Edital cadastrado com sucesso.' })
   async create(@Body() createEditalDto: CreateEditalDto) {
     return this.editalService.create(createEditalDto);
@@ -65,6 +73,16 @@ export class EditalController {
   })
   getTypeLookup(): EditalTypeLookupDto[] {
     return this.editalService.getTypeLookup();
+  }
+
+  @Get('status/lookup')
+  @ApiOperation({ summary: 'Lista os status disponíveis para editais' })
+  @ApiOkResponse({
+    description: 'Status de edital retornados com sucesso.',
+    type: [EditalStatusLookupDto],
+  })
+  getStatusLookup(): EditalStatusLookupDto[] {
+    return this.editalService.getStatusLookup();
   }
 
   @Get('lookup')
@@ -110,16 +128,31 @@ export class EditalController {
   @Get(':id')
   @ApiOkResponse({ description: 'Edital retornado com sucesso' })
   @ApiNotFoundResponse({ description: 'Edital não encontrado' })
-  async findOne(@Param('id') id: number) {
+  async findOne(@Param('id', ParseIntPipe) id: number) {
     return this.editalService.findOne(id);
   }
 
   @Get()
-  @ApiOkResponse({ description: 'Editais retornados com sucesso' })
+  @ApiOperation({ summary: 'Lista editais com título, período de execução e status' })
+  @ApiOkResponse({
+    description: 'Editais retornados com sucesso',
+    type: Paginated(EditalListItemDto),
+  })
   @ApiQuery({ name: 'limit', required: false, type: Number, default: 10 })
   @ApiQuery({ name: 'offset', required: false, type: Number, default: 0 })
-  async findMany(@Query('limit') limit: string, @Query('offset') offset: string) {
-    return this.editalService.findMany(+limit, +offset);
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Pesquisa parcial pelo título ou status do edital.',
+    example: 'publicado',
+  })
+  async findMany(
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
+    @Query('search') search?: string,
+  ): Promise<PaginatedResult<EditalListItemDto>> {
+    return this.editalService.findMany(limit, offset, search);
   }
 
   @Delete(':id')
@@ -128,7 +161,7 @@ export class EditalController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({ description: 'Edital deletado com sucesso' })
   @ApiNotFoundResponse({ description: 'Edital não encontrado' })
-  async delete(@Param('id') id: number) {
+  async delete(@Param('id', ParseIntPipe) id: number) {
     return this.editalService.delete(id);
   }
 
@@ -138,8 +171,14 @@ export class EditalController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({ description: 'Edital atualizado com sucesso' })
   @ApiNotFoundResponse({ description: 'Edital não encontrado' })
-  async update(@Param('id') id: number, @Body() updateEditalDto: UpdateEditalDto) {
-    return this.editalService.update(id, updateEditalDto);
+  @ApiOperation({
+    summary: 'Atualiza o título, o período de execução ou o status do edital',
+  })
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateEditalDto: UpdateEditalDto,
+  ): Promise<void> {
+    await this.editalService.update(id, updateEditalDto);
   }
 
   @Put(':id/academic-units')

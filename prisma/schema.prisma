@@ -92,10 +92,64 @@ model corpo_projeto {
 }
 
 model discente {
-  id             Int              @id @default(autoincrement())
-  usuario_id     Int
-  usuario        usuario          @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  plano_trabalho plano_trabalho[]
+  id                       Int                        @id @default(autoincrement())
+  usuario_id               Int
+  matricula                String?                    @db.VarChar(50)
+  lattes_url               String?                    @db.VarChar(500)
+  usuario                  usuario                    @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  plano_trabalho           plano_trabalho[]
+  interesses_plano         interesse_plano_trabalho[]
+  perfil                   perfil_discente?
+}
+
+model perfil_discente {
+  id                  Int       @id @default(autoincrement())
+  discente_id         Int       @unique
+  data_nascimento     DateTime? @db.Date
+  sexo                String?   @db.VarChar(20)
+  raca                String?   @db.VarChar(50)
+  estado_civil        String?   @db.VarChar(50)
+  nacionalidade       String?   @db.VarChar(100)
+  naturalidade        String?   @db.VarChar(150)
+  tipo_sanguineo      String?   @db.VarChar(10)
+  nome_pai            String?   @db.VarChar(255)
+  nome_mae            String?   @db.VarChar(255)
+  cpf                 String?   @db.VarChar(14)
+  rg                  String?   @db.VarChar(30)
+  rg_emissao          DateTime? @db.Date
+  orgao_emissor       String?   @db.VarChar(50)
+  titulo_eleitor      String?   @db.VarChar(30)
+  zona_eleitoral      String?   @db.VarChar(10)
+  secao_eleitoral     String?   @db.VarChar(10)
+  certificado_militar String?   @db.VarChar(50)
+  categoria_militar   String?   @db.VarChar(50)
+  cep                 String?   @db.VarChar(12)
+  tipo_logradouro     String?   @db.VarChar(30)
+  logradouro          String?   @db.VarChar(255)
+  numero              String?   @db.VarChar(20)
+  complemento         String?   @db.VarChar(100)
+  bairro              String?   @db.VarChar(100)
+  uf                  String?   @db.VarChar(50)
+  cidade              String?   @db.VarChar(100)
+  pais                String?   @db.VarChar(100)
+  telefone_ddd        String?   @db.VarChar(5)
+  telefone            String?   @db.VarChar(20)
+  celular_ddd         String?   @db.VarChar(5)
+  celular             String?   @db.VarChar(20)
+  curso               String?   @db.VarChar(255)
+  campus              String?   @db.VarChar(100)
+  periodo             String?   @db.VarChar(50)
+  semestre            String?   @db.VarChar(20)
+  cra                 Decimal?  @db.Decimal(4, 2)
+  creditos_concluidos Int?
+  reprovacoes         Int?
+  situacao_academica  String?   @db.VarChar(50)
+  situacao_matricula   String?   @db.VarChar(50)
+  possui_necessidade  Boolean   @default(false)
+  tipo_necessidade    String?   @db.VarChar(255)
+  atualizado_em       DateTime  @default(now()) @updatedAt @db.Timestamp(6)
+
+  discente discente @relation(fields: [discente_id], references: [id], onDelete: Cascade)
 }
 
 model docente {
@@ -218,21 +272,58 @@ model permissao {
 }
 
 model plano_trabalho {
-  id                   Int                        @id @default(autoincrement())
-  discente_id          Int?
-  usuario_id           Int?
-  modalidade           String                     @db.VarChar(255)
-  status               String
-  tipo_bolsa           String                     @db.VarChar(255)
-  cronograma_id        Int
-  direcionamento_plano String
-  corpo_id             Int?
-  pesquisa_id          Int
-  atividades           atividade_plano_trabalho[]
-  corpo_plano_trabalho corpo_plano_trabalho?
-  discente             discente?                  @relation(fields: [discente_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  usuario              usuario?                   @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  projeto_pesquisa     projeto_pesquisa           @relation(fields: [pesquisa_id], references: [id], onDelete: Cascade)
+  id                        Int                         @id @default(autoincrement())
+  discente_id               Int?
+  usuario_id                Int?
+  modalidade                String                      @db.VarChar(255)
+  status                    String
+  tipo_bolsa                String                      @db.VarChar(255)
+  cronograma_id             Int
+  direcionamento_plano      String
+  corpo_id                  Int?
+  pesquisa_id               Int
+  status_indicacao          StatusIndicacaoPlano        @default(PENDENTE_INDICACAO)
+  vagas                     Int                         @default(1)
+  carga_horaria             Int?
+  prazo_indicacao           DateTime?                   @db.Date
+  prazo_substituicao        DateTime?                   @db.Date
+  tipo_indicacao            TipoIndicacao?
+  status_termo_compromisso  StatusTermoCompromisso?     @default(NAO_ENVIADO)
+  atividades                atividade_plano_trabalho[]
+  corpo_plano_trabalho      corpo_plano_trabalho?
+  discente                  discente?                   @relation(fields: [discente_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuario                   usuario?                    @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  projeto_pesquisa          projeto_pesquisa            @relation(fields: [pesquisa_id], references: [id], onDelete: Cascade)
+  interesses                interesse_plano_trabalho[]
+  dados_bancarios           dados_bancarios_indicacao?
+}
+
+model interesse_plano_trabalho {
+  id                Int                  @id @default(autoincrement())
+  plano_trabalho_id Int
+  discente_id       Int
+  status            StatusInteressePlano @default(INTERESSE_REGISTRADO)
+  criado_em         DateTime             @default(now()) @db.Timestamp(6)
+  atualizado_em     DateTime             @default(now()) @updatedAt @db.Timestamp(6)
+
+  plano_trabalho plano_trabalho @relation(fields: [plano_trabalho_id], references: [id], onDelete: Cascade)
+  discente       discente       @relation(fields: [discente_id], references: [id], onDelete: Cascade)
+
+  @@unique([plano_trabalho_id, discente_id])
+}
+
+model dados_bancarios_indicacao {
+  id                Int      @id @default(autoincrement())
+  plano_trabalho_id Int      @unique
+  usuario_id        Int?
+  banco             String   @db.VarChar(255)
+  agencia           String   @db.VarChar(50)
+  conta             String   @db.VarChar(50)
+  criado_em         DateTime @default(now()) @db.Timestamp(6)
+  atualizado_em     DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
+  plano_trabalho plano_trabalho @relation(fields: [plano_trabalho_id], references: [id], onDelete: Cascade)
+  usuario        usuario?       @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model projeto_pesquisa {
@@ -381,6 +472,7 @@ model usuario {
   projeto_avaliacao   projeto_avaliacao[]   @relation("avaliador_projeto_avaliacao")
   membros_projeto     membro_projeto[]
   certificados        certificado[]
+  dados_bancarios     dados_bancarios_indicacao[]
 }
 
 model cota_bolsa {
@@ -649,4 +741,30 @@ enum StatusRelatorio {
   ENVIADO
   APROVADO
   REJEITADO
+}
+
+enum StatusIndicacaoPlano {
+  PENDENTE_INDICACAO
+  DISCENTE_INDICADO
+  AGUARDANDO_VALIDACAO
+  INDICACAO_APROVADA
+  INDICACAO_RECUSADA
+}
+
+enum StatusInteressePlano {
+  INTERESSE_REGISTRADO
+  DOCUMENTACAO_PENDENTE
+  APTO_PARA_INDICACAO
+}
+
+enum TipoIndicacao {
+  BOLSISTA
+  VOLUNTARIO
+}
+
+enum StatusTermoCompromisso {
+  NAO_ENVIADO
+  AGUARDANDO_ACEITE
+  ACEITO_PLATAFORMA
+  PENDENTE_CORRECAO
 }

@@ -23,6 +23,7 @@ import { ReportsModule } from './reports/reports.module';
 import { CertificatesModule } from './certificates/certificates.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ResearchModuleParametersModule } from './research-module-parameters/research-module-parameters.module';
+import { DiscentesModule } from './discentes/discentes.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { ResearchModuleParametersModule } from './research-module-parameters/res
     ResearchModule,
     UsersModule,
     WorkPlanModule,
+    DiscentesModule,
     EditalModule,
     CotaBolsaModule,
     ScholarshipModule,

@@ -56,7 +56,9 @@ export class ResearchController {
 
   @Get()
   @ApiOperation({
-    summary: 'Retorna todos os projetos de pesquisa com paginação',
+    summary: 'Retorna projetos de pesquisa com paginação',
+    description:
+      'COORDENADOR vê apenas projetos em que é Orientador/Coordenador/Coordenador Adjunto. ADMIN/GESTOR e demais roles veem a lista completa (sem filtro de membro).',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -68,8 +70,9 @@ export class ResearchController {
   findAll(
     @Query('limit') limit: string = '10',
     @Query('offset') offset: string = '0',
+    @CurrentUser() currentUser: CurrentUserPayload,
   ): Promise<PaginatedResult<findOneResearchDto>> {
-    return this.researchService.findAll(+limit, +offset);
+    return this.researchService.findAll(+limit, +offset, currentUser);
   }
 
   @Get('my-evaluations')

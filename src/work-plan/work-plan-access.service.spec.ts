@@ -1,14 +1,18 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
+import { ProjectMembershipScopeService } from '../common/project-membership-scope.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { WorkPlanAccessService } from './work-plan-access.service';
 
+const mockMembership = {
+  isAdminOrGestor: jest.fn(),
+  isCoordenador: jest.fn(),
+  buildAllowedPesquisaIds: jest.fn(),
+  assertCanAccessPesquisa: jest.fn(),
+};
+
 const mockPrisma = {
-  membro_projeto: {
-    findMany: jest.fn(),
-    findFirst: jest.fn(),
-  },
   plano_trabalho: {
     findUnique: jest.fn(),
   },
@@ -24,13 +28,6 @@ describe('WorkPlanAccessService', () => {
     funcao: 'ADMIN',
   };
 
-  const gestorUser: CurrentUserPayload = {
-    userId: 2,
-    email: 'gestor@test.com',
-    nome: 'Gestor',
-    funcao: 'GESTOR',
-  };
-
   const coordUser: CurrentUserPayload = {
     userId: 10,
     email: 'coord@test.com',
@@ -43,6 +40,7 @@ describe('WorkPlanAccessService', () => {
       providers: [
         WorkPlanAccessService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: ProjectMembershipScopeService, useValue: mockMembership },
       ],
     }).compile();
 
@@ -51,71 +49,20 @@ describe('WorkPlanAccessService', () => {
   });
 
   describe('buildScopeWhere', () => {
-    it('ADMIN não aplica filtro por membro', async () => {
-      const where = await service.buildScopeWhere(adminUser, { forceMemberScope: true });
-      expect(where).toBeUndefined();
-      expect(mockPrisma.membro_projeto.findMany).not.toHaveBeenCalled();
-    });
-
-    it('GESTOR não aplica filtro por membro', async () => {
-      const where = await service.buildScopeWhere(gestorUser, { forceMemberScope: true });
+    it('retorna undefined quando membership não restringe', async () => {
+      mockMembership.buildAllowedPesquisaIds.mockResolvedValue(null);
+      const where = await service.buildScopeWhere(adminUser);
       expect(where).toBeUndefined();
     });
 
-    it('COORDENADOR com forceMemberScope filtra por projetos permitidos', async () => {
-      mockPrisma.membro_projeto.findMany.mockResolvedValue([
-        {
-          projeto_pesquisa_id: 100,
-          funcao_projeto: { nome: 'Orientador' },
-          projeto_pesquisa: { id: 100, edital_rel: { apenas_orient_coordena_plano: false } },
-        },
-        {
-          projeto_pesquisa_id: 200,
-          funcao_projeto: { nome: 'Coordenador' },
-          projeto_pesquisa: { id: 200, edital_rel: { apenas_orient_coordena_plano: false } },
-        },
-      ]);
-
+    it('mapeia ids para pesquisa_id in', async () => {
+      mockMembership.buildAllowedPesquisaIds.mockResolvedValue([100, 200]);
       const where = await service.buildScopeWhere(coordUser, { forceMemberScope: true });
       expect(where).toEqual({ pesquisa_id: { in: [100, 200] } });
     });
 
-    it('apenas_orient_coordena_plano bloqueia Coordenador e mantém Orientador', async () => {
-      mockPrisma.membro_projeto.findMany.mockResolvedValue([
-        {
-          projeto_pesquisa_id: 100,
-          funcao_projeto: { nome: 'Coordenador' },
-          projeto_pesquisa: { id: 100, edital_rel: { apenas_orient_coordena_plano: true } },
-        },
-        {
-          projeto_pesquisa_id: 200,
-          funcao_projeto: { nome: 'Orientador' },
-          projeto_pesquisa: { id: 200, edital_rel: { apenas_orient_coordena_plano: true } },
-        },
-      ]);
-
-      const where = await service.buildScopeWhere(coordUser, { forceMemberScope: true });
-      expect(where).toEqual({ pesquisa_id: { in: [200] } });
-    });
-
-    it('não inclui Coorientador (query só pede funções de indicação)', async () => {
-      mockPrisma.membro_projeto.findMany.mockResolvedValue([]);
-
-      await service.buildScopeWhere(coordUser, { forceMemberScope: true });
-
-      expect(mockPrisma.membro_projeto.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            funcao_projeto: {
-              nome: { in: ['Orientador', 'Coordenador', 'Coordenador Adjunto'] },
-            },
-          }),
-        }),
-      );
-    });
-
-    it('sem membros retorna pesquisa_id in []', async () => {
-      mockPrisma.membro_projeto.findMany.mockResolvedValue([]);
+    it('lista vazia vira pesquisa_id in []', async () => {
+      mockMembership.buildAllowedPesquisaIds.mockResolvedValue([]);
       const where = await service.buildScopeWhere(coordUser, { forceMemberScope: true });
       expect(where).toEqual({ pesquisa_id: { in: [] } });
     });
@@ -129,51 +76,146 @@ describe('WorkPlanAccessService', () => {
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
-    it('ADMIN passa sem checar membro', async () => {
+    it('delega assertCanAccessPesquisa', async () => {
       mockPrisma.plano_trabalho.findUnique.mockResolvedValue({
         id: 1,
         pesquisa_id: 10,
-        projeto_pesquisa: { edital_rel: null },
       });
+      mockMembership.assertCanAccessPesquisa.mockResolvedValue(undefined);
 
-      await expect(
-        service.assertCanAccessPlan(adminUser, 1, { forceMemberScope: true }),
-      ).resolves.toBeUndefined();
-      expect(mockPrisma.membro_projeto.findFirst).not.toHaveBeenCalled();
+      await service.assertCanAccessPlan(coordUser, 1, { forceMemberScope: true });
+
+      expect(mockMembership.assertCanAccessPesquisa).toHaveBeenCalledWith(coordUser, 10, {
+        forceMemberScope: true,
+      });
+    });
+  });
+});
+
+describe('ProjectMembershipScopeService', () => {
+  let service: ProjectMembershipScopeService;
+
+  const mockPrismaFull = {
+    membro_projeto: {
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+    },
+    projeto_pesquisa: {
+      findUnique: jest.fn(),
+    },
+  };
+
+  const adminUser: CurrentUserPayload = {
+    userId: 1,
+    email: 'admin@test.com',
+    nome: 'Admin',
+    funcao: 'ADMIN',
+  };
+
+  const coordUser: CurrentUserPayload = {
+    userId: 10,
+    email: 'coord@test.com',
+    nome: 'Coord',
+    funcao: 'COORDENADOR',
+  };
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        ProjectMembershipScopeService,
+        { provide: PrismaService, useValue: mockPrismaFull },
+      ],
+    }).compile();
+
+    service = module.get(ProjectMembershipScopeService);
+    jest.clearAllMocks();
+  });
+
+  describe('buildAllowedPesquisaIds', () => {
+    it('ADMIN retorna null', async () => {
+      const ids = await service.buildAllowedPesquisaIds(adminUser, { forceMemberScope: true });
+      expect(ids).toBeNull();
     });
 
-    it('403 se COORDENADOR sem membership', async () => {
-      mockPrisma.plano_trabalho.findUnique.mockResolvedValue({
-        id: 1,
-        pesquisa_id: 10,
-        projeto_pesquisa: { edital_rel: { apenas_orient_coordena_plano: false } },
-      });
-      mockPrisma.membro_projeto.findFirst.mockResolvedValue(null);
+    it('COORDENADOR filtra projetos permitidos', async () => {
+      mockPrismaFull.membro_projeto.findMany.mockResolvedValue([
+        {
+          projeto_pesquisa_id: 100,
+          funcao_projeto: { nome: 'Orientador' },
+          projeto_pesquisa: { id: 100, edital_rel: { apenas_orient_coordena_plano: false } },
+        },
+        {
+          projeto_pesquisa_id: 200,
+          funcao_projeto: { nome: 'Coordenador' },
+          projeto_pesquisa: { id: 200, edital_rel: { apenas_orient_coordena_plano: false } },
+        },
+      ]);
 
-      await expect(
-        service.assertCanAccessPlan(coordUser, 1, { forceMemberScope: true }),
-      ).rejects.toBeInstanceOf(ForbiddenException);
+      const ids = await service.buildAllowedPesquisaIds(coordUser, { forceMemberScope: true });
+      expect(ids).toEqual([100, 200]);
     });
 
-    it('permite Orientador quando apenas_orient_coordena_plano', async () => {
-      mockPrisma.plano_trabalho.findUnique.mockResolvedValue({
-        id: 1,
-        pesquisa_id: 10,
-        projeto_pesquisa: { edital_rel: { apenas_orient_coordena_plano: true } },
-      });
-      mockPrisma.membro_projeto.findFirst.mockResolvedValue({ id: 5 });
+    it('apenas_orient_coordena_plano bloqueia Coordenador', async () => {
+      mockPrismaFull.membro_projeto.findMany.mockResolvedValue([
+        {
+          projeto_pesquisa_id: 100,
+          funcao_projeto: { nome: 'Coordenador' },
+          projeto_pesquisa: { id: 100, edital_rel: { apenas_orient_coordena_plano: true } },
+        },
+        {
+          projeto_pesquisa_id: 200,
+          funcao_projeto: { nome: 'Orientador' },
+          projeto_pesquisa: { id: 200, edital_rel: { apenas_orient_coordena_plano: true } },
+        },
+      ]);
 
-      await expect(
-        service.assertCanAccessPlan(coordUser, 1, { forceMemberScope: true }),
-      ).resolves.toBeUndefined();
+      const ids = await service.buildAllowedPesquisaIds(coordUser, { forceMemberScope: true });
+      expect(ids).toEqual([200]);
+    });
 
-      expect(mockPrisma.membro_projeto.findFirst).toHaveBeenCalledWith(
+    it('não inclui Coorientador na query', async () => {
+      mockPrismaFull.membro_projeto.findMany.mockResolvedValue([]);
+      await service.buildAllowedPesquisaIds(coordUser, { forceMemberScope: true });
+      expect(mockPrismaFull.membro_projeto.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            funcao_projeto: { nome: { in: ['Orientador'] } },
+            funcao_projeto: {
+              nome: { in: ['Orientador', 'Coordenador', 'Coordenador Adjunto'] },
+            },
           }),
         }),
       );
+    });
+  });
+
+  describe('assertCanAccessPesquisa', () => {
+    it('404 se projeto não existe', async () => {
+      mockPrismaFull.projeto_pesquisa.findUnique.mockResolvedValue(null);
+      await expect(
+        service.assertCanAccessPesquisa(coordUser, 99, { forceMemberScope: true }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('ADMIN passa', async () => {
+      mockPrismaFull.projeto_pesquisa.findUnique.mockResolvedValue({
+        id: 1,
+        edital_rel: null,
+      });
+      await expect(
+        service.assertCanAccessPesquisa(adminUser, 1, { forceMemberScope: true }),
+      ).resolves.toBeUndefined();
+    });
+
+    it('403 sem membership', async () => {
+      mockPrismaFull.projeto_pesquisa.findUnique.mockResolvedValue({
+        id: 1,
+        edital_rel: { apenas_orient_coordena_plano: false },
+      });
+      mockPrismaFull.membro_projeto.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.assertCanAccessPesquisa(coordUser, 1, { forceMemberScope: true }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
     });
   });
 });

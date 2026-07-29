@@ -42,6 +42,8 @@ export class WorkPlanController {
   constructor(private readonly workPlanService: WorkPlanService) {}
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles('COORDENADOR', 'ADMIN', 'GESTOR')
   @ApiOperation({
     summary: 'Cria um novo plano de trabalho com corpo e atividades',
   })
@@ -53,8 +55,15 @@ export class WorkPlanController {
     status: HttpStatus.NOT_FOUND,
     description: 'Entidade relacionada não encontrada.',
   })
-  create(@Body() createWorkPlanDto: CreateWorkPlanDto) {
-    return this.workPlanService.create(createWorkPlanDto);
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Sem permissão para criar plano neste projeto.',
+  })
+  create(
+    @Body() createWorkPlanDto: CreateWorkPlanDto,
+    @CurrentUser() currentUser: CurrentUserPayload,
+  ) {
+    return this.workPlanService.create(createWorkPlanDto, currentUser);
   }
 
   @Get()
@@ -207,6 +216,8 @@ export class WorkPlanController {
   }
 
   @Patch(':id')
+  @UseGuards(RolesGuard)
+  @Roles('COORDENADOR', 'ADMIN', 'GESTOR')
   @ApiOperation({ summary: 'Atualiza um plano de trabalho pelo ID' })
   @ApiParam({
     name: 'id',
@@ -221,11 +232,21 @@ export class WorkPlanController {
     status: HttpStatus.NOT_FOUND,
     description: 'Plano de trabalho não encontrado.',
   })
-  update(@Param('id', ParseIntPipe) id: number, @Body() updateWorkPlanDto: UpdateWorkPlanDto) {
-    return this.workPlanService.update(id, updateWorkPlanDto);
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Sem permissão para atualizar este plano.',
+  })
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateWorkPlanDto: UpdateWorkPlanDto,
+    @CurrentUser() currentUser: CurrentUserPayload,
+  ) {
+    return this.workPlanService.update(id, updateWorkPlanDto, currentUser);
   }
 
   @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles('COORDENADOR', 'ADMIN', 'GESTOR')
   @ApiOperation({ summary: 'Remove um plano de trabalho pelo ID' })
   @ApiParam({
     name: 'id',
@@ -240,8 +261,15 @@ export class WorkPlanController {
     status: HttpStatus.NOT_FOUND,
     description: 'Plano de trabalho não encontrado.',
   })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Sem permissão para remover este plano.',
+  })
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
-    await this.workPlanService.remove(id);
+  async remove(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() currentUser: CurrentUserPayload,
+  ): Promise<void> {
+    await this.workPlanService.remove(id, currentUser);
   }
 }

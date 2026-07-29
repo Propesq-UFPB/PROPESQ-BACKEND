@@ -84,12 +84,6 @@ export class CreateWorkPlanDto {
   tipo_bolsa!: string;
 
   @ApiProperty({ required: true })
-  @Type(() => Number)
-  @IsNotEmpty({ message: 'O ID do cronograma é obrigatório' })
-  @IsInt({ message: 'O ID do cronograma deve ser um número inteiro' })
-  cronograma_id!: number;
-
-  @ApiProperty({ required: true })
   @IsNotEmpty({ message: 'O direcionamento do plano é obrigatório' })
   @IsString({ message: 'O direcionamento do plano deve ser um texto' })
   direcionamento_plano!: string;

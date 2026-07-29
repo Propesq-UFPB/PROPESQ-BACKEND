@@ -94,7 +94,7 @@ export class WorkPlanService {
     private access: WorkPlanAccessService,
   ) {}
 
-  async create(createWorkPlanDto: CreateWorkPlanDto) {
+  async create(createWorkPlanDto: CreateWorkPlanDto, user: CurrentUserPayload) {
     const projeto = await this.prisma.projeto_pesquisa.findUnique({
       where: { id: createWorkPlanDto.pesquisa_id },
     });
@@ -105,6 +105,10 @@ export class WorkPlanService {
       );
     }
 
+    await this.access.assertCanAccessPesquisa(user, createWorkPlanDto.pesquisa_id, {
+      forceMemberScope: true,
+    });
+
     const workPlan = await this.prisma.$transaction(async tx => {
       const createdWorkPlan = await tx.plano_trabalho.create({
         data: {
@@ -112,8 +116,8 @@ export class WorkPlanService {
           modalidade: createWorkPlanDto.modalidade,
           status: createWorkPlanDto.status,
           tipo_bolsa: createWorkPlanDto.tipo_bolsa,
-          cronograma_id: createWorkPlanDto.cronograma_id,
           direcionamento_plano: createWorkPlanDto.direcionamento_plano,
+          usuario_id: user.userId,
         },
         include: this.defaultInclude(),
       });
@@ -458,13 +462,22 @@ export class WorkPlanService {
     }));
   }
 
-  async update(id: number, updateWorkPlanDto: UpdateWorkPlanDto) {
+  async update(id: number, updateWorkPlanDto: UpdateWorkPlanDto, user?: CurrentUserPayload) {
+    if (user) {
+      await this.access.assertCanAccessPlan(user, id, { forceMemberScope: true });
+    }
+
     const workPlan = await this.findOne(id);
 
     if (updateWorkPlanDto.pesquisa_id) {
       await this.validateForeignKeys(
         updateWorkPlanDto.pesquisa_id ?? workPlan.pesquisa_id ?? workPlan.projeto_pesquisa?.id,
       );
+      if (user) {
+        await this.access.assertCanAccessPesquisa(user, updateWorkPlanDto.pesquisa_id, {
+          forceMemberScope: true,
+        });
+      }
     }
 
     await this.prisma.$transaction(async tx => {
@@ -482,9 +495,6 @@ export class WorkPlanService {
           }),
           ...(updateWorkPlanDto.tipo_bolsa !== undefined && {
             tipo_bolsa: updateWorkPlanDto.tipo_bolsa,
-          }),
-          ...(updateWorkPlanDto.cronograma_id !== undefined && {
-            cronograma_id: updateWorkPlanDto.cronograma_id,
           }),
           ...(updateWorkPlanDto.direcionamento_plano !== undefined && {
             direcionamento_plano: updateWorkPlanDto.direcionamento_plano,
@@ -504,7 +514,11 @@ export class WorkPlanService {
     return this.findOne(id);
   }
 
-  async remove(id: number) {
+  async remove(id: number, user?: CurrentUserPayload) {
+    if (user) {
+      await this.access.assertCanAccessPlan(user, id, { forceMemberScope: true });
+    }
+
     await this.findOne(id);
 
     return this.prisma.plano_trabalho.delete({

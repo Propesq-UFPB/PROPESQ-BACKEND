@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { TipoIndicacao } from '@prisma/client';
 import { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
@@ -17,6 +17,7 @@ const mockAccessService = {
     },
   }),
   assertCanAccessPlan: jest.fn().mockResolvedValue(undefined),
+  assertCanAccessPesquisa: jest.fn().mockResolvedValue(undefined),
   isAdminOrGestor: jest.fn().mockReturnValue(true),
 };
 
@@ -122,6 +123,7 @@ describe('WorkPlanService', () => {
     jest.clearAllMocks();
     mockAccessService.buildScopeWhere.mockResolvedValue(undefined);
     mockAccessService.assertCanAccessPlan.mockResolvedValue(undefined);
+    mockAccessService.assertCanAccessPesquisa.mockResolvedValue(undefined);
   });
 
   it('deve estar definido', () => {
@@ -134,7 +136,6 @@ describe('WorkPlanService', () => {
       modalidade: 'PIBIC',
       status: 'ATIVO',
       tipo_bolsa: 'REMUNERADA',
-      cronograma_id: 7,
       direcionamento_plano: 'Direcionamento',
       corpo_plano_trabalho: {
         titulo: 'Titulo',
@@ -151,7 +152,7 @@ describe('WorkPlanService', () => {
       ],
     };
 
-    it('deve criar plano de trabalho com sucesso', async () => {
+    it('deve criar plano de trabalho com sucesso sem cronograma_id', async () => {
       prisma.projeto_pesquisa.findUnique.mockResolvedValue({ id: 1 });
       prisma.corpo_plano_trabalho.create.mockResolvedValue({ id: 99 });
       prisma.plano_trabalho.create.mockResolvedValue({ id: 1 });
@@ -159,16 +160,19 @@ describe('WorkPlanService', () => {
       prisma.plano_trabalho.update.mockResolvedValue({ id: 1 });
       prisma.$queryRawUnsafe.mockResolvedValue([]);
 
-      const result = await service.create({ ...createDto, atividades: [] });
+      const result = await service.create({ ...createDto, atividades: [] }, adminUser);
 
+      expect(mockAccessService.assertCanAccessPesquisa).toHaveBeenCalledWith(adminUser, 1, {
+        forceMemberScope: true,
+      });
       expect(prisma.plano_trabalho.create).toHaveBeenCalledWith({
         data: {
           pesquisa_id: 1,
           modalidade: 'PIBIC',
           status: 'ATIVO',
           tipo_bolsa: 'REMUNERADA',
-          cronograma_id: 7,
           direcionamento_plano: 'Direcionamento',
+          usuario_id: adminUser.userId,
         },
         include: defaultInclude,
       });
@@ -178,7 +182,24 @@ describe('WorkPlanService', () => {
     it('deve lançar erro quando projeto não existe', async () => {
       prisma.projeto_pesquisa.findUnique.mockResolvedValue(null);
 
-      await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
+      await expect(service.create(createDto, adminUser)).rejects.toThrow(NotFoundException);
+      expect(prisma.plano_trabalho.create).not.toHaveBeenCalled();
+    });
+
+    it('deve propagar 403 quando sem membership', async () => {
+      prisma.projeto_pesquisa.findUnique.mockResolvedValue({ id: 1 });
+      mockAccessService.assertCanAccessPesquisa.mockRejectedValueOnce(
+        new ForbiddenException('sem acesso'),
+      );
+
+      await expect(
+        service.create(createDto, {
+          userId: 10,
+          email: 'c@t.com',
+          nome: 'C',
+          funcao: 'COORDENADOR',
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
       expect(prisma.plano_trabalho.create).not.toHaveBeenCalled();
     });
   });

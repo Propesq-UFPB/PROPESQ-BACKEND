@@ -278,7 +278,7 @@ model plano_trabalho {
   modalidade                String                      @db.VarChar(255)
   status                    String
   tipo_bolsa                String                      @db.VarChar(255)
-  cronograma_id             Int
+  cronograma_id             Int?
   direcionamento_plano      String
   corpo_id                  Int?
   pesquisa_id               Int

@@ -1,10 +1,15 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Prisma, CategoriaProjeto, Idioma, SituacaoProjeto, TipoProjeto } from '@prisma/client';
+import { ProjectMembershipScopeService } from '../common/project-membership-scope.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ResearchService } from './research.service';
 import { CreateResearchDto } from './dto/create-research.dto';
 import { updateResearchDto } from './dto/update-research.dto';
+
+const mockMembership = {
+  buildAllowedPesquisaIds: jest.fn().mockResolvedValue(null),
+};
 
 const mockPrismaService = {
   projeto_pesquisa: {
@@ -33,6 +38,9 @@ const mockPrismaService = {
   },
   atividade_projeto_pesquisa: {
     findMany: jest.fn(),
+  },
+  categoria_edital: {
+    findUnique: jest.fn(),
   },
 };
 
@@ -71,6 +79,10 @@ describe('ResearchService', () => {
           provide: PrismaService,
           useValue: mockPrismaService,
         },
+        {
+          provide: ProjectMembershipScopeService,
+          useValue: mockMembership,
+        },
       ],
     }).compile();
 
@@ -80,6 +92,7 @@ describe('ResearchService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    mockMembership.buildAllowedPesquisaIds.mockResolvedValue(null);
   });
 
   it('deve estar definido', () => {
@@ -109,6 +122,7 @@ describe('ResearchService', () => {
       prisma.palavra_chave.findMany.mockResolvedValue([{ id: 1 }, { id: 2 }]);
       prisma.objetivo_desenvolvimento_sustentavel.findMany.mockResolvedValue([{ id: 10 }]);
       prisma.atividade_projeto_pesquisa.findMany.mockResolvedValue([{ id: 7 }]);
+      prisma.categoria_edital.findUnique.mockResolvedValue({ id: 1 });
       prisma.projeto_pesquisa.create.mockResolvedValue({ id: 1 });
 
       await service.create(createDto);
@@ -156,12 +170,42 @@ describe('ResearchService', () => {
       ]);
       prisma.projeto_pesquisa.count.mockResolvedValue(1);
 
-      const result = await service.findAll(10, 0);
+      const result = await service.findAll(10, 0, {
+        userId: 1,
+        email: 'admin@test.com',
+        nome: 'Admin',
+        funcao: 'ADMIN',
+      });
 
       expect(result.total).toBe(1);
       expect(result.results[0].codigo).toBe('RP-001');
       expect(result.results[0].key_words).toEqual(['research']);
       expect(result.results[0].palavras_chave).toEqual(['pesquisa']);
+      expect(prisma.projeto_pesquisa.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: {} }),
+      );
+    });
+
+    it('COORDENADOR filtra por ids permitidos', async () => {
+      mockMembership.buildAllowedPesquisaIds.mockResolvedValue([5, 8]);
+      prisma.projeto_pesquisa.findMany.mockResolvedValue([]);
+      prisma.projeto_pesquisa.count.mockResolvedValue(0);
+
+      await service.findAll(10, 0, {
+        userId: 10,
+        email: 'c@t.com',
+        nome: 'Coord',
+        funcao: 'COORDENADOR',
+      });
+
+      expect(prisma.projeto_pesquisa.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: { in: [5, 8] } },
+        }),
+      );
+      expect(prisma.projeto_pesquisa.count).toHaveBeenCalledWith({
+        where: { id: { in: [5, 8] } },
+      });
     });
   });
 
@@ -372,6 +416,7 @@ describe('ResearchService', () => {
           corpo_projeto: true,
           palavra_chave: true,
           objetivos: true,
+          categoria: true,
         },
         take: 10,
         skip: 0,

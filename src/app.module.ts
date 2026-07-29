@@ -24,6 +24,7 @@ import { CertificatesModule } from './certificates/certificates.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ResearchModuleParametersModule } from './research-module-parameters/research-module-parameters.module';
 import { DiscentesModule } from './discentes/discentes.module';
+import { ProjectMembershipModule } from './common/project-membership.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { DiscentesModule } from './discentes/discentes.module';
     DepartmentModule,
     AuthModule,
     PrismaModule,
+    ProjectMembershipModule,
     ResearchModule,
     UsersModule,
     WorkPlanModule,

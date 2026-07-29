@@ -1,24 +1,23 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, SituacaoProjeto } from '@prisma/client';
+import { ProjectMembershipScopeService } from '../common/project-membership-scope.service';
+import { SITUACOES_ELEGIVEIS_INDICACAO } from '../common/project-membership.constants';
 import { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  FUNCAO_ORIENTADOR,
-  FUNCOES_INDICACAO_PLANO,
-  SITUACOES_ELEGIVEIS_INDICACAO,
-} from './work-plan-access.constants';
 
 @Injectable()
 export class WorkPlanAccessService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly membership: ProjectMembershipScopeService,
+  ) {}
 
   isAdminOrGestor(user: CurrentUserPayload): boolean {
-    const role = user.funcao?.toUpperCase();
-    return role === 'ADMIN' || role === 'GESTOR';
+    return this.membership.isAdminOrGestor(user);
   }
 
   isCoordenador(user: CurrentUserPayload): boolean {
-    return user.funcao?.toUpperCase() === 'COORDENADOR';
+    return this.membership.isCoordenador(user);
   }
 
   /**
@@ -30,50 +29,11 @@ export class WorkPlanAccessService {
     user: CurrentUserPayload,
     options?: { forceMemberScope?: boolean },
   ): Promise<Prisma.plano_trabalhoWhereInput | undefined> {
-    if (this.isAdminOrGestor(user)) {
+    const ids = await this.membership.buildAllowedPesquisaIds(user, options);
+    if (ids === null) {
       return undefined;
     }
-
-    const applyMemberScope = options?.forceMemberScope === true || this.isCoordenador(user);
-    if (!applyMemberScope) {
-      return undefined;
-    }
-
-    const members = await this.prisma.membro_projeto.findMany({
-      where: {
-        usuario_id: user.userId,
-        ativo: true,
-        funcao_projeto: {
-          nome: { in: [...FUNCOES_INDICACAO_PLANO] },
-        },
-      },
-      include: {
-        funcao_projeto: { select: { nome: true } },
-        projeto_pesquisa: {
-          select: {
-            id: true,
-            edital_rel: { select: { apenas_orient_coordena_plano: true } },
-          },
-        },
-      },
-    });
-
-    const allowedPesquisaIds = members
-      .filter(member => {
-        const apenasOrientador =
-          member.projeto_pesquisa.edital_rel?.apenas_orient_coordena_plano === true;
-        if (apenasOrientador) {
-          return member.funcao_projeto.nome === FUNCAO_ORIENTADOR;
-        }
-        return true;
-      })
-      .map(member => member.projeto_pesquisa_id);
-
-    if (allowedPesquisaIds.length === 0) {
-      return { pesquisa_id: { in: [] } };
-    }
-
-    return { pesquisa_id: { in: allowedPesquisaIds } };
+    return { pesquisa_id: { in: ids } };
   }
 
   /** Default eligibility for the indications list. */
@@ -88,6 +48,14 @@ export class WorkPlanAccessService {
     };
   }
 
+  async assertCanAccessPesquisa(
+    user: CurrentUserPayload,
+    pesquisaId: number,
+    options?: { forceMemberScope?: boolean },
+  ): Promise<void> {
+    return this.membership.assertCanAccessPesquisa(user, pesquisaId, options);
+  }
+
   /**
    * Asserts the user can access a specific plan.
    * @throws NotFoundException if plan does not exist
@@ -100,51 +68,13 @@ export class WorkPlanAccessService {
   ): Promise<void> {
     const plan = await this.prisma.plano_trabalho.findUnique({
       where: { id: planoId },
-      select: {
-        id: true,
-        pesquisa_id: true,
-        projeto_pesquisa: {
-          select: {
-            edital_rel: { select: { apenas_orient_coordena_plano: true } },
-          },
-        },
-      },
+      select: { id: true, pesquisa_id: true },
     });
 
     if (!plan) {
       throw new NotFoundException(`Plano de trabalho com ID ${planoId} não encontrado`);
     }
 
-    if (this.isAdminOrGestor(user)) {
-      return;
-    }
-
-    // Rotas de indicação sempre forçam escopo; CRUD genérico só para COORDENADOR.
-    const mustCheck =
-      options?.forceMemberScope === true || this.isCoordenador(user);
-    if (!mustCheck) {
-      return;
-    }
-
-    const apenasOrientador =
-      plan.projeto_pesquisa.edital_rel?.apenas_orient_coordena_plano === true;
-    const allowedRoles = apenasOrientador
-      ? [FUNCAO_ORIENTADOR]
-      : [...FUNCOES_INDICACAO_PLANO];
-
-    const membership = await this.prisma.membro_projeto.findFirst({
-      where: {
-        projeto_pesquisa_id: plan.pesquisa_id,
-        usuario_id: user.userId,
-        ativo: true,
-        funcao_projeto: { nome: { in: allowedRoles } },
-      },
-    });
-
-    if (!membership) {
-      throw new ForbiddenException(
-        'Você não tem permissão para acessar a indicação deste plano de trabalho.',
-      );
-    }
+    await this.membership.assertCanAccessPesquisa(user, plan.pesquisa_id, options);
   }
 }

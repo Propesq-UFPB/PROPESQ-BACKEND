@@ -60,7 +60,6 @@ describe('WorkPlanController', () => {
         modalidade: 'PIBIC',
         status: 'ATIVO',
         tipo_bolsa: 'REMUNERADA',
-        cronograma_id: 1,
         direcionamento_plano: 'Direcionamento',
         corpo_plano_trabalho: {
           titulo: 'Titulo',
@@ -79,9 +78,9 @@ describe('WorkPlanController', () => {
 
       mockWorkPlanService.create.mockResolvedValue({ id: 1, ...dto });
 
-      const result = await controller.create(dto);
+      const result = await controller.create(dto, currentUser);
 
-      expect(service.create).toHaveBeenCalledWith(dto);
+      expect(service.create).toHaveBeenCalledWith(dto, currentUser);
       expect(result).toEqual({ id: 1, ...dto });
     });
   });
@@ -177,9 +176,9 @@ describe('WorkPlanController', () => {
 
       mockWorkPlanService.update.mockResolvedValue({ id: 1, ...dto });
 
-      await controller.update(1, dto);
+      await controller.update(1, dto, currentUser);
 
-      expect(service.update).toHaveBeenCalledWith(1, dto);
+      expect(service.update).toHaveBeenCalledWith(1, dto, currentUser);
     });
   });
 
@@ -187,9 +186,9 @@ describe('WorkPlanController', () => {
     it('deve chamar service.remove com o id correto', async () => {
       mockWorkPlanService.remove.mockResolvedValue({ id: 1 });
 
-      await controller.remove(1);
+      await controller.remove(1, currentUser);
 
-      expect(service.remove).toHaveBeenCalledWith(1);
+      expect(service.remove).toHaveBeenCalledWith(1, currentUser);
     });
   });
 });

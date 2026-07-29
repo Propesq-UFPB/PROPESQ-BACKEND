@@ -71,20 +71,32 @@ describe('ResearchController', () => {
   });
 
   describe('findAll', () => {
-    it('deve repassar paginação padrão', async () => {
+    it('deve repassar paginação padrão e usuário', async () => {
       mockResearchService.findAll.mockResolvedValue({ total: 0, results: [] });
+      const user = {
+        userId: 1,
+        email: 'admin@teste.com',
+        nome: 'Admin',
+        funcao: 'ADMIN',
+      };
 
-      await controller.findAll();
+      await controller.findAll('10', '0', user);
 
-      expect(service.findAll).toHaveBeenCalledWith(10, 0);
+      expect(service.findAll).toHaveBeenCalledWith(10, 0, user);
     });
 
     it('deve repassar paginação informada', async () => {
       mockResearchService.findAll.mockResolvedValue({ total: 0, results: [] });
+      const user = {
+        userId: 1,
+        email: 'admin@teste.com',
+        nome: 'Admin',
+        funcao: 'ADMIN',
+      };
 
-      await controller.findAll('20', '5');
+      await controller.findAll('20', '5', user);
 
-      expect(service.findAll).toHaveBeenCalledWith(20, 5);
+      expect(service.findAll).toHaveBeenCalledWith(20, 5, user);
     });
   });
 

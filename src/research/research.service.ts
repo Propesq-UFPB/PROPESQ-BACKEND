@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { CreateResearchDto } from '../research/dto/create-research.dto';
 import { PrismaService } from '../prisma/prisma.service';
-import { Idioma, SituacaoProjeto, type projeto_pesquisa } from '@prisma/client';
+import { Idioma, Prisma, SituacaoProjeto, type projeto_pesquisa } from '@prisma/client';
 import { PaginatedResult } from '../common/dto/paginated.dto';
 import { findOneResearchDto } from './dto/find-one-research.dto';
 import { CategoriaProjetoMapper } from '../common/mapper/categoria-projeto.mapper';
@@ -14,13 +14,17 @@ import { SituacaoProjetoMapper } from '../common/mapper/situacao-projeto.mapper'
 import { TipoProjetoMapper } from '../common/mapper/tipo-projeto.mapper';
 import { updateResearchDto } from './dto/update-research.dto';
 import { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
+import { ProjectMembershipScopeService } from '../common/project-membership-scope.service';
 import { AssignEvaluatorDto } from './dto/assign-evaluator.dto';
 import { EvaluateProjectDto } from './dto/evaluate-project.dto';
 import { FinalDecisionDto } from './dto/final-decision.dto';
 
 @Injectable()
 export class ResearchService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private membership: ProjectMembershipScopeService,
+  ) {}
 
   async create(createResearchDto: CreateResearchDto): Promise<any> {
     await this.assertAcademicUnitExists(createResearchDto.unidade_id);
@@ -91,10 +95,24 @@ export class ResearchService {
     });
   }
 
-  async findAll(limit: number, offset: number): Promise<PaginatedResult<findOneResearchDto>> {
+  async findAll(
+    limit: number,
+    offset: number,
+    user?: CurrentUserPayload,
+  ): Promise<PaginatedResult<findOneResearchDto>> {
+    const where: Prisma.projeto_pesquisaWhereInput = {};
+
+    if (user) {
+      const allowedIds = await this.membership.buildAllowedPesquisaIds(user);
+      if (allowedIds !== null) {
+        where.id = { in: allowedIds };
+      }
+    }
+
     const [data, total] = await Promise.all([
       (
         await this.prisma.projeto_pesquisa.findMany({
+          where,
           include: {
             corpo_projeto: true,
             palavra_chave: true,
@@ -108,7 +126,7 @@ export class ResearchService {
       ).map(research => {
         return this.formatResearch(research);
       }),
-      this.prisma.projeto_pesquisa.count(),
+      this.prisma.projeto_pesquisa.count({ where }),
     ]);
 
     return {

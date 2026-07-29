@@ -1,17 +1,8 @@
-/** Funções de projeto que autorizam indicação (não inclui Coorientador). */
-export const FUNCOES_INDICACAO_PLANO = [
-  'Orientador',
-  'Coordenador',
-  'Coordenador Adjunto',
-] as const;
+export {
+  FUNCAO_ORIENTADOR,
+  FUNCOES_GESTAO_PLANO,
+  FUNCOES_INDICACAO_PLANO,
+  SITUACOES_ELEGIVEIS_INDICACAO,
+} from '../common/project-membership.constants';
 
-export const FUNCAO_ORIENTADOR = 'Orientador' as const;
-
-export type FuncaoIndicacaoPlano = (typeof FUNCOES_INDICACAO_PLANO)[number];
-
-export const SITUACOES_ELEGIVEIS_INDICACAO = [
-  'APROVADO',
-  'PUBLICADO',
-  'EM_EXECUCAO',
-  'CADASTRADO',
-] as const;
+export type { FuncaoGestaoPlano as FuncaoIndicacaoPlano } from '../common/project-membership.constants';

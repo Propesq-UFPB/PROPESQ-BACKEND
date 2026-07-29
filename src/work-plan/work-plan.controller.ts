@@ -29,6 +29,7 @@ import { CreateInteresseDto } from './dto/create-interesse.dto';
 import { CreateWorkPlanDto } from './dto/create-work-plan.dto';
 import { InteresseResponseDto } from './dto/interesse-response.dto';
 import { UpdateWorkPlanDto } from './dto/update-work-plan.dto';
+import { WorkPlanDetailResponseDto } from './dto/work-plan-detail-response.dto';
 import { WorkPlanIndicacaoDetalheDto } from './dto/work-plan-indicacao-detalhe.dto';
 import { WorkPlanIndicacaoItemDto } from './dto/work-plan-indicacao-item.dto';
 import { WorkPlanIndicacoesQueryDto } from './dto/work-plan-indicacoes-query.dto';
@@ -194,7 +195,12 @@ export class WorkPlanController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Obtém um plano de trabalho pelo ID' })
+  @ApiOperation({
+    summary: 'Obtém um plano de trabalho pelo ID',
+    description:
+      'COORDENADOR só acessa planos de projetos em que é Orientador/Coordenador/Coordenador Adjunto. ' +
+      'ADMIN/GESTOR acessam qualquer plano. ALUNO e demais roles autenticadas podem ler (fluxo discente).',
+  })
   @ApiParam({
     name: 'id',
     type: Number,
@@ -203,10 +209,15 @@ export class WorkPlanController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Plano de trabalho retornado com sucesso.',
+    type: WorkPlanDetailResponseDto,
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
     description: 'Plano de trabalho não encontrado.',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'COORDENADOR sem membership no projeto do plano.',
   })
   findOne(
     @Param('id', ParseIntPipe) id: number,

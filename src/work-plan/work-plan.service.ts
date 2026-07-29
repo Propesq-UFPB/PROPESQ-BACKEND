@@ -195,7 +195,11 @@ export class WorkPlanService {
 
   async findOne(id: number, user?: CurrentUserPayload) {
     if (user) {
-      await this.access.assertCanAccessPlan(user, id);
+      // COORDENADOR: membership obrigatória; ADMIN/GESTOR/ALUNO: sem force (ALUNO lê livre).
+      const options = this.access.isCoordenador(user)
+        ? { forceMemberScope: true }
+        : undefined;
+      await this.access.assertCanAccessPlan(user, id, options);
     }
 
     const rawWorkPlan = await this.prisma.plano_trabalho.findUnique({

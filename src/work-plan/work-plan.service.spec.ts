@@ -19,6 +19,7 @@ const mockAccessService = {
   assertCanAccessPlan: jest.fn().mockResolvedValue(undefined),
   assertCanAccessPesquisa: jest.fn().mockResolvedValue(undefined),
   isAdminOrGestor: jest.fn().mockReturnValue(true),
+  isCoordenador: jest.fn().mockReturnValue(false),
 };
 
 const mockPrismaService = {
@@ -82,6 +83,20 @@ const adminUser: CurrentUserPayload = {
   funcao: 'ADMIN',
 };
 
+const coordUser: CurrentUserPayload = {
+  userId: 2,
+  email: 'coord@test.com',
+  nome: 'Coord',
+  funcao: 'COORDENADOR',
+};
+
+const alunoUser: CurrentUserPayload = {
+  userId: 3,
+  email: 'aluno@test.com',
+  nome: 'Aluno',
+  funcao: 'ALUNO',
+};
+
 const defaultInclude = {
   corpo_plano_trabalho: true,
   discente: true,
@@ -124,6 +139,8 @@ describe('WorkPlanService', () => {
     mockAccessService.buildScopeWhere.mockResolvedValue(undefined);
     mockAccessService.assertCanAccessPlan.mockResolvedValue(undefined);
     mockAccessService.assertCanAccessPesquisa.mockResolvedValue(undefined);
+    mockAccessService.isAdminOrGestor.mockReturnValue(true);
+    mockAccessService.isCoordenador.mockReturnValue(false);
   });
 
   it('deve estar definido', () => {
@@ -269,6 +286,69 @@ describe('WorkPlanService', () => {
       prisma.plano_trabalho.findUnique.mockResolvedValue(null);
 
       await expect(service.findOne(123)).rejects.toThrow(NotFoundException);
+    });
+
+    it('COORDENADOR: assert com forceMemberScope', async () => {
+      mockAccessService.isCoordenador.mockReturnValue(true);
+      prisma.plano_trabalho.findUnique.mockResolvedValue({ id: 1, cronograma_id: null });
+      prisma.$queryRawUnsafe.mockResolvedValue([]);
+
+      await service.findOne(1, coordUser);
+
+      expect(mockAccessService.assertCanAccessPlan).toHaveBeenCalledWith(coordUser, 1, {
+        forceMemberScope: true,
+      });
+    });
+
+    it('COORDENADOR sem membership → 403', async () => {
+      mockAccessService.isCoordenador.mockReturnValue(true);
+      mockAccessService.assertCanAccessPlan.mockRejectedValue(
+        new ForbiddenException('Sem permissão'),
+      );
+
+      await expect(service.findOne(1, coordUser)).rejects.toBeInstanceOf(ForbiddenException);
+      expect(prisma.plano_trabalho.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('ADMIN: assert sem forceMemberScope', async () => {
+      mockAccessService.isCoordenador.mockReturnValue(false);
+      prisma.plano_trabalho.findUnique.mockResolvedValue({ id: 1 });
+      prisma.$queryRawUnsafe.mockResolvedValue([]);
+
+      await service.findOne(1, adminUser);
+
+      expect(mockAccessService.assertCanAccessPlan).toHaveBeenCalledWith(
+        adminUser,
+        1,
+        undefined,
+      );
+    });
+
+    it('ALUNO: assert sem forceMemberScope (lê livre)', async () => {
+      mockAccessService.isCoordenador.mockReturnValue(false);
+      prisma.plano_trabalho.findUnique.mockResolvedValue({ id: 1 });
+      prisma.$queryRawUnsafe.mockResolvedValue([]);
+
+      await service.findOne(1, alunoUser);
+
+      expect(mockAccessService.assertCanAccessPlan).toHaveBeenCalledWith(
+        alunoUser,
+        1,
+        undefined,
+      );
+    });
+
+    it('plano novo com cronograma_id null', async () => {
+      prisma.plano_trabalho.findUnique.mockResolvedValue({
+        id: 5,
+        cronograma_id: null,
+        atividades: undefined,
+      });
+      prisma.$queryRawUnsafe.mockResolvedValue([]);
+
+      const result = await service.findOne(5, adminUser);
+
+      expect(result).toMatchObject({ id: 5, cronograma_id: null, atividades: [] });
     });
   });
 
@@ -758,6 +838,28 @@ describe('WorkPlanService', () => {
         include: defaultInclude,
       });
       expect(result).toEqual({ id: 1 });
+    });
+
+    it('ADMIN remove com forceMemberScope no assert', async () => {
+      prisma.plano_trabalho.findUnique.mockResolvedValue({ id: 1 });
+      prisma.$queryRawUnsafe.mockResolvedValue([]);
+      prisma.plano_trabalho.delete.mockResolvedValue({ id: 1 });
+
+      await service.remove(1, adminUser);
+
+      expect(mockAccessService.assertCanAccessPlan).toHaveBeenCalledWith(adminUser, 1, {
+        forceMemberScope: true,
+      });
+      expect(prisma.plano_trabalho.delete).toHaveBeenCalled();
+    });
+
+    it('COORDENADOR sem membership → 403', async () => {
+      mockAccessService.assertCanAccessPlan.mockRejectedValue(
+        new ForbiddenException('Sem permissão'),
+      );
+
+      await expect(service.remove(1, coordUser)).rejects.toBeInstanceOf(ForbiddenException);
+      expect(prisma.plano_trabalho.delete).not.toHaveBeenCalled();
     });
   });
 });

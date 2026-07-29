@@ -99,6 +99,7 @@ export class ResearchService {
             corpo_projeto: true,
             palavra_chave: true,
             objetivos: true,
+            categoria: true,
           },
           take: limit,
           skip: offset,
@@ -131,6 +132,7 @@ export class ResearchService {
             corpo_projeto: true,
             palavra_chave: true,
             objetivos: true,
+            categoria: true,
           },
           take: limit,
           skip: offset,
@@ -161,6 +163,7 @@ export class ResearchService {
             corpo_projeto: true,
             palavra_chave: true,
             objetivos: true,
+            categoria: true,
           },
           take: limit,
           skip: offset,
@@ -193,6 +196,7 @@ export class ResearchService {
         palavra_chave: true,
         corpo_projeto: true,
         anexo_projeto_pesquisa: true,
+        categoria: true,
         atividades: {
           include: {
             meses: true,
@@ -279,11 +283,13 @@ export class ResearchService {
             connect: { id: updateResearchDto.corpo_projeto_id },
           },
         }),
-        unidade_academica: {
-          connect: {
-            id: updateResearchDto.unidade_id,
+        ...(updateResearchDto.unidade_id !== undefined && {
+          unidade_academica: {
+            connect: {
+              id: updateResearchDto.unidade_id,
+            },
           },
-        },
+        }),
       },
       include: { corpo_projeto: true, palavra_chave: true },
     });

@@ -94,7 +94,7 @@ export class DistribuicaoService {
         if (pa.grande_area === da.grande_area) score += 10;
         if (pa.area === da.area) score += 50;
         if (pa.sub_area === da.sub_area) score += 100;
-        if (pa.especialidade === da.especialidade) score += 200;
+        // if (pa.especialidade === da.especialidade) score += 200;
 
         return score;
       }),

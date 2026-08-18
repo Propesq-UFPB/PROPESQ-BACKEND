@@ -25,6 +25,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { ResearchModuleParametersModule } from './research-module-parameters/research-module-parameters.module';
 import { DiscentesModule } from './discentes/discentes.module';
 import { ProjectMembershipModule } from './common/project-membership.module';
+import { KnowledgeAreaModule } from './knowledge-area/knowledge-area.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { ProjectMembershipModule } from './common/project-membership.module';
     CertificatesModule,
     DashboardModule,
     ResearchModuleParametersModule,
+    KnowledgeAreaModule,
   ],
   providers: [
     {

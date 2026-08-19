@@ -473,23 +473,6 @@ async function ensurePalavraChave(palavra_chave: string, lingua: Idioma) {
   });
 }
 
-async function ensureAtividadeSeed() {
-  const existing = await prisma.atividade_projeto_pesquisa.findFirst({
-    where: {
-      descricao: 'Atividade seed de projeto de pesquisa',
-      projeto_pesquisa_id: null,
-    },
-  });
-
-  if (existing) {
-    return;
-  }
-
-  await prisma.atividade_projeto_pesquisa.create({
-    data: { descricao: 'Atividade seed de projeto de pesquisa' },
-  });
-}
-
 const CORPO_PROJETO_SEED = {
   resumo: 'Resumo do projeto seed ativo.',
   abstract: 'Abstract of the active seed project.',
@@ -498,6 +481,24 @@ const CORPO_PROJETO_SEED = {
   metodologia: 'Metodologia do projeto seed ativo.',
   referencias: 'Referências do projeto seed ativo.',
 };
+
+const ATIVIDADES_PROJETO_SEED = [
+  {
+    descricao: 'Levantamento bibliográfico e definição do referencial teórico.',
+    meses: [
+      { data: new Date('2026-04-01T00:00:00.000Z') },
+      { data: new Date('2026-05-01T00:00:00.000Z') },
+    ],
+  },
+  {
+    descricao: 'Execução dos experimentos e análise dos resultados.',
+    meses: [
+      { data: new Date('2026-06-01T00:00:00.000Z') },
+      { data: new Date('2026-07-01T00:00:00.000Z') },
+      { data: new Date('2026-08-01T00:00:00.000Z') },
+    ],
+  },
+];
 
 async function seedProjetoPesquisa(unidadeId: number, categoriaId: number, editalId: number) {
   try {
@@ -526,6 +527,12 @@ async function seedProjetoPesquisa(unidadeId: number, categoriaId: number, edita
           corpo_projeto: {
             create: CORPO_PROJETO_SEED,
           },
+          atividades: {
+            create: ATIVIDADES_PROJETO_SEED.map(atividade => ({
+              descricao: atividade.descricao,
+              meses: { create: atividade.meses },
+            })),
+          },
         },
       });
     }
@@ -546,6 +553,13 @@ async function seedProjetoPesquisa(unidadeId: number, categoriaId: number, edita
             create: CORPO_PROJETO_SEED,
             update: CORPO_PROJETO_SEED,
           },
+        },
+        atividades: {
+          deleteMany: {},
+          create: ATIVIDADES_PROJETO_SEED.map(atividade => ({
+            descricao: atividade.descricao,
+            meses: { create: atividade.meses },
+          })),
         },
       },
     });
@@ -891,7 +905,6 @@ async function seedEntidadesPesquisa() {
   });
   await ensurePalavraChave('pesquisa', Idioma.PT);
   await ensurePalavraChave('research', Idioma.EN);
-  await ensureAtividadeSeed();
   const projeto = await seedProjetoPesquisa(unidadeAcademica.id, categoriaPadrao.id, editalSeed.id);
 
   if (projeto) {

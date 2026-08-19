@@ -64,7 +64,12 @@ describe('ResearchController', () => {
           metodologia: 'Metodologia',
           referencias: 'Referências',
         },
-        atividade_projeto_pesquisa_ids: [7],
+        atividades: [
+          {
+            descricao: 'Atividade de pesquisa',
+            meses: [{ data: '2026-01-01' }],
+          },
+        ],
         unidade_id: 3,
         area_conhecimento_id: 1,
       };

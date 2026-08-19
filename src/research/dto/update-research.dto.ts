@@ -1,5 +1,6 @@
 import { TipoProjeto } from '@prisma/client';
 import {
+  ArrayMinSize,
   IsArray,
   IsDateString,
   IsEmail,
@@ -12,7 +13,8 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { UpdateCorpoProjetoDto } from './corpo-projeto.dto';
+import { UpdateResearchProjectBodyDto } from './research-body.dto';
+import { CreateResearchProjectActivityDto } from './research-activity.dto';
 
 export class updateResearchDto {
   @ApiProperty({
@@ -83,26 +85,27 @@ export class updateResearchDto {
   pesquisa_objetivo_ids?: number[];
 
   @ApiPropertyOptional({
-    type: UpdateCorpoProjetoDto,
+    type: UpdateResearchProjectBodyDto,
     description: 'Campos do corpo do projeto que serão atualizados',
   })
   @IsOptional()
   @IsNotEmptyObject({}, { message: 'O corpo do projeto não pode ser vazio' })
   @ValidateNested()
-  @Type(() => UpdateCorpoProjetoDto)
-  corpo_projeto?: UpdateCorpoProjetoDto;
+  @Type(() => UpdateResearchProjectBodyDto)
+  corpo_projeto?: UpdateResearchProjectBodyDto;
 
   @ApiProperty({
     isArray: true,
-    type: Number,
+    type: CreateResearchProjectActivityDto,
     required: false,
-    description: 'IDs de atividade_projeto_pesquisa já cadastradas',
+    description: 'Nova lista de atividades e meses do projeto',
   })
   @IsOptional()
-  @IsArray({ message: 'Os IDs das atividades devem ser um array' })
-  @Type(() => Number)
-  @IsInt({ each: true, message: 'Cada ID de atividade deve ser um número inteiro' })
-  atividade_projeto_pesquisa_ids?: number[];
+  @IsArray({ message: 'As atividades devem ser um array' })
+  @ArrayMinSize(1, { message: 'O projeto deve possuir pelo menos uma atividade' })
+  @ValidateNested({ each: true })
+  @Type(() => CreateResearchProjectActivityDto)
+  atividades?: CreateResearchProjectActivityDto[];
 
   @ApiProperty({ required: false, type: Number, description: 'ID da unidade acadêmica' })
   @IsOptional()

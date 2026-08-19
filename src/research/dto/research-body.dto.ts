@@ -1,7 +1,7 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { IsNotEmpty, IsString } from 'class-validator';
 
-export class CreateCorpoProjetoDto {
+export class CreateResearchProjectBodyDto {
   @ApiProperty()
   @IsString({ message: 'O resumo deve ser um texto' })
   @IsNotEmpty({ message: 'O resumo é obrigatório' })
@@ -33,4 +33,4 @@ export class CreateCorpoProjetoDto {
   referencias!: string;
 }
 
-export class UpdateCorpoProjetoDto extends PartialType(CreateCorpoProjetoDto) {}
+export class UpdateResearchProjectBodyDto extends PartialType(CreateResearchProjectBodyDto) {}

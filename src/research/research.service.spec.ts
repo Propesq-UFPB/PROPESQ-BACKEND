@@ -27,6 +27,13 @@ const corpoProjeto = {
   referencias: 'Referências',
 };
 
+const atividadesProjeto = [
+  {
+    descricao: 'Atividade de pesquisa',
+    meses: [{ data: '2026-01-01' }, { data: '2026-02-01' }],
+  },
+];
+
 const mockPrismaService = {
   projeto_pesquisa: {
     create: jest.fn(),
@@ -47,9 +54,6 @@ const mockPrismaService = {
     findMany: jest.fn(),
   },
   objetivo_desenvolvimento_sustentavel: {
-    findMany: jest.fn(),
-  },
-  atividade_projeto_pesquisa: {
     findMany: jest.fn(),
   },
   categoria_edital: {
@@ -124,7 +128,7 @@ describe('ResearchService', () => {
       palavras_chave_ids: [1, 2],
       pesquisa_objetivo_ids: [10],
       corpo_projeto: corpoProjeto,
-      atividade_projeto_pesquisa_ids: [7],
+      atividades: atividadesProjeto,
       unidade_id: 3,
       area_conhecimento_id: 1,
     };
@@ -133,7 +137,6 @@ describe('ResearchService', () => {
       prisma.unidade_academica.findUnique.mockResolvedValue({ id: 3 });
       prisma.palavra_chave.findMany.mockResolvedValue([{ id: 1 }, { id: 2 }]);
       prisma.objetivo_desenvolvimento_sustentavel.findMany.mockResolvedValue([{ id: 10 }]);
-      prisma.atividade_projeto_pesquisa.findMany.mockResolvedValue([{ id: 7 }]);
       prisma.categoria_edital.findUnique.mockResolvedValue({ id: 1 });
       prisma.projeto_pesquisa.create.mockResolvedValue({ id: 1 });
 
@@ -152,6 +155,16 @@ describe('ResearchService', () => {
             },
             corpo_projeto: {
               create: corpoProjeto,
+            },
+            atividades: {
+              create: [
+                {
+                  descricao: 'Atividade de pesquisa',
+                  meses: {
+                    create: [{ data: '2026-01-01' }, { data: '2026-02-01' }],
+                  },
+                },
+              ],
             },
           }),
           include: expect.objectContaining({ categoria: true }),
@@ -286,6 +299,7 @@ describe('ResearchService', () => {
       corpo_projeto: {
         metodologia: 'Nova metodologia',
       },
+      atividades: atividadesProjeto,
     };
 
     it('deve atualizar sem sobrescrever codigo e situacao', async () => {
@@ -304,6 +318,17 @@ describe('ResearchService', () => {
           update: {
             metodologia: 'Nova metodologia',
           },
+        },
+        atividades: {
+          deleteMany: {},
+          create: [
+            {
+              descricao: 'Atividade de pesquisa',
+              meses: {
+                create: [{ data: '2026-01-01' }, { data: '2026-02-01' }],
+              },
+            },
+          ],
         },
       });
       expect(call.data).not.toHaveProperty('codigo');

@@ -34,12 +34,6 @@ export class ResearchService {
       await this.assertObjetivosSustentavelExist(createResearchDto.pesquisa_objetivo_ids);
     }
 
-    if (Array.isArray(createResearchDto.atividade_projeto_pesquisa_ids)) {
-      await this.assertAtividadesProjetoPesquisaExist(
-        createResearchDto.atividade_projeto_pesquisa_ids,
-      );
-    }
-
     return this.prisma.projeto_pesquisa.create({
       data: {
         tipo: createResearchDto.tipo,
@@ -73,11 +67,14 @@ export class ResearchService {
             }),
           },
         }),
-        ...(Array.isArray(createResearchDto.atividade_projeto_pesquisa_ids) && {
-          atividades: {
-            connect: createResearchDto.atividade_projeto_pesquisa_ids.map((id: number) => ({ id })),
-          },
-        }),
+        atividades: {
+          create: createResearchDto.atividades.map(atividade => ({
+            descricao: atividade.descricao,
+            meses: {
+              create: atividade.meses.map(mes => ({ data: mes.data })),
+            },
+          })),
+        },
         corpo_projeto: {
           create: createResearchDto.corpo_projeto,
         },
@@ -244,12 +241,6 @@ export class ResearchService {
       await this.assertObjetivosSustentavelExist(updateResearchDto.pesquisa_objetivo_ids);
     }
 
-    if (Array.isArray(updateResearchDto.atividade_projeto_pesquisa_ids)) {
-      await this.assertAtividadesProjetoPesquisaExist(
-        updateResearchDto.atividade_projeto_pesquisa_ids,
-      );
-    }
-
     if (updateResearchDto.categoria_id) {
       await this.assertCategoria(updateResearchDto.categoria_id);
     }
@@ -286,9 +277,15 @@ export class ResearchService {
             })),
           },
         }),
-        ...(Array.isArray(updateResearchDto.atividade_projeto_pesquisa_ids) && {
+        ...(Array.isArray(updateResearchDto.atividades) && {
           atividades: {
-            set: updateResearchDto.atividade_projeto_pesquisa_ids.map((id: number) => ({ id })),
+            deleteMany: {},
+            create: updateResearchDto.atividades.map(atividade => ({
+              descricao: atividade.descricao,
+              meses: {
+                create: atividade.meses.map(mes => ({ data: mes.data })),
+              },
+            })),
           },
         }),
         ...(updateResearchDto.corpo_projeto !== undefined && {
@@ -569,23 +566,6 @@ export class ResearchService {
     if (missingIds.length > 0) {
       throw new NotFoundException(
         `Objetivo(s) de desenvolvimento sustentável não encontrado(s) para os ids: ${missingIds.join(', ')}`,
-      );
-    }
-  }
-
-  private async assertAtividadesProjetoPesquisaExist(ids: number[]): Promise<void> {
-    const uniqueIds = [...new Set(ids)];
-    const found = await this.prisma.atividade_projeto_pesquisa.findMany({
-      where: { id: { in: uniqueIds } },
-      select: { id: true },
-    });
-
-    const foundIds = new Set(found.map(item => item.id));
-    const missingIds = uniqueIds.filter(id => !foundIds.has(id));
-
-    if (missingIds.length > 0) {
-      throw new NotFoundException(
-        `Atividade(s) de projeto de pesquisa não encontrada(s) para os ids: ${missingIds.join(', ')}`,
       );
     }
   }

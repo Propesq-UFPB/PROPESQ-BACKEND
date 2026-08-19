@@ -490,6 +490,15 @@ async function ensureAtividadeSeed() {
   });
 }
 
+const CORPO_PROJETO_SEED = {
+  resumo: 'Resumo do projeto seed ativo.',
+  abstract: 'Abstract of the active seed project.',
+  introducao: 'Introdução do projeto seed ativo.',
+  objetivos: 'Objetivos do projeto seed ativo.',
+  metodologia: 'Metodologia do projeto seed ativo.',
+  referencias: 'Referências do projeto seed ativo.',
+};
+
 async function seedProjetoPesquisa(unidadeId: number, categoriaId: number, editalId: number) {
   try {
     const projetoSeed = await prisma.projeto_pesquisa.findFirst({
@@ -514,6 +523,9 @@ async function seedProjetoPesquisa(unidadeId: number, categoriaId: number, edita
           data_fim: dataFim,
           vigencia: dataFim,
           data_cadastro: new Date(),
+          corpo_projeto: {
+            create: CORPO_PROJETO_SEED,
+          },
         },
       });
     }
@@ -529,6 +541,12 @@ async function seedProjetoPesquisa(unidadeId: number, categoriaId: number, edita
         data_inicio: new Date('2026-04-01T00:00:00.000Z'),
         data_fim: dataFim,
         vigencia: dataFim,
+        corpo_projeto: {
+          upsert: {
+            create: CORPO_PROJETO_SEED,
+            update: CORPO_PROJETO_SEED,
+          },
+        },
       },
     });
   } catch (error: unknown) {

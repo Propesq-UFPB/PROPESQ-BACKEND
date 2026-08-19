@@ -18,6 +18,15 @@ const categoriaPadrao = {
   ativo: true,
 };
 
+const corpoProjeto = {
+  resumo: 'Resumo',
+  abstract: 'Abstract',
+  introducao: 'Introdução',
+  objetivos: 'Objetivos',
+  metodologia: 'Metodologia',
+  referencias: 'Referências',
+};
+
 const mockPrismaService = {
   projeto_pesquisa: {
     create: jest.fn(),
@@ -32,9 +41,6 @@ const mockPrismaService = {
   },
   $transaction: jest.fn(),
   unidade_academica: {
-    findUnique: jest.fn(),
-  },
-  corpo_projeto: {
     findUnique: jest.fn(),
   },
   palavra_chave: {
@@ -74,7 +80,6 @@ describe('ResearchService', () => {
       objetivos: 'Objetivos',
       metodologia: 'Metodologia',
       referencias: 'Referencias',
-      resultados_esperados: 'Resultados',
     },
   };
 
@@ -118,7 +123,7 @@ describe('ResearchService', () => {
       email: 'research@example.com',
       palavras_chave_ids: [1, 2],
       pesquisa_objetivo_ids: [10],
-      corpo_projeto_id: 5,
+      corpo_projeto: corpoProjeto,
       atividade_projeto_pesquisa_ids: [7],
       unidade_id: 3,
       area_conhecimento_id: 1,
@@ -126,7 +131,6 @@ describe('ResearchService', () => {
 
     it('deve persistir o projeto de pesquisa com as datas', async () => {
       prisma.unidade_academica.findUnique.mockResolvedValue({ id: 3 });
-      prisma.corpo_projeto.findUnique.mockResolvedValue({ id: 5 });
       prisma.palavra_chave.findMany.mockResolvedValue([{ id: 1 }, { id: 2 }]);
       prisma.objetivo_desenvolvimento_sustentavel.findMany.mockResolvedValue([{ id: 10 }]);
       prisma.atividade_projeto_pesquisa.findMany.mockResolvedValue([{ id: 7 }]);
@@ -146,6 +150,9 @@ describe('ResearchService', () => {
             categoria: {
               connect: { id: categoriaPadrao.id },
             },
+            corpo_projeto: {
+              create: corpoProjeto,
+            },
           }),
           include: expect.objectContaining({ categoria: true }),
         }),
@@ -160,7 +167,6 @@ describe('ResearchService', () => {
 
     it('deve lançar erro quando a categoria não existir', async () => {
       prisma.unidade_academica.findUnique.mockResolvedValue({ id: 3 });
-      prisma.corpo_projeto.findUnique.mockResolvedValue({ id: 5 });
       prisma.palavra_chave.findMany.mockResolvedValue([{ id: 1 }, { id: 2 }]);
       prisma.categoria_edital.findUnique.mockResolvedValue(null);
 
@@ -255,7 +261,6 @@ describe('ResearchService', () => {
           objetivos: 'Objetivos',
           metodologia: 'Metodologia',
           referencias: 'Referencias',
-          resultados_esperados: 'Resultados',
         },
       });
 
@@ -278,6 +283,9 @@ describe('ResearchService', () => {
       data_inicio: new Date('2026-02-01') as any,
       data_fim: new Date('2026-11-30') as any,
       unidade_id: 3,
+      corpo_projeto: {
+        metodologia: 'Nova metodologia',
+      },
     };
 
     it('deve atualizar sem sobrescrever codigo e situacao', async () => {
@@ -292,6 +300,11 @@ describe('ResearchService', () => {
         titulo: 'Novo título',
         data_inicio: updateDto.data_inicio,
         data_fim: updateDto.data_fim,
+        corpo_projeto: {
+          update: {
+            metodologia: 'Nova metodologia',
+          },
+        },
       });
       expect(call.data).not.toHaveProperty('codigo');
       expect(call.data).not.toHaveProperty('situacao');

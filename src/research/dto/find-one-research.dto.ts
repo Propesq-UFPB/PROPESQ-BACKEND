@@ -27,5 +27,4 @@ export class CorpoProjeto {
   objetivos: string;
   metodologia: string;
   referencias: string;
-  resultados_esperados: string;
 }

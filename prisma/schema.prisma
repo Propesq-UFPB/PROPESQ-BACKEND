@@ -86,7 +86,6 @@ model corpo_projeto {
   objetivos            String
   metodologia          String
   referencias          String
-  resultados_esperados String
   projeto_pesquisa_id  Int              @unique
   projeto_pesquisa     projeto_pesquisa @relation(fields: [projeto_pesquisa_id], references: [id], onDelete: Cascade)
 }

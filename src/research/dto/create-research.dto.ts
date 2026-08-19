@@ -4,14 +4,18 @@ import {
   IsDateString,
   IsEmail,
   IsEnum,
+  IsDefined,
   IsInt,
   IsNotEmpty,
+  IsNotEmptyObject,
   IsOptional,
   IsString,
   Min,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { CreateCorpoProjetoDto } from './corpo-projeto.dto';
 
 export class CreateResearchDto {
   @ApiProperty({
@@ -84,13 +88,14 @@ export class CreateResearchDto {
 
   @ApiProperty({
     required: true,
-    type: Number,
-    description: 'ID do corpo do projeto já cadastrado',
+    type: CreateCorpoProjetoDto,
+    description: 'Conteúdo textual do projeto de pesquisa',
   })
-  @Type(() => Number)
-  @IsNotEmpty({ message: 'O ID do corpo do projeto é obrigatório' })
-  @IsInt({ message: 'O ID do corpo do projeto deve ser um número inteiro' })
-  corpo_projeto_id!: number;
+  @IsDefined({ message: 'O corpo do projeto é obrigatório' })
+  @IsNotEmptyObject({}, { message: 'O corpo do projeto é obrigatório' })
+  @ValidateNested()
+  @Type(() => CreateCorpoProjetoDto)
+  corpo_projeto!: CreateCorpoProjetoDto;
 
   @ApiProperty({
     isArray: true,

@@ -5,11 +5,14 @@ import {
   IsEmail,
   IsEnum,
   IsInt,
+  IsNotEmptyObject,
   IsOptional,
   IsString,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { UpdateCorpoProjetoDto } from './corpo-projeto.dto';
 
 export class updateResearchDto {
   @ApiProperty({
@@ -79,15 +82,15 @@ export class updateResearchDto {
   @IsInt({ each: true, message: 'Cada ID de pesquisa_objetivo deve ser um número inteiro' })
   pesquisa_objetivo_ids?: number[];
 
-  @ApiProperty({
-    required: false,
-    type: Number,
-    description: 'ID do corpo do projeto já cadastrado',
+  @ApiPropertyOptional({
+    type: UpdateCorpoProjetoDto,
+    description: 'Campos do corpo do projeto que serão atualizados',
   })
   @IsOptional()
-  @Type(() => Number)
-  @IsInt({ message: 'O ID do corpo do projeto deve ser um número inteiro' })
-  corpo_projeto_id?: number;
+  @IsNotEmptyObject({}, { message: 'O corpo do projeto não pode ser vazio' })
+  @ValidateNested()
+  @Type(() => UpdateCorpoProjetoDto)
+  corpo_projeto?: UpdateCorpoProjetoDto;
 
   @ApiProperty({
     isArray: true,

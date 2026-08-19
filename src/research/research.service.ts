@@ -27,7 +27,6 @@ export class ResearchService {
 
   async create(createResearchDto: CreateResearchDto): Promise<any> {
     await this.assertAcademicUnitExists(createResearchDto.unidade_id);
-    await this.assertCorpoProjetoExists(createResearchDto.corpo_projeto_id);
     await this.assertPalavrasChaveExist(createResearchDto.palavras_chave_ids);
     await this.assertCategoria(createResearchDto.categoria_id);
 
@@ -80,7 +79,7 @@ export class ResearchService {
           },
         }),
         corpo_projeto: {
-          connect: { id: createResearchDto.corpo_projeto_id },
+          create: createResearchDto.corpo_projeto,
         },
         unidade_academica: {
           connect: { id: createResearchDto.unidade_id },
@@ -237,10 +236,6 @@ export class ResearchService {
       await this.assertAcademicUnitExists(updateResearchDto.unidade_id);
     }
 
-    if (updateResearchDto.corpo_projeto_id !== undefined) {
-      await this.assertCorpoProjetoExists(updateResearchDto.corpo_projeto_id);
-    }
-
     if (Array.isArray(updateResearchDto.palavras_chave_ids)) {
       await this.assertPalavrasChaveExist(updateResearchDto.palavras_chave_ids);
     }
@@ -296,9 +291,9 @@ export class ResearchService {
             set: updateResearchDto.atividade_projeto_pesquisa_ids.map((id: number) => ({ id })),
           },
         }),
-        ...(updateResearchDto.corpo_projeto_id !== undefined && {
+        ...(updateResearchDto.corpo_projeto !== undefined && {
           corpo_projeto: {
-            connect: { id: updateResearchDto.corpo_projeto_id },
+            update: updateResearchDto.corpo_projeto,
           },
         }),
         ...(updateResearchDto.unidade_id !== undefined && {
@@ -355,7 +350,6 @@ export class ResearchService {
         objetivos: research.corpo_projeto.objetivos,
         metodologia: research.corpo_projeto.metodologia,
         referencias: research.corpo_projeto.referencias,
-        resultados_esperados: research.corpo_projeto.resultados_esperados,
       };
     }
 
@@ -542,17 +536,6 @@ export class ResearchService {
 
     if (!academicUnit) {
       throw new NotFoundException(`Unidade acadêmica com id ${unidadeId} não encontrada`);
-    }
-  }
-
-  private async assertCorpoProjetoExists(corpoProjetoId: number): Promise<void> {
-    const corpoProjeto = await this.prisma.corpo_projeto.findUnique({
-      where: { id: corpoProjetoId },
-      select: { id: true },
-    });
-
-    if (!corpoProjeto) {
-      throw new NotFoundException(`Corpo de projeto com id ${corpoProjetoId} não encontrado`);
     }
   }
 

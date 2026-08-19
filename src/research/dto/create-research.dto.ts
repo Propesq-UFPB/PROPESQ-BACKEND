@@ -1,4 +1,4 @@
-import { CategoriaProjeto, TipoProjeto } from '@prisma/client';
+import { TipoProjeto } from '@prisma/client';
 import {
   IsArray,
   IsDateString,
@@ -32,10 +32,11 @@ export class CreateResearchDto {
   title!: string;
 
   @ApiProperty({ required: true, type: 'integer' })
+  @Type(() => Number)
   @IsNotEmpty()
-  @IsInt()
-  @Min(1)
-  categoria_id: number;
+  @IsInt({ message: 'O ID da categoria deve ser um número inteiro' })
+  @Min(1, { message: 'O ID da categoria deve ser maior que zero' })
+  categoria_id!: number;
 
   @ApiProperty({ required: true })
   @IsNotEmpty({ message: 'A vigência é obrigatória' })
@@ -107,4 +108,7 @@ export class CreateResearchDto {
   @IsNotEmpty()
   @IsInt({ message: 'O ID da unidade acadêmica deve ser um número inteiro' })
   unidade_id!: number;
+
+  @ApiProperty({ required: true, type: Number, description: 'ID da área de conhecimento' })
+  area_conhecimento_id!: number;
 }

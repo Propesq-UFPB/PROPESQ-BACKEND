@@ -6,10 +6,9 @@ import {
 } from '@nestjs/common';
 import { CreateResearchDto } from '../research/dto/create-research.dto';
 import { PrismaService } from '../prisma/prisma.service';
-import { Idioma, Prisma, SituacaoProjeto, type projeto_pesquisa } from '@prisma/client';
+import { Idioma, Prisma, SituacaoProjeto } from '@prisma/client';
 import { PaginatedResult } from '../common/dto/paginated.dto';
 import { findOneResearchDto } from './dto/find-one-research.dto';
-import { CategoriaProjetoMapper } from '../common/mapper/categoria-projeto.mapper';
 import { SituacaoProjetoMapper } from '../common/mapper/situacao-projeto.mapper';
 import { TipoProjetoMapper } from '../common/mapper/tipo-projeto.mapper';
 import { updateResearchDto } from './dto/update-research.dto';
@@ -88,6 +87,7 @@ export class ResearchService {
         },
       },
       include: {
+        categoria: true,
         corpo_projeto: true,
         palavra_chave: true,
         atividades: { include: { meses: true } },

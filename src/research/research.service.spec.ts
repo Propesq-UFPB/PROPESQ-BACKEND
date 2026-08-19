@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Prisma, CategoriaProjeto, Idioma, SituacaoProjeto, TipoProjeto } from '@prisma/client';
+import { Prisma, Idioma, SituacaoProjeto, TipoProjeto } from '@prisma/client';
 import { ProjectMembershipScopeService } from '../common/project-membership-scope.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ResearchService } from './research.service';
@@ -9,6 +9,13 @@ import { updateResearchDto } from './dto/update-research.dto';
 
 const mockMembership = {
   buildAllowedPesquisaIds: jest.fn().mockResolvedValue(null),
+};
+
+const categoriaPadrao = {
+  id: 1,
+  denominacao: 'CATEGORIA_PADRAO',
+  ordem: 1,
+  ativo: true,
 };
 
 const mockPrismaService = {
@@ -52,7 +59,7 @@ describe('ResearchService', () => {
     tipo: TipoProjeto.INTERNO,
     titulo: 'Projeto em PT',
     title: 'Project in EN',
-    categoria: CategoriaProjeto.CATEGORIA_PADRAO,
+    categoria: categoriaPadrao,
     codigo: 'RP-001',
     email: 'research@example.com',
     situacao: SituacaoProjeto.SUBMETIDO,
@@ -104,7 +111,7 @@ describe('ResearchService', () => {
       tipo: TipoProjeto.INTERNO,
       titulo: 'Projeto em PT',
       title: 'Project in EN',
-      categoria: CategoriaProjeto.CATEGORIA_PADRAO,
+      categoria_id: categoriaPadrao.id,
       vigencia: new Date('2026-01-01') as any,
       data_inicio: new Date('2026-01-02') as any,
       data_fim: new Date('2026-12-31') as any,
@@ -114,6 +121,7 @@ describe('ResearchService', () => {
       corpo_projeto_id: 5,
       atividade_projeto_pesquisa_ids: [7],
       unidade_id: 3,
+      area_conhecimento_id: 1,
     };
 
     it('deve persistir o projeto de pesquisa com as datas', async () => {
@@ -135,7 +143,11 @@ describe('ResearchService', () => {
             situacao: SituacaoProjeto.SUBMETIDO,
             data_inicio: createDto.data_inicio,
             data_fim: createDto.data_fim,
+            categoria: {
+              connect: { id: categoriaPadrao.id },
+            },
           }),
+          include: expect.objectContaining({ categoria: true }),
         }),
       );
     });
@@ -144,6 +156,18 @@ describe('ResearchService', () => {
       prisma.unidade_academica.findUnique.mockResolvedValue(null);
 
       await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
+    });
+
+    it('deve lançar erro quando a categoria não existir', async () => {
+      prisma.unidade_academica.findUnique.mockResolvedValue({ id: 3 });
+      prisma.corpo_projeto.findUnique.mockResolvedValue({ id: 5 });
+      prisma.palavra_chave.findMany.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+      prisma.categoria_edital.findUnique.mockResolvedValue(null);
+
+      await expect(service.create(createDto)).rejects.toThrow(
+        `Categoria id ${categoriaPadrao.id} não existente`,
+      );
+      expect(prisma.projeto_pesquisa.create).not.toHaveBeenCalled();
     });
   });
 
@@ -155,7 +179,7 @@ describe('ResearchService', () => {
           tipo: TipoProjeto.INTERNO,
           titulo: 'Projeto em PT',
           title: 'Project in EN',
-          categoria: CategoriaProjeto.CATEGORIA_PADRAO,
+          categoria: categoriaPadrao,
           codigo: 'RP-001',
           email: 'research@example.com',
           situacao: SituacaoProjeto.SUBMETIDO,
@@ -216,7 +240,7 @@ describe('ResearchService', () => {
         tipo: TipoProjeto.INTERNO,
         titulo: 'Projeto em PT',
         title: 'Project in EN',
-        categoria: CategoriaProjeto.CATEGORIA_PADRAO,
+        categoria: categoriaPadrao,
         codigo: 'RP-001',
         email: 'research@example.com',
         situacao: SituacaoProjeto.SUBMETIDO,
@@ -396,7 +420,7 @@ describe('ResearchService', () => {
           tipo: TipoProjeto.INTERNO,
           titulo: 'Projeto A',
           title: 'Project A',
-          categoria: CategoriaProjeto.CATEGORIA_PADRAO,
+          categoria: categoriaPadrao,
           codigo: 'RP-001',
           email: 'research@example.com',
           situacao: SituacaoProjeto.APROVADO,

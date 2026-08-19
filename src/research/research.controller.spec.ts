@@ -3,7 +3,7 @@ import { ResearchController } from './research.controller';
 import { ResearchService } from './research.service';
 import { CreateResearchDto } from './dto/create-research.dto';
 import { updateResearchDto } from './dto/update-research.dto';
-import { CategoriaProjeto, TipoProjeto } from '@prisma/client';
+import { TipoProjeto } from '@prisma/client';
 
 const mockResearchService = {
   create: jest.fn(),
@@ -49,7 +49,7 @@ describe('ResearchController', () => {
         tipo: TipoProjeto.INTERNO,
         titulo: 'Projeto em PT',
         title: 'Project in EN',
-        categoria: CategoriaProjeto.CATEGORIA_PADRAO,
+        categoria_id: 1,
         vigencia: new Date('2026-01-01') as any,
         data_inicio: new Date('2026-01-02') as any,
         data_fim: new Date('2026-12-31') as any,
@@ -59,6 +59,7 @@ describe('ResearchController', () => {
         corpo_projeto_id: 5,
         atividade_projeto_pesquisa_ids: [7],
         unidade_id: 3,
+        area_conhecimento_id: 1,
       };
 
       mockResearchService.create.mockResolvedValue({ id: 1 });

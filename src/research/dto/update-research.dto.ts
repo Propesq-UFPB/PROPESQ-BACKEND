@@ -1,11 +1,10 @@
-import { CategoriaProjeto, TipoProjeto } from '@prisma/client';
+import { TipoProjeto } from '@prisma/client';
 import {
   IsArray,
   IsDateString,
   IsEmail,
   IsEnum,
   IsInt,
-  IsNotEmpty,
   IsOptional,
   IsString,
 } from 'class-validator';

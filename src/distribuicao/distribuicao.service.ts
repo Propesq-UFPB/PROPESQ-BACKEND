@@ -189,16 +189,43 @@ export class DistribuicaoService {
   protected async saveSolution(
     pairs: Array<{ projeto_id: number; avaliador_ids: number[] }>,
   ): Promise<void> {
-    const data = pairs.flatMap(({ projeto_id, avaliador_ids }) =>
-      avaliador_ids.map(avaliador_id => ({ projeto_id, avaliador_id })),
-    );
+    const projeto_ids = pairs.map(p => p.projeto_id);
 
-    await this.prisma.$transaction([
-      this.prisma.projeto_avaliacao.deleteMany({
-        where: { projeto_id: { in: pairs.map(p => p.projeto_id) } },
-      }),
-      this.prisma.projeto_avaliacao.createMany({ data }),
-    ]);
+    await this.prisma.$transaction(async prisma => {
+      await prisma.projeto_avaliacao.deleteMany({
+        where: { projeto_id: { in: projeto_ids } },
+      });
+
+      const planos_trabalho = await prisma.plano_trabalho.findMany({
+        where: { pesquisa_id: { in: projeto_ids } },
+        select: { id: true, pesquisa_id: true },
+      });
+
+      const planos_trabalho_by_projeto = new Map<number, number[]>();
+      for (const { pesquisa_id, id } of planos_trabalho) {
+        const ids = planos_trabalho_by_projeto.get(pesquisa_id) ?? [];
+        ids.push(id);
+        planos_trabalho_by_projeto.set(pesquisa_id, ids);
+      }
+
+      for (const { projeto_id, avaliador_ids } of pairs) {
+        const plano_trabalho_ids = planos_trabalho_by_projeto.get(projeto_id) ?? [];
+
+        for (const avaliador_id of avaliador_ids) {
+          await prisma.projeto_avaliacao.create({
+            data: {
+              projeto_id,
+              avaliador_id,
+              planos_avaliacao: {
+                create: plano_trabalho_ids.map(plano_trabalho_id => ({
+                  plano_trabalho_id,
+                })),
+              },
+            },
+          });
+        }
+      }
+    });
   }
 
   async distribute(editalId: number, params: DistribuicaoParamsDto) {

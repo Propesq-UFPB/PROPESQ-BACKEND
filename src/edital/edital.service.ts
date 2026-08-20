@@ -423,4 +423,29 @@ export class EditalService {
 
     return new Date(normalizedValue);
   }
+
+  async findEvaluationAssignments(editalId: number) {
+    const edital = await this.prisma.edital.findUnique({ where: { id: editalId } });
+    if (!edital) {
+      throw new NotFoundException('Edital não encontrado');
+    }
+    return this.prisma.projeto_avaliacao.findMany({
+      where: { projeto_pesquisa: { edital_id: editalId } },
+      include: {
+        avaliador: true,
+        projeto_pesquisa: true,
+        notas: {
+          include: { criterio_avaliacao: true },
+        },
+        planos_avaliacao: {
+          include: {
+            plano_trabalho: true,
+            notas: {
+              include: { criterio_avaliacao: true },
+            },
+          },
+        },
+      },
+    });
+  }
 }

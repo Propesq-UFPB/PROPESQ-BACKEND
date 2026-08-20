@@ -92,14 +92,14 @@ model corpo_projeto {
 }
 
 model discente {
-  id                       Int                        @id @default(autoincrement())
-  usuario_id               Int
-  matricula                String?                    @db.VarChar(50)
-  lattes_url               String?                    @db.VarChar(500)
-  usuario                  usuario                    @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  plano_trabalho           plano_trabalho[]
-  interesses_plano         interesse_plano_trabalho[]
-  perfil                   perfil_discente?
+  id               Int                        @id @default(autoincrement())
+  usuario_id       Int
+  matricula        String?                    @db.VarChar(50)
+  lattes_url       String?                    @db.VarChar(500)
+  usuario          usuario                    @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  plano_trabalho   plano_trabalho[]
+  interesses_plano interesse_plano_trabalho[]
+  perfil           perfil_discente?
 }
 
 model perfil_discente {
@@ -144,7 +144,7 @@ model perfil_discente {
   creditos_concluidos Int?
   reprovacoes         Int?
   situacao_academica  String?   @db.VarChar(50)
-  situacao_matricula   String?   @db.VarChar(50)
+  situacao_matricula  String?   @db.VarChar(50)
   possui_necessidade  Boolean   @default(false)
   tipo_necessidade    String?   @db.VarChar(255)
   atualizado_em       DateTime  @default(now()) @updatedAt @db.Timestamp(6)
@@ -272,30 +272,31 @@ model permissao {
 }
 
 model plano_trabalho {
-  id                        Int                         @id @default(autoincrement())
-  discente_id               Int?
-  usuario_id                Int?
-  modalidade                String                      @db.VarChar(255)
-  status                    String
-  tipo_bolsa                String                      @db.VarChar(255)
-  cronograma_id             Int?
-  direcionamento_plano      String
-  corpo_id                  Int?
-  pesquisa_id               Int
-  status_indicacao          StatusIndicacaoPlano        @default(PENDENTE_INDICACAO)
-  vagas                     Int                         @default(1)
-  carga_horaria             Int?
-  prazo_indicacao           DateTime?                   @db.Date
-  prazo_substituicao        DateTime?                   @db.Date
-  tipo_indicacao            TipoIndicacao?
-  status_termo_compromisso  StatusTermoCompromisso?     @default(NAO_ENVIADO)
-  atividades                atividade_plano_trabalho[]
-  corpo_plano_trabalho      corpo_plano_trabalho?
-  discente                  discente?                   @relation(fields: [discente_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  usuario                   usuario?                    @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  projeto_pesquisa          projeto_pesquisa            @relation(fields: [pesquisa_id], references: [id], onDelete: Cascade)
-  interesses                interesse_plano_trabalho[]
-  dados_bancarios           dados_bancarios_indicacao?
+  id                       Int                        @id @default(autoincrement())
+  discente_id              Int?
+  usuario_id               Int?
+  modalidade               String                     @db.VarChar(255)
+  status                   String
+  tipo_bolsa               String                     @db.VarChar(255)
+  cronograma_id            Int?
+  direcionamento_plano     String
+  corpo_id                 Int?
+  pesquisa_id              Int
+  status_indicacao         StatusIndicacaoPlano       @default(PENDENTE_INDICACAO)
+  vagas                    Int                        @default(1)
+  carga_horaria            Int?
+  prazo_indicacao          DateTime?                  @db.Date
+  prazo_substituicao       DateTime?                  @db.Date
+  tipo_indicacao           TipoIndicacao?
+  status_termo_compromisso StatusTermoCompromisso?    @default(NAO_ENVIADO)
+  atividades               atividade_plano_trabalho[]
+  corpo_plano_trabalho     corpo_plano_trabalho?
+  discente                 discente?                  @relation(fields: [discente_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuario                  usuario?                   @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  projeto_pesquisa         projeto_pesquisa           @relation(fields: [pesquisa_id], references: [id], onDelete: Cascade)
+  interesses               interesse_plano_trabalho[]
+  dados_bancarios          dados_bancarios_indicacao?
+  planoAvaliacaos          plano_avaliacao[]
 }
 
 model interesse_plano_trabalho {
@@ -389,9 +390,29 @@ model projeto_avaliacao {
   criado_em     DateTime @default(now()) @db.Timestamp(6)
   atualizado_em DateTime @default(now()) @updatedAt @db.Timestamp(6)
 
-  avaliador        usuario          @relation("avaliador_projeto_avaliacao", fields: [avaliador_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  projeto_pesquisa projeto_pesquisa @relation(fields: [projeto_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  avaliador        usuario           @relation("avaliador_projeto_avaliacao", fields: [avaliador_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  projeto_pesquisa projeto_pesquisa  @relation(fields: [projeto_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   notas            avaliacao_nota[]
+  planos_avaliacao plano_avaliacao[]
+
+  @@index([avaliador_id])
+  @@index([projeto_id])
+}
+
+model plano_avaliacao {
+  id                    Int      @id @default(autoincrement())
+  projeto_avaliacao_id  Int
+  plano_trabalho_id     Int
+  descricao             String?  @db.Text
+  criado_em             DateTime @default(now()) @db.Timestamp(6)
+  atualizado_em         DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
+  projeto_avaliacao projeto_avaliacao @relation(fields: [projeto_avaliacao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  plano_trabalho    plano_trabalho    @relation(fields: [plano_trabalho_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  notas             avaliacao_nota[]
+
+  @@unique([projeto_avaliacao_id, plano_trabalho_id])
+  @@index([plano_trabalho_id])
 }
 
 model criterio_avaliacao {
@@ -411,11 +432,16 @@ model criterio_avaliacao {
 model avaliacao_nota {
   id                    Int    @id @default(autoincrement())
   avaliacao_id          Int?
-  criterio_avaliacao_id Int?
+  plano_avaliacao_id    Int?
+  criterio_avaliacao_id Int
   nota                  Float?
 
-  avaliacao          projeto_avaliacao?  @relation(fields: [avaliacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  criterio_avaliacao criterio_avaliacao? @relation(fields: [criterio_avaliacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  avaliacao          projeto_avaliacao?  @relation(fields: [avaliacao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  plano_avaliacao    plano_avaliacao?    @relation(fields: [plano_avaliacao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  criterio_avaliacao criterio_avaliacao  @relation(fields: [criterio_avaliacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([avaliacao_id, criterio_avaliacao_id])
+  @@unique([plano_avaliacao_id, criterio_avaliacao_id])
 }
 
 model objetivo_desenvolvimento_sustentavel {
@@ -467,9 +493,9 @@ model usuario {
   discente            discente[]
   docente             docente[]
   plano_trabalho      plano_trabalho[]
-  projetos_avaliados  projeto_pesquisa[]    @relation("avaliador_projeto")
-  historico_avaliacao historico_avaliacao[] @relation("avaliador_historico")
-  projeto_avaliacao   projeto_avaliacao[]   @relation("avaliador_projeto_avaliacao")
+  projetos_avaliados  projeto_pesquisa[]          @relation("avaliador_projeto")
+  historico_avaliacao historico_avaliacao[]       @relation("avaliador_historico")
+  projeto_avaliacao   projeto_avaliacao[]         @relation("avaliador_projeto_avaliacao")
   membros_projeto     membro_projeto[]
   certificados        certificado[]
   dados_bancarios     dados_bancarios_indicacao[]
@@ -522,12 +548,12 @@ model funcao_projeto {
 }
 
 model membro_projeto {
-  id                  Int              @id @default(autoincrement())
+  id                  Int      @id @default(autoincrement())
   projeto_pesquisa_id Int
   usuario_id          Int
   funcao_projeto_id   Int
-  ativo               Boolean          @default(true)
-  criado_em           DateTime         @default(now()) @db.Timestamp(6)
+  ativo               Boolean  @default(true)
+  criado_em           DateTime @default(now()) @db.Timestamp(6)
 
   projeto_pesquisa projeto_pesquisa @relation(fields: [projeto_pesquisa_id], references: [id], onDelete: Cascade)
   usuario          usuario          @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -549,13 +575,13 @@ model relatorio {
 }
 
 model certificado {
-  id                  Int       @id @default(autoincrement())
+  id                  Int      @id @default(autoincrement())
   usuario_id          Int
   projeto_pesquisa_id Int?
-  tipo                String    @db.VarChar(255)
-  codigo              String    @unique @db.VarChar(255)
-  emitido_em          DateTime  @db.Timestamp(6)
-  criado_em           DateTime  @default(now()) @db.Timestamp(6)
+  tipo                String   @db.VarChar(255)
+  codigo              String   @unique @db.VarChar(255)
+  emitido_em          DateTime @db.Timestamp(6)
+  criado_em           DateTime @default(now()) @db.Timestamp(6)
 
   usuario          usuario           @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   projeto_pesquisa projeto_pesquisa? @relation(fields: [projeto_pesquisa_id], references: [id], onDelete: SetNull)

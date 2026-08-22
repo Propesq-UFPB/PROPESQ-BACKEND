@@ -22,7 +22,6 @@ const adapter = new PrismaPg({
 const prisma = new PrismaClient({ adapter });
 
 const FUNCOES = [
-  { nome: 'ADMIN', descricao: 'Acesso total ao sistema' },
   { nome: 'GESTOR', descricao: 'Acesso às funcionalidades de gestor' },
   { nome: 'COORDENADOR', descricao: 'Acesso às funcionalidades de coordenador' },
   { nome: 'ALUNO', descricao: 'Acesso às funcionalidades de aluno' },
@@ -148,7 +147,7 @@ const BOLSAS_SEED = [
 
 const USUARIOS_SEED = [
   {
-    roleName: 'ADMIN',
+    roleName: 'GESTOR',
     email: 'dev@example.com',
     nome: 'Dev Admin',
     senha: 'changeme',

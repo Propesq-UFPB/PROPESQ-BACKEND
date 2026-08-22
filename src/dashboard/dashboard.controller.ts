@@ -23,7 +23,7 @@ import { DashboardService } from './dashboard.service';
 @ApiTags('Dashboard')
 @Controller('dashboard')
 @UseGuards(RolesGuard)
-@Roles('ADMIN', 'GESTOR')
+@Roles('GESTOR')
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 

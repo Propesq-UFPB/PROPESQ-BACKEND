@@ -22,7 +22,7 @@ export class WorkPlanAccessService {
 
   /**
    * Where clause scoping planos to the caller's project membership.
-   * ADMIN/GESTOR (e roles sem escopo de coordenação) → undefined (sem filtro).
+   * GESTOR (e roles sem escopo de coordenação) → undefined (sem filtro).
    * COORDENADOR → filtro por membro Orientador|Coordenador|Coordenador Adjunto.
    */
   async buildScopeWhere(

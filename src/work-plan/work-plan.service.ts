@@ -11,6 +11,7 @@ import {
   TipoIndicacao,
 } from '@prisma/client';
 import { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
+import { normalizeSystemFuncao } from '../auth/normalize-system-funcao';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaginatedResult } from '../common/dto/paginated.dto';
 import { ConfirmIndicacaoDto } from './dto/confirm-indicacao.dto';
@@ -195,7 +196,7 @@ export class WorkPlanService {
 
   async findOne(id: number, user?: CurrentUserPayload) {
     if (user) {
-      // COORDENADOR: membership obrigatória; ADMIN/GESTOR/ALUNO: sem force (ALUNO lê livre).
+      // COORDENADOR: membership obrigatória; GESTOR/ALUNO: sem force (ALUNO lê livre).
       const options = this.access.isCoordenador(user)
         ? { forceMemberScope: true }
         : undefined;
@@ -382,7 +383,7 @@ export class WorkPlanService {
     const role = user.funcao?.toUpperCase();
     let discenteId: number;
 
-    if (role === 'ADMIN' || role === 'GESTOR') {
+    if (normalizeSystemFuncao(role) === 'GESTOR') {
       if (dto.discente_id === undefined) {
         throw new BadRequestException('Informe discente_id.');
       }

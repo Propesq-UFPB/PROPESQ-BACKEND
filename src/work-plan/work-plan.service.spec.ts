@@ -80,7 +80,7 @@ const adminUser: CurrentUserPayload = {
   userId: 1,
   email: 'admin@test.com',
   nome: 'Admin',
-  funcao: 'ADMIN',
+  funcao: 'GESTOR',
 };
 
 const coordUser: CurrentUserPayload = {
@@ -310,7 +310,7 @@ describe('WorkPlanService', () => {
       expect(prisma.plano_trabalho.findUnique).not.toHaveBeenCalled();
     });
 
-    it('ADMIN: assert sem forceMemberScope', async () => {
+    it('GESTOR: assert sem forceMemberScope', async () => {
       mockAccessService.isCoordenador.mockReturnValue(false);
       prisma.plano_trabalho.findUnique.mockResolvedValue({ id: 1 });
       prisma.$queryRawUnsafe.mockResolvedValue([]);
@@ -765,7 +765,7 @@ describe('WorkPlanService', () => {
   });
 
   describe('createInteresse', () => {
-    it('ADMIN cria interesse com discente_id', async () => {
+    it('GESTOR cria interesse com discente_id', async () => {
       prisma.plano_trabalho.findUnique.mockResolvedValue({ id: 1 });
       prisma.discente.findUnique.mockResolvedValue({ id: 3 });
       prisma.interesse_plano_trabalho.findUnique.mockResolvedValue(null);
@@ -840,7 +840,7 @@ describe('WorkPlanService', () => {
       expect(result).toEqual({ id: 1 });
     });
 
-    it('ADMIN remove com forceMemberScope no assert', async () => {
+    it('GESTOR remove com forceMemberScope no assert', async () => {
       prisma.plano_trabalho.findUnique.mockResolvedValue({ id: 1 });
       prisma.$queryRawUnsafe.mockResolvedValue([]);
       prisma.plano_trabalho.delete.mockResolvedValue({ id: 1 });

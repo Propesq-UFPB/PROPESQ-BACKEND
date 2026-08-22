@@ -34,4 +34,15 @@ describe('JwtStrategy', () => {
       unidade_id: undefined,
     });
   });
+
+  it('normaliza ADMIN do token para GESTOR', async () => {
+    const result = await strategy.validate({
+      sub: 2,
+      email: 'dev@example.com',
+      nome: 'Dev',
+      funcao: 'ADMIN',
+    });
+
+    expect(result.funcao).toBe('GESTOR');
+  });
 });

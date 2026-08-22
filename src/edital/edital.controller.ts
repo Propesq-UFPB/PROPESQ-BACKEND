@@ -59,7 +59,7 @@ export class EditalController {
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   @ApiOperation({
     summary: 'Cadastra um edital como rascunho ou o publica imediatamente',
   })
@@ -98,7 +98,7 @@ export class EditalController {
 
   @Post(':id/anexo')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   @UseInterceptors(FileInterceptor('arquivo'))
   @ApiConsumes('multipart/form-data')
   @ApiParam({ name: 'id', type: Number, description: 'ID do edital.' })
@@ -176,7 +176,7 @@ export class EditalController {
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({ description: 'Edital deletado com sucesso' })
   @ApiNotFoundResponse({ description: 'Edital não encontrado' })
@@ -186,7 +186,7 @@ export class EditalController {
 
   @Patch(':id')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({ description: 'Edital atualizado com sucesso' })
   @ApiNotFoundResponse({ description: 'Edital não encontrado' })
@@ -202,7 +202,7 @@ export class EditalController {
 
   @Put(':id/academic-units')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({ description: 'Unidades acadêmicas do edital atualizadas com sucesso.' })
   @ApiNotFoundResponse({ description: 'Edital ou unidade acadêmica não encontrada.' })

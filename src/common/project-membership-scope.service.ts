@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
+import { normalizeSystemFuncao } from '../auth/normalize-system-funcao';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   FUNCAO_ORIENTADOR,
@@ -11,8 +12,7 @@ export class ProjectMembershipScopeService {
   constructor(private readonly prisma: PrismaService) {}
 
   isAdminOrGestor(user: CurrentUserPayload): boolean {
-    const role = user.funcao?.toUpperCase();
-    return role === 'ADMIN' || role === 'GESTOR';
+    return normalizeSystemFuncao(user.funcao) === 'GESTOR';
   }
 
   isCoordenador(user: CurrentUserPayload): boolean {
@@ -21,7 +21,7 @@ export class ProjectMembershipScopeService {
 
   /**
    * IDs de projeto_pesquisa acessíveis ao usuário por membership.
-   * ADMIN/GESTOR → null (sem restrição).
+   * GESTOR → null (sem restrição).
    * Sem escopo de coordenação → null.
    * COORDENADOR (ou force) → lista (pode ser vazia).
    */

@@ -19,7 +19,7 @@ export class DiscentesController {
 
   @Patch(':id/perfil')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   @ApiOperation({
     summary: 'Atualiza perfil acadêmico/cadastral do discente (popular dados de teste)',
   })

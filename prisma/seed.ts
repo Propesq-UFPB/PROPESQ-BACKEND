@@ -657,10 +657,18 @@ async function seedEntidadesPesquisa() {
     },
   });
 
+  const bolsaPadrao = await prisma.bolsa.findFirst({ orderBy: { id: 'asc' } });
+  if (!bolsaPadrao) {
+    throw new Error(
+      'Nenhuma bolsa encontrada; execute o seed de bolsas antes do edital.',
+    );
+  }
+
   await prisma.edital.upsert({
     where: { codigo: 'SEED-EDITAL-001' },
     update: {
       descricao: 'Edital seed de iniciação científica',
+      ano: 2026,
       titulacao_min: TitulacaoMin.DOUTORADO,
       tipo: TipoEdital.PESQUISA,
       limite_solicitacoes_orientador: 2,
@@ -669,6 +677,9 @@ async function seedEntidadesPesquisa() {
       apenas_orient_coordena_plano: false,
       tec_admin_coord_proj: false,
       divulgar_resultado: false,
+      edital_para_voluntarios: false,
+      apenas_colab_vol_cadastra_plano: false,
+      prof_subst_cadastra_proj: false,
       categoria: {
         connect: {
           id: categoriaPadrao.id,
@@ -695,6 +706,7 @@ async function seedEntidadesPesquisa() {
         deleteMany: {},
         create: [
           {
+            id_bolsa: bolsaPadrao.id,
             quantidade: 10,
             fppi_min: 0,
             media_min_proj: 7,
@@ -706,6 +718,7 @@ async function seedEntidadesPesquisa() {
     create: {
       codigo: 'SEED-EDITAL-001',
       descricao: 'Edital seed de iniciação científica',
+      ano: 2026,
       titulacao_min: TitulacaoMin.DOUTORADO,
       tipo: TipoEdital.PESQUISA,
       limite_solicitacoes_orientador: 2,
@@ -714,6 +727,9 @@ async function seedEntidadesPesquisa() {
       apenas_orient_coordena_plano: false,
       tec_admin_coord_proj: false,
       divulgar_resultado: false,
+      edital_para_voluntarios: false,
+      apenas_colab_vol_cadastra_plano: false,
+      prof_subst_cadastra_proj: false,
       data_cadastro: new Date(),
       categoria: {
         connect: {
@@ -740,6 +756,7 @@ async function seedEntidadesPesquisa() {
       edital_cota_distribuicao: {
         create: [
           {
+            id_bolsa: bolsaPadrao.id,
             quantidade: 10,
             fppi_min: 0,
             media_min_proj: 7,

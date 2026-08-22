@@ -12,11 +12,13 @@ import {
   Post,
   Put,
   Query,
+  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import { CreateEditalDto } from './dto/create-edital.dto';
 import {
   ApiBody,
@@ -123,6 +125,23 @@ export class EditalController {
     @UploadedFile() arquivo?: UploadedEditalFile,
   ): Promise<EditalAttachmentResponseDto> {
     return this.editalService.uploadAttachment(id, arquivo);
+  }
+
+  @Get(':id/anexo')
+  @ApiParam({ name: 'id', type: Number, description: 'ID do edital.' })
+  @ApiOkResponse({ description: 'PDF do anexo retornado com sucesso.' })
+  @ApiNotFoundResponse({ description: 'Edital ou anexo não encontrado' })
+  async getAttachment(
+    @Param('id', ParseIntPipe) id: number,
+    @Res({ passthrough: false }) res: Response,
+  ): Promise<void> {
+    const anexo = await this.editalService.getAttachment(id);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="${anexo.nome.replaceAll('"', '')}"`,
+    );
+    res.send(anexo.arquivo);
   }
 
   @Get(':id')

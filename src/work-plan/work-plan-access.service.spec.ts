@@ -6,7 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { WorkPlanAccessService } from './work-plan-access.service';
 
 const mockMembership = {
-  isAdminOrGestor: jest.fn(),
+  isGestor: jest.fn(),
   isCoordenador: jest.fn(),
   buildAllowedPesquisaIds: jest.fn(),
   assertCanAccessPesquisa: jest.fn(),

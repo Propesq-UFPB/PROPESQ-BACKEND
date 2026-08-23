@@ -2,7 +2,6 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
 import { jwtConstants } from './constants';
-import { normalizeSystemFuncao } from './normalize-system-funcao';
 
 type JwtPayload = {
   sub: number;
@@ -27,7 +26,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       userId: payload.sub,
       email: payload.email,
       nome: payload.nome,
-      funcao: normalizeSystemFuncao(payload.funcao) ?? payload.funcao,
+      funcao: payload.funcao,
       unidade_id: payload.unidade_id,
     };
   }

@@ -2,7 +2,6 @@ import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@
 import { Reflector } from '@nestjs/core';
 import { CurrentUserPayload } from './decorators/current-user.decorator';
 import { ROLES_KEY } from './decorators/roles.decorator';
-import { normalizeSystemFuncao } from './normalize-system-funcao';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -19,11 +18,7 @@ export class RolesGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<{ user?: CurrentUserPayload }>();
-    const role = normalizeSystemFuncao(request.user?.funcao);
-
-    if (request.user && role) {
-      request.user.funcao = role;
-    }
+    const role = request.user?.funcao?.toUpperCase();
 
     if (!role) {
       throw new ForbiddenException('Usuário autenticado sem função para autorização por papel.');

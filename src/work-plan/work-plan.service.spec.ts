@@ -18,7 +18,7 @@ const mockAccessService = {
   }),
   assertCanAccessPlan: jest.fn().mockResolvedValue(undefined),
   assertCanAccessPesquisa: jest.fn().mockResolvedValue(undefined),
-  isAdminOrGestor: jest.fn().mockReturnValue(true),
+  isGestor: jest.fn().mockReturnValue(true),
   isCoordenador: jest.fn().mockReturnValue(false),
 };
 
@@ -139,7 +139,7 @@ describe('WorkPlanService', () => {
     mockAccessService.buildScopeWhere.mockResolvedValue(undefined);
     mockAccessService.assertCanAccessPlan.mockResolvedValue(undefined);
     mockAccessService.assertCanAccessPesquisa.mockResolvedValue(undefined);
-    mockAccessService.isAdminOrGestor.mockReturnValue(true);
+    mockAccessService.isGestor.mockReturnValue(true);
     mockAccessService.isCoordenador.mockReturnValue(false);
   });
 

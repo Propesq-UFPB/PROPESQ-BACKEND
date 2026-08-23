@@ -11,7 +11,6 @@ import {
   TipoIndicacao,
 } from '@prisma/client';
 import { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
-import { normalizeSystemFuncao } from '../auth/normalize-system-funcao';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaginatedResult } from '../common/dto/paginated.dto';
 import { ConfirmIndicacaoDto } from './dto/confirm-indicacao.dto';
@@ -383,7 +382,7 @@ export class WorkPlanService {
     const role = user.funcao?.toUpperCase();
     let discenteId: number;
 
-    if (normalizeSystemFuncao(role) === 'GESTOR') {
+    if (role === 'GESTOR') {
       if (dto.discente_id === undefined) {
         throw new BadRequestException('Informe discente_id.');
       }

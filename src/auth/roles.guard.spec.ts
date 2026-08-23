@@ -27,17 +27,18 @@ describe('RolesGuard', () => {
     expect(guard.canActivate(mockContext({ funcao: 'COORDENADOR' }))).toBe(true);
   });
 
-  it('permite ADMIN em rota GESTOR e normaliza o payload', () => {
+  it('nega ADMIN em rota GESTOR', () => {
     jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(['GESTOR']);
-    const user: CurrentUserPayload = {
-      userId: 1,
-      email: 'dev@example.com',
-      nome: 'Dev',
-      funcao: 'ADMIN',
-    };
-
-    expect(guard.canActivate(mockContext(user))).toBe(true);
-    expect(user.funcao).toBe('GESTOR');
+    expect(() =>
+      guard.canActivate(
+        mockContext({
+          userId: 1,
+          email: 'dev@example.com',
+          nome: 'Dev',
+          funcao: 'ADMIN',
+        }),
+      ),
+    ).toThrow(ForbiddenException);
   });
 
   it('nega COORDENADOR em rota GESTOR', () => {

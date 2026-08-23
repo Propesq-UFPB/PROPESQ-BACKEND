@@ -12,8 +12,8 @@ export class WorkPlanAccessService {
     private readonly membership: ProjectMembershipScopeService,
   ) {}
 
-  isAdminOrGestor(user: CurrentUserPayload): boolean {
-    return this.membership.isAdminOrGestor(user);
+  isGestor(user: CurrentUserPayload): boolean {
+    return this.membership.isGestor(user);
   }
 
   isCoordenador(user: CurrentUserPayload): boolean {

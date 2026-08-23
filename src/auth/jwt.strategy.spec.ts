@@ -35,7 +35,7 @@ describe('JwtStrategy', () => {
     });
   });
 
-  it('normaliza ADMIN do token para GESTOR', async () => {
+  it('não reescreve ADMIN do token', async () => {
     const result = await strategy.validate({
       sub: 2,
       email: 'dev@example.com',
@@ -43,6 +43,6 @@ describe('JwtStrategy', () => {
       funcao: 'ADMIN',
     });
 
-    expect(result.funcao).toBe('GESTOR');
+    expect(result.funcao).toBe('ADMIN');
   });
 });

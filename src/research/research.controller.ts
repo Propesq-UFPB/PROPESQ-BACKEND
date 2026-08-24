@@ -58,7 +58,7 @@ export class ResearchController {
   @ApiOperation({
     summary: 'Retorna projetos de pesquisa com paginação',
     description:
-      'COORDENADOR vê apenas projetos em que é Orientador/Coordenador/Coordenador Adjunto. ADMIN/GESTOR e demais roles veem a lista completa (sem filtro de membro).',
+      'COORDENADOR vê apenas projetos em que é Orientador/Coordenador/Coordenador Adjunto. GESTOR e demais roles veem a lista completa (sem filtro de membro).',
   })
   @ApiResponse({
     status: HttpStatus.OK,

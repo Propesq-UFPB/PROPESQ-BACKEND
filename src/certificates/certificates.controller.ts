@@ -35,7 +35,7 @@ export class CertificatesController {
   @ApiResponse({ status: HttpStatus.CREATED, type: CertificateResponseDto })
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   create(@Body() dto: CreateCertificateDto): Promise<CertificateResponseDto> {
     return this.certificatesService.create(dto);
   }

@@ -6,7 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { WorkPlanAccessService } from './work-plan-access.service';
 
 const mockMembership = {
-  isAdminOrGestor: jest.fn(),
+  isGestor: jest.fn(),
   isCoordenador: jest.fn(),
   buildAllowedPesquisaIds: jest.fn(),
   assertCanAccessPesquisa: jest.fn(),
@@ -25,7 +25,7 @@ describe('WorkPlanAccessService', () => {
     userId: 1,
     email: 'admin@test.com',
     nome: 'Admin',
-    funcao: 'ADMIN',
+    funcao: 'GESTOR',
   };
 
   const coordUser: CurrentUserPayload = {
@@ -109,7 +109,7 @@ describe('ProjectMembershipScopeService', () => {
     userId: 1,
     email: 'admin@test.com',
     nome: 'Admin',
-    funcao: 'ADMIN',
+    funcao: 'GESTOR',
   };
 
   const coordUser: CurrentUserPayload = {
@@ -132,7 +132,7 @@ describe('ProjectMembershipScopeService', () => {
   });
 
   describe('buildAllowedPesquisaIds', () => {
-    it('ADMIN retorna null', async () => {
+    it('GESTOR retorna null', async () => {
       const ids = await service.buildAllowedPesquisaIds(adminUser, { forceMemberScope: true });
       expect(ids).toBeNull();
     });
@@ -196,7 +196,7 @@ describe('ProjectMembershipScopeService', () => {
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
-    it('ADMIN passa', async () => {
+    it('GESTOR passa', async () => {
       mockPrismaFull.projeto_pesquisa.findUnique.mockResolvedValue({
         id: 1,
         edital_rel: null,

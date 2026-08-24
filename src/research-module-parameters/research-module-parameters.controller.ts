@@ -32,7 +32,7 @@ export class ResearchModuleParametersController {
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Sem permissão.' })
   @Put()
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   update(
     @Body() dto: UpdateResearchModuleParametersDto,
   ): Promise<ResearchModuleParametersResponseDto> {

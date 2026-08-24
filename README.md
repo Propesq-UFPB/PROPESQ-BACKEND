@@ -21,7 +21,7 @@ API NestJS do **PROPESQ** — gestão acadêmica de editais, projetos de pesquis
 | Tipos de usuário | `/user-types` |
 | Planos de trabalho | `/work-plans` |
 
-Papéis: `ADMIN`, `GESTOR`, `COORDENADOR`, `ALUNO`. A maioria das rotas exige Bearer JWT; o Swagger documenta o esquema.
+Papéis: `GESTOR`, `COORDENADOR`, `ALUNO`. A maioria das rotas exige Bearer JWT; o Swagger documenta o esquema.
 
 ## Stack
 
@@ -67,7 +67,7 @@ npm run start:dev
 
 | Perfil | E-mail | Senha |
 |--------|--------|-------|
-| ADMIN | `dev@example.com` | `changeme` |
+| GESTOR | `dev@example.com` | `changeme` |
 | COORDENADOR | `coordenador@exemplo.com` | `senha123` |
 | GESTOR | `gestor@exemplo.com` | `senha123` |
 | ALUNO | `aluno@exemplo.com` | `senha123` |

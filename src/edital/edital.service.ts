@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { randomBytes } from 'crypto';
+import { randomBytes } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEditalDto } from './dto/create-edital.dto';
 import { PaginatedResult } from '../common/dto/paginated.dto';
@@ -69,6 +69,7 @@ export class EditalService {
         codigo: createEditalDto.codigo,
         descricao: createEditalDto.descricao,
         status: createEditalDto.status,
+        ano: createEditalDto.ano,
         titulacao_min: createEditalDto.titulacao_min,
         tipo: createEditalDto.tipo,
         limite_solicitacoes_orientador: createEditalDto.limite_solicitacoes_orientador,
@@ -77,6 +78,9 @@ export class EditalService {
         apenas_orient_coordena_plano: createEditalDto.apenas_orient_coordena_plano,
         tec_admin_coord_proj: createEditalDto.tec_admin_coord_proj,
         divulgar_resultado: createEditalDto.divulgar_resultado,
+        edital_para_voluntarios: createEditalDto.edital_para_voluntarios,
+        apenas_colab_vol_cadastra_plano: createEditalDto.apenas_colab_vol_cadastra_plano,
+        prof_subst_cadastra_proj: createEditalDto.prof_subst_cadastra_proj,
         categoria: {
           connect: {
             id: createEditalDto.categoria_id,
@@ -84,7 +88,7 @@ export class EditalService {
         },
         edital_cota_distribuicao: {
           createMany: {
-            data: createEditalDto.edital_cota_distribuicao,
+            data: createEditalDto.edital_cota_distribuicao ?? [],
           },
         },
         periodo_submissoes: {
@@ -145,6 +149,33 @@ export class EditalService {
         tipo: true,
       },
     });
+  }
+
+  async getAttachment(id: number): Promise<{
+    nome: string;
+    tipo: string;
+    arquivo: Buffer;
+  }> {
+    await this.assertEditalExists(id);
+
+    const anexo = await this.prisma.anexo_edital.findUnique({
+      where: { edital_id: id },
+      select: {
+        nome: true,
+        tipo: true,
+        arquivo: true,
+      },
+    });
+
+    if (!anexo) {
+      throw new NotFoundException(`Anexo do edital ${id} não encontrado`);
+    }
+
+    return {
+      nome: anexo.nome,
+      tipo: anexo.tipo,
+      arquivo: Buffer.from(anexo.arquivo),
+    };
   }
 
   async findMany(
@@ -215,6 +246,7 @@ export class EditalService {
         codigo: true,
         descricao: true,
         status: true,
+        ano: true,
         titulacao_min: true,
         tipo: true,
         limite_solicitacoes_orientador: true,
@@ -223,6 +255,9 @@ export class EditalService {
         apenas_orient_coordena_plano: true,
         tec_admin_coord_proj: true,
         divulgar_resultado: true,
+        edital_para_voluntarios: true,
+        apenas_colab_vol_cadastra_plano: true,
+        prof_subst_cadastra_proj: true,
         categoria: {
           select: {
             id: true,
@@ -244,6 +279,20 @@ export class EditalService {
           },
         },
         edital_cota_distribuicao: true,
+        cota_bolsa: {
+          select: {
+            id: true,
+            codigo: true,
+            descricao: true,
+          },
+        },
+        anexo: {
+          select: {
+            id: true,
+            nome: true,
+            tipo: true,
+          },
+        },
         edital_unidade_academica: {
           select: { unidade_id: true },
         },
@@ -254,10 +303,11 @@ export class EditalService {
       throw new NotFoundException(`Edital com ID ${id} não encontrado`);
     }
 
-    const { edital_unidade_academica, ...rest } = edital;
+    const { edital_unidade_academica, anexo, ...rest } = edital;
 
     return {
       ...rest,
+      anexo: anexo ?? null,
       unidade_ids: edital_unidade_academica.map(row => row.unidade_id),
     };
   }
@@ -297,26 +347,78 @@ export class EditalService {
 
   async update(id: number, updateEditalDto: UpdateEditalDto) {
     await this.findOne(id);
-    const periodoExecucao = this.normalizeExecutionPeriod(updateEditalDto.periodo_execucao);
+    await this.assertEditalExistsByCodigo(updateEditalDto.codigo, id);
+
+    if (updateEditalDto.edital_cota_distribuicao !== undefined) {
+      await this.prisma.edital_cota_distribuicao.deleteMany({
+        where: { id_edital: id },
+      });
+    }
 
     await this.prisma.edital.update({
       where: { id },
-      data: {
-        ...(updateEditalDto.titulo !== undefined && {
-          descricao: updateEditalDto.titulo,
-        }),
-        ...(updateEditalDto.status !== undefined && {
-          status: updateEditalDto.status,
-        }),
-        ...(periodoExecucao && {
-          periodo_execucao_rel: {
-            update: {
-              data: periodoExecucao,
-            },
-          },
-        }),
-      },
+      data: this.buildUpdateData(updateEditalDto),
     });
+  }
+
+  private buildUpdateData(dto: UpdateEditalDto): Prisma.editalUpdateInput {
+    const periodoExecucao = this.normalizeExecutionPeriod(dto.periodo_execucao);
+    const periodoSubmissao = this.normalizeExecutionPeriod(dto.periodo_submissao);
+
+    return this.omitUndefined({
+      descricao: dto.descricao ?? dto.titulo,
+      codigo: this.optionalCodigo(dto.codigo),
+      status: dto.status,
+      titulacao_min: dto.titulacao_min,
+      tipo: dto.tipo,
+      limite_solicitacoes_orientador: dto.limite_solicitacoes_orientador,
+      limite_planos_orientador: dto.limite_planos_orientador,
+      avaliacao_vigente: dto.avaliacao_vigente,
+      apenas_orient_coordena_plano: dto.apenas_orient_coordena_plano,
+      tec_admin_coord_proj: dto.tec_admin_coord_proj,
+      divulgar_resultado: dto.divulgar_resultado,
+      edital_para_voluntarios: dto.edital_para_voluntarios,
+      apenas_colab_vol_cadastra_plano: dto.apenas_colab_vol_cadastra_plano,
+      prof_subst_cadastra_proj: dto.prof_subst_cadastra_proj,
+      ano: dto.ano,
+      categoria: this.connectById(dto.categoria_id),
+      cota_bolsa: this.connectById(dto.cota_bolsa_id),
+      periodo_execucao_rel: this.periodoUpdate(periodoExecucao),
+      periodo_submissoes: this.periodoUpdate(periodoSubmissao),
+      edital_cota_distribuicao: this.cotaCreateMany(dto.edital_cota_distribuicao),
+    });
+  }
+
+  private omitUndefined(
+    fields: Prisma.editalUpdateInput,
+  ): Prisma.editalUpdateInput {
+    return Object.fromEntries(
+      Object.entries(fields).filter(([, value]) => value !== undefined),
+    ) as Prisma.editalUpdateInput;
+  }
+
+  private optionalCodigo(codigo: string | undefined): string | null | undefined {
+    if (codigo === undefined) return undefined;
+    return codigo || null;
+  }
+
+  private connectById(id: number | undefined) {
+    if (id === undefined) return undefined;
+    return { connect: { id } };
+  }
+
+  private periodoUpdate(
+    periodo: { inicio?: Date; fim?: Date } | undefined,
+  ) {
+    if (!periodo) return undefined;
+    return { update: { data: periodo } };
+  }
+
+  private cotaCreateMany(
+    rows: UpdateEditalDto['edital_cota_distribuicao'],
+  ) {
+    if (rows === undefined) return undefined;
+    return { createMany: { data: rows } };
   }
 
   // Verifica se código já existe, se sim, existe um conflito

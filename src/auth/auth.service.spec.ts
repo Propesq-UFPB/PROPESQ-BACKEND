@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
-import { UnauthorizedException } from '@nestjs/common';
+import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 
@@ -89,8 +89,7 @@ describe('AuthService', () => {
     });
 
     it('deve lançar UnauthorizedException se o usuário não for encontrado', async () => {
-      // Simula findByEmail lançando erro (comportamento do UsersService original) ou retornando null
-      usersService.findByEmail.mockRejectedValue(new Error('User not found'));
+      usersService.findByEmail.mockRejectedValue(new NotFoundException('User not found'));
       // Nota: Seu auth.service usa .catch(() => null), então o mock deve refletir que o serviço retorna null ou lança erro capturado
 
       // Ajuste para simular o comportamento do seu código:

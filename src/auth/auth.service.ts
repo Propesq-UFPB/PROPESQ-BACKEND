@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
@@ -13,9 +17,16 @@ export class AuthService {
   ) {}
 
   async login(loginDto: LoginDto): Promise<LoginResponseDto> {
-    const user = await this.usersService.findByEmail(loginDto.email).catch(() => null);
+    let user: Awaited<ReturnType<UsersService['findByEmail']>> | null = null;
+    try {
+      user = await this.usersService.findByEmail(loginDto.email);
+    } catch (err: unknown) {
+      if (!(err instanceof NotFoundException)) {
+        throw err;
+      }
+    }
 
-    if (!user || user.senha !== loginDto.password) {
+    if (user?.senha !== loginDto.password) {
       throw new UnauthorizedException('E-mail ou senha inválidos.');
     }
 

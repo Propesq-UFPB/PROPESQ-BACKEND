@@ -1,18 +1,14 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  FUNCAO_ORIENTADOR,
-  FUNCOES_GESTAO_PLANO,
-} from './project-membership.constants';
+import { FUNCAO_ORIENTADOR, FUNCOES_GESTAO_PLANO } from './project-membership.constants';
 
 @Injectable()
 export class ProjectMembershipScopeService {
   constructor(private readonly prisma: PrismaService) {}
 
-  isAdminOrGestor(user: CurrentUserPayload): boolean {
-    const role = user.funcao?.toUpperCase();
-    return role === 'ADMIN' || role === 'GESTOR';
+  isGestor(user: CurrentUserPayload): boolean {
+    return user.funcao?.toUpperCase() === 'GESTOR';
   }
 
   isCoordenador(user: CurrentUserPayload): boolean {
@@ -21,7 +17,7 @@ export class ProjectMembershipScopeService {
 
   /**
    * IDs de projeto_pesquisa acessíveis ao usuário por membership.
-   * ADMIN/GESTOR → null (sem restrição).
+   * GESTOR → null (sem restrição).
    * Sem escopo de coordenação → null.
    * COORDENADOR (ou force) → lista (pode ser vazia).
    */
@@ -29,12 +25,11 @@ export class ProjectMembershipScopeService {
     user: CurrentUserPayload,
     options?: { forceMemberScope?: boolean },
   ): Promise<number[] | null> {
-    if (this.isAdminOrGestor(user)) {
+    if (this.isGestor(user)) {
       return null;
     }
 
-    const applyMemberScope =
-      options?.forceMemberScope === true || this.isCoordenador(user);
+    const applyMemberScope = options?.forceMemberScope === true || this.isCoordenador(user);
     if (!applyMemberScope) {
       return null;
     }
@@ -89,25 +84,20 @@ export class ProjectMembershipScopeService {
     });
 
     if (!projeto) {
-      throw new NotFoundException(
-        `Projeto de pesquisa com ID ${pesquisaId} não encontrado`,
-      );
+      throw new NotFoundException(`Projeto de pesquisa com ID ${pesquisaId} não encontrado`);
     }
 
-    if (this.isAdminOrGestor(user)) {
+    if (this.isGestor(user)) {
       return;
     }
 
-    const mustCheck =
-      options?.forceMemberScope === true || this.isCoordenador(user);
+    const mustCheck = options?.forceMemberScope === true || this.isCoordenador(user);
     if (!mustCheck) {
       return;
     }
 
     const apenasOrientador = projeto.edital_rel?.apenas_orient_coordena_plano === true;
-    const allowedRoles = apenasOrientador
-      ? [FUNCAO_ORIENTADOR]
-      : [...FUNCOES_GESTAO_PLANO];
+    const allowedRoles = apenasOrientador ? [FUNCAO_ORIENTADOR] : [...FUNCOES_GESTAO_PLANO];
 
     const membership = await this.prisma.membro_projeto.findFirst({
       where: {
@@ -119,9 +109,7 @@ export class ProjectMembershipScopeService {
     });
 
     if (!membership) {
-      throw new ForbiddenException(
-        'Você não tem permissão para acessar este projeto de pesquisa.',
-      );
+      throw new ForbiddenException('Você não tem permissão para acessar este projeto de pesquisa.');
     }
   }
 }

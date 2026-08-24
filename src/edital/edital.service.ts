@@ -432,7 +432,17 @@ export class EditalService {
     return this.prisma.projeto_avaliacao.findMany({
       where: { projeto_pesquisa: { edital_id: editalId } },
       include: {
-        avaliador: true,
+        avaliador: {
+          select: {
+            id: true,
+            nome: true,
+            email: true,
+            funcao_id: true,
+            funcao: true,
+            criado_em: true,
+            atualizado_em: true,
+          },
+        },
         projeto_pesquisa: true,
         notas: {
           include: { criterio_avaliacao: true },

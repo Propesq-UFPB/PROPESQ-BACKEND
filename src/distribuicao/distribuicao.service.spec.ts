@@ -97,7 +97,7 @@ describe('DistribuicaoService', () => {
       const projetos = [{ area_conhecimento: area(), avaliador_id: null }];
       const docentes = [{ area_conhecimento: area(), usuario_id: 1 }];
       const matrix = service.calcScoreMatrix(projetos, docentes);
-      expect(matrix[0][0]).toBe(360); // 10 + 50 + 100 + 200
+      expect(matrix[0][0]).toBe(160); // 10 + 50 + 100 (especialidade desativada)
     });
 
     it('scores partial matches correctly', () => {
@@ -128,7 +128,7 @@ describe('DistribuicaoService', () => {
       const matrix = service.calcScoreMatrix(projetos, docentes);
       expect(matrix).toHaveLength(2); // m docentes
       expect(matrix[0]).toHaveLength(2); // n projetos
-      expect(matrix[0][0]).toBe(360);
+      expect(matrix[0][0]).toBe(160);
       expect(matrix[1][1]).toBeNull(); // avaliador_id 2 === usuario_id 2
     });
   });

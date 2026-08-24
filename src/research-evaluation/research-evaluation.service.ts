@@ -39,6 +39,8 @@ export class ResearchEvaluationService {
       const active_evaluation_criterias = await prisma.criterio_avaliacao.findMany({
         where: { ativo: true },
       });
+      const criteriasMap = new Map(active_evaluation_criterias.map(c => [c.id, c]));
+
       const submitted_evaluation_criterias_id = submitPlanoEvaluationDto.notas.map(
         nota => nota.criterio_avaliacao_id,
       );
@@ -58,6 +60,16 @@ export class ResearchEvaluationService {
         throw new BadRequestException(
           'A avaliação do plano deve conter exatamente todos os critérios ativos',
         );
+      }
+
+      // Validar limites de notas por critério
+      for (const nota of submitPlanoEvaluationDto.notas) {
+        const criterio = criteriasMap.get(nota.criterio_avaliacao_id);
+        if (criterio && nota.nota > criterio.nota_maxima) {
+          throw new BadRequestException(
+            `A nota para o critério "${criterio.nome}" (${nota.nota}) excede a nota máxima permitida (${criterio.nota_maxima})`,
+          );
+        }
       }
 
       return prisma.plano_avaliacao.update({
@@ -112,6 +124,7 @@ export class ResearchEvaluationService {
       const active_evaluation_criterias = await prisma.criterio_avaliacao.findMany({
         where: { ativo: true },
       });
+      const criteriasMap = new Map(active_evaluation_criterias.map(c => [c.id, c]));
 
       const submitted_evaluation_criterias_id = submitEvaluationDto.notas.map(
         nota => nota.criterio_avaliacao_id,
@@ -136,6 +149,16 @@ export class ResearchEvaluationService {
         throw new BadRequestException(
           'A avaliação deve conter exatamente todos os critérios ativos',
         );
+      }
+
+      // Validar limites de notas por critério
+      for (const nota of submitEvaluationDto.notas) {
+        const criterio = criteriasMap.get(nota.criterio_avaliacao_id);
+        if (criterio && nota.nota > criterio.nota_maxima) {
+          throw new BadRequestException(
+            `A nota para o critério "${criterio.nome}" (${nota.nota}) excede a nota máxima permitida (${criterio.nota_maxima})`,
+          );
+        }
       }
 
       return prisma.projeto_avaliacao.update({

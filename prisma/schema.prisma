@@ -296,7 +296,7 @@ model plano_trabalho {
   projeto_pesquisa         projeto_pesquisa           @relation(fields: [pesquisa_id], references: [id], onDelete: Cascade)
   interesses               interesse_plano_trabalho[]
   dados_bancarios          dados_bancarios_indicacao?
-  planoAvaliacaos          plano_avaliacao[]
+  planos_avaliacao         plano_avaliacao[]
 }
 
 model interesse_plano_trabalho {

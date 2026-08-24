@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
 import { StatusEdital, TipoEdital, TitulacaoMin } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
@@ -24,6 +25,9 @@ const mockPrismaService = {
   edital_unidade_academica: {
     createMany: jest.fn(),
     deleteMany: jest.fn(),
+  },
+  projeto_avaliacao: {
+    findMany: jest.fn(),
   },
   $transaction: jest.fn(),
 };
@@ -214,6 +218,54 @@ describe('EditalService', () => {
           },
         },
       },
+    });
+  });
+
+  describe('findEvaluationAssignments', () => {
+    it('deve lançar NotFoundException quando o edital não for encontrado', async () => {
+      prisma.edital.findUnique.mockResolvedValue(null);
+
+      await expect(service.findEvaluationAssignments(999)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('deve retornar atribuições de avaliação do edital', async () => {
+      const mockResult = [{ id: 1, projeto_id: 10 }];
+      prisma.edital.findUnique.mockResolvedValue({ id: 1 });
+      prisma.projeto_avaliacao.findMany.mockResolvedValue(mockResult);
+
+      const result = await service.findEvaluationAssignments(1);
+
+      expect(result).toEqual(mockResult);
+      expect(prisma.projeto_avaliacao.findMany).toHaveBeenCalledWith({
+        where: { projeto_pesquisa: { edital_id: 1 } },
+        include: {
+          avaliador: {
+            select: {
+              id: true,
+              nome: true,
+              email: true,
+              funcao_id: true,
+              funcao: true,
+              criado_em: true,
+              atualizado_em: true,
+            },
+          },
+          projeto_pesquisa: true,
+          notas: {
+            include: { criterio_avaliacao: true },
+          },
+          planos_avaliacao: {
+            include: {
+              plano_trabalho: true,
+              notas: {
+                include: { criterio_avaliacao: true },
+              },
+            },
+          },
+        },
+      });
     });
   });
 });

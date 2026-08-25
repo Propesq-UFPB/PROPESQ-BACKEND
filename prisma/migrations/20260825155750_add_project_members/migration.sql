@@ -1,0 +1,43 @@
+-- CreateEnum
+CREATE TYPE "TipoMembroProjeto" AS ENUM ('COORDENADOR', 'COORDENADOR_ADJ', 'COLABORADOR');
+
+-- CreateEnum
+CREATE TYPE "TipoSexo" AS ENUM ('MASCULINO', 'FEMININO');
+
+-- CreateEnum
+CREATE TYPE "MembroExternoFormacao" AS ENUM ('NAO_INFORMADA', 'TECNICO_PROFISSIONALIZANTE_ENS_MEDIO', 'POS_TECNICO', 'GRADUACAO', 'ENSINO_FUNDAMENTAL_INCOMPLETO', 'ENSINO_FUNDAMENTAL', 'ENSINO_MEDIO_INCOMPLETO', 'ENSINO_MEDIO', 'APERFEICOAMENTO', 'ESPECIALIZACAO', 'MESTRADO', 'SEQUENCIAL', 'POS_DOUTORADO', 'DESCONHECIDA', 'TECNOLOGO_DE_NIVEL_SUPERIOR', 'DOUTORADO');
+
+-- CreateEnum
+CREATE TYPE "TipoMembroExterno" AS ENUM ('NAO_INFORMADO', 'PESQUISADOR_VISITANTE_DA_ANP', 'COLABORADOR_VOLUNTARIO_ANTIGO_ASSOCIADO', 'PROFESSOR_VISITANTE', 'PESQUISADOR_VISITANTE_BOLSA_DCR', 'PROFESSOR_EM_CONVENIO_DE_COLABORACAO_TECNICA', 'PESQUISADOR_VISITANTE_COM_BOLSA_FAPESQ', 'PESQUISADOR_VISITANTE_COM_BOLSA', 'PESQUISADOR_VISITANTE_COM_BOLSA_PRODOC_CAPES', 'PESQUISADOR_VISITANTE_COM_BOLSA_CNPQ', 'DOCENTE_EXTERNO_LATO_SENSU', 'DISCENTE_DA_INSTITUICAO', 'PROFESSOR_EXTERNO');
+
+-- CreateTable
+CREATE TABLE "projeto_membro" (
+    "id" SERIAL NOT NULL,
+    "user_id" INTEGER NOT NULL,
+    "funcao" "TipoMembroProjeto" NOT NULL,
+    "ch_dedicadas" INTEGER NOT NULL,
+    "projeto_id" INTEGER NOT NULL,
+
+    CONSTRAINT "projeto_membro_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "projeto_membro_externo" (
+    "id" SERIAL NOT NULL,
+    "funcao" "TipoMembroProjeto" NOT NULL,
+    "ch_dedicada" INTEGER NOT NULL,
+    "cpf" VARCHAR(25),
+    "nome" VARCHAR(255) NOT NULL,
+    "sexo" "TipoSexo" NOT NULL,
+    "formacao" "MembroExternoFormacao" NOT NULL,
+    "tipo" "TipoMembroExterno" NOT NULL,
+    "projeto_id" INTEGER NOT NULL,
+
+    CONSTRAINT "projeto_membro_externo_pkey" PRIMARY KEY ("id")
+);
+
+-- AddForeignKey
+ALTER TABLE "projeto_membro" ADD CONSTRAINT "projeto_membro_projeto_id_fkey" FOREIGN KEY ("projeto_id") REFERENCES "projeto_pesquisa"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "projeto_membro_externo" ADD CONSTRAINT "projeto_membro_externo_projeto_id_fkey" FOREIGN KEY ("projeto_id") REFERENCES "projeto_pesquisa"("id") ON DELETE CASCADE ON UPDATE CASCADE;

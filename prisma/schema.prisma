@@ -34,6 +34,7 @@ model area_conhecimento {
   especialidade    String
   projeto_pesquisa projeto_pesquisa[]
   docentes         docente[]
+  grupoPesquisas   grupo_pesquisa[]
 }
 
 model atividade_projeto_pesquisa {
@@ -331,22 +332,25 @@ model dados_bancarios_indicacao {
 }
 
 model projeto_pesquisa {
-  id              Int             @id @default(autoincrement())
-  codigo          String
-  tipo            TipoProjeto
-  titulo          String
-  title           String
-  categoria_id    Int
-  situacao        SituacaoProjeto @map("situação")
-  email           String
-  data_inicio     DateTime?       @db.Timestamp(6)
-  data_fim        DateTime?       @db.Timestamp(6)
-  vigencia        DateTime        @db.Timestamp(6)
-  data_cadastro   DateTime
-  edital          String?
-  cota            String?
-  pontuacao_final Float?
-  edital_id       Int?
+  id                Int             @id @default(autoincrement())
+  codigo            String
+  tipo              TipoProjeto
+  titulo            String
+  title             String
+  categoria_id      Int
+  situacao          SituacaoProjeto @map("situação")
+  email             String
+  data_inicio       DateTime?       @db.Timestamp(6)
+  data_fim          DateTime?       @db.Timestamp(6)
+  vigencia          DateTime        @db.Timestamp(6)
+  data_cadastro     DateTime
+  cota              String?
+  numero_protocolo  String?         @db.VarChar(255)
+  linha_pesquisa    String?         @db.VarChar(512)
+  pontuacao_final   Float?
+  edital_id         Int?
+  grupo_pesquisa_id Int?
+  grupo_pesquisa    grupo_pesquisa? @relation(fields: [grupo_pesquisa_id], references: [id])
 
   unidade_id        Int
   unidade_academica unidade_academica @relation(fields: [unidade_id], references: [id], onDelete: Cascade)
@@ -375,6 +379,26 @@ model projeto_pesquisa {
   projetoMembroExternos projeto_membro_externo[]
 }
 
+model grupo_pesquisa {
+  id         Int     @id @default(autoincrement())
+  titulo     String  @db.VarChar(255)
+  lider      String  @db.VarChar(255)
+  vice_lider String? @db.VarChar(255)
+
+  area_conhecimento_id Int
+  area_conhecimento    area_conhecimento @relation(fields: [area_conhecimento_id], references: [id])
+
+  grupo_pesquisa_linhas grupo_pesquisa_linha[]
+  projetoPesquisas      projeto_pesquisa[]
+}
+
+model grupo_pesquisa_linha {
+  id                Int            @id @default(autoincrement())
+  linha             String         @db.VarChar(512)
+  grupo_pesquisa_id Int
+  grupo_pesquisa    grupo_pesquisa @relation(fields: [grupo_pesquisa_id], references: [id])
+}
+
 model projeto_membro {
   id           Int               @id @default(autoincrement())
   user_id      Int
@@ -382,6 +406,7 @@ model projeto_membro {
   ch_dedicadas Int
   projeto_id   Int
 
+  user             usuario          @relation(fields: [user_id], references: [id])
   projeto_pesquisa projeto_pesquisa @relation(fields: [projeto_id], references: [id], onDelete: Cascade)
 }
 
@@ -503,6 +528,7 @@ model usuario {
   membros_projeto     membro_projeto[]
   certificados        certificado[]
   dados_bancarios     dados_bancarios_indicacao[]
+  projetoMembros      projeto_membro[]
 }
 
 model cota_bolsa {

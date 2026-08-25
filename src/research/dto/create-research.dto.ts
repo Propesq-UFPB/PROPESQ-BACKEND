@@ -18,6 +18,10 @@ import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { CreateResearchProjectBodyDto } from './research-body.dto';
 import { CreateResearchProjectActivityDto } from './research-activity.dto';
+import {
+  CreateResearchProjectExternalMemberDto,
+  CreateResearchProjectMemberDto,
+} from './research-member.dto';
 
 export class CreateResearchDto {
   @ApiProperty({
@@ -118,4 +122,28 @@ export class CreateResearchDto {
 
   @ApiProperty({ required: true, type: Number, description: 'ID da área de conhecimento' })
   area_conhecimento_id!: number;
+
+  @ApiProperty({
+    required: false,
+    isArray: true,
+    type: CreateResearchProjectMemberDto,
+    description: 'Membros do projeto que já possuem usuário cadastrado no sistema',
+  })
+  @IsOptional()
+  @IsArray({ message: 'Os membros devem ser um array' })
+  @ValidateNested({ each: true })
+  @Type(() => CreateResearchProjectMemberDto)
+  membros?: CreateResearchProjectMemberDto[];
+
+  @ApiProperty({
+    required: false,
+    isArray: true,
+    type: CreateResearchProjectExternalMemberDto,
+    description: 'Membros externos vinculados ao projeto',
+  })
+  @IsOptional()
+  @IsArray({ message: 'Os membros externos devem ser um array' })
+  @ValidateNested({ each: true })
+  @Type(() => CreateResearchProjectExternalMemberDto)
+  membros_externos?: CreateResearchProjectExternalMemberDto[];
 }

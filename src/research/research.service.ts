@@ -34,6 +34,10 @@ export class ResearchService {
       await this.assertObjetivosSustentavelExist(createResearchDto.pesquisa_objetivo_ids);
     }
 
+    if (Array.isArray(createResearchDto.membros)) {
+      await this.assertUsersExist(createResearchDto.membros.map(membro => membro.user_id));
+    }
+
     return this.prisma.projeto_pesquisa.create({
       data: {
         tipo: createResearchDto.tipo,
@@ -71,7 +75,7 @@ export class ResearchService {
           create: createResearchDto.atividades.map(atividade => ({
             descricao: atividade.descricao,
             meses: {
-              create: atividade.meses.map(mes => ({ data: mes.data })),
+              create: atividade.meses.map(mes => ({ data: new Date(mes.data) })),
             },
           })),
         },
@@ -81,12 +85,36 @@ export class ResearchService {
         unidade_academica: {
           connect: { id: createResearchDto.unidade_id },
         },
+        ...(Array.isArray(createResearchDto.membros) && {
+          projetoMembros: {
+            create: createResearchDto.membros.map(membro => ({
+              user_id: membro.user_id,
+              funcao: membro.funcao,
+              ch_dedicadas: membro.ch_dedicadas,
+            })),
+          },
+        }),
+        ...(Array.isArray(createResearchDto.membros_externos) && {
+          projetoMembroExternos: {
+            create: createResearchDto.membros_externos.map(membro => ({
+              funcao: membro.funcao,
+              ch_dedicada: membro.ch_dedicada,
+              cpf: membro.cpf,
+              nome: membro.nome,
+              sexo: membro.sexo,
+              formacao: membro.formacao,
+              tipo: membro.tipo,
+            })),
+          },
+        }),
       },
       include: {
         categoria: true,
         corpo_projeto: true,
         palavra_chave: true,
         atividades: { include: { meses: true } },
+        projetoMembros: true,
+        projetoMembroExternos: true,
       },
     });
   }
@@ -283,7 +311,7 @@ export class ResearchService {
             create: updateResearchDto.atividades.map(atividade => ({
               descricao: atividade.descricao,
               meses: {
-                create: atividade.meses.map(mes => ({ data: mes.data })),
+                create: atividade.meses.map(mes => ({ data: new Date(mes.data) })),
               },
             })),
           },
@@ -575,6 +603,22 @@ export class ResearchService {
 
     if (!categoria) {
       throw new NotFoundException(`Categoria id ${id} não existente`);
+    }
+  }
+
+  private async assertUsersExist(ids: number[]): Promise<void> {
+    const uniqueIds = [...new Set(ids)];
+    const users = await this.prisma.usuario.findMany({
+      where: { id: { in: uniqueIds } },
+      select: { id: true },
+    });
+    const foundIds = new Set(users.map(user => user.id));
+    const missingIds = uniqueIds.filter(id => !foundIds.has(id));
+
+    if (missingIds.length > 0) {
+      throw new NotFoundException(
+        `Usuário(s) não encontrado(s) para os ids: ${missingIds.join(', ')}`,
+      );
     }
   }
 }

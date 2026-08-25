@@ -1,6 +1,14 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Prisma, Idioma, SituacaoProjeto, TipoProjeto } from '@prisma/client';
+import {
+  Idioma,
+  MembroExternoFormacao,
+  SituacaoProjeto,
+  TipoMembroExterno,
+  TipoMembroProjeto,
+  TipoProjeto,
+  TipoSexo,
+} from '@prisma/client';
 import { ProjectMembershipScopeService } from '../common/project-membership-scope.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ResearchService } from './research.service';
@@ -58,6 +66,9 @@ const mockPrismaService = {
   },
   categoria_edital: {
     findUnique: jest.fn(),
+  },
+  usuario: {
+    findMany: jest.fn(),
   },
 };
 
@@ -131,6 +142,24 @@ describe('ResearchService', () => {
       atividades: atividadesProjeto,
       unidade_id: 3,
       area_conhecimento_id: 1,
+      membros: [
+        {
+          user_id: 7,
+          funcao: TipoMembroProjeto.COORDENADOR,
+          ch_dedicadas: 20,
+        },
+      ],
+      membros_externos: [
+        {
+          funcao: TipoMembroProjeto.COLABORADOR,
+          ch_dedicada: 10,
+          cpf: '123.456.789-00',
+          nome: 'Pesquisadora Externa',
+          sexo: TipoSexo.FEMININO,
+          formacao: MembroExternoFormacao.DOUTORADO,
+          tipo: TipoMembroExterno.PROFESSOR_VISITANTE,
+        },
+      ],
     };
 
     it('deve persistir o projeto de pesquisa com as datas', async () => {
@@ -138,6 +167,7 @@ describe('ResearchService', () => {
       prisma.palavra_chave.findMany.mockResolvedValue([{ id: 1 }, { id: 2 }]);
       prisma.objetivo_desenvolvimento_sustentavel.findMany.mockResolvedValue([{ id: 10 }]);
       prisma.categoria_edital.findUnique.mockResolvedValue({ id: 1 });
+      prisma.usuario.findMany.mockResolvedValue([{ id: 7 }]);
       prisma.projeto_pesquisa.create.mockResolvedValue({ id: 1 });
 
       await service.create(createDto);
@@ -161,13 +191,39 @@ describe('ResearchService', () => {
                 {
                   descricao: 'Atividade de pesquisa',
                   meses: {
-                    create: [{ data: '2026-01-01' }, { data: '2026-02-01' }],
+                    create: [{ data: new Date('2026-01-01') }, { data: new Date('2026-02-01') }],
                   },
                 },
               ],
             },
+            projetoMembros: {
+              create: [
+                {
+                  user_id: 7,
+                  funcao: TipoMembroProjeto.COORDENADOR,
+                  ch_dedicadas: 20,
+                },
+              ],
+            },
+            projetoMembroExternos: {
+              create: [
+                {
+                  funcao: TipoMembroProjeto.COLABORADOR,
+                  ch_dedicada: 10,
+                  cpf: '123.456.789-00',
+                  nome: 'Pesquisadora Externa',
+                  sexo: TipoSexo.FEMININO,
+                  formacao: MembroExternoFormacao.DOUTORADO,
+                  tipo: TipoMembroExterno.PROFESSOR_VISITANTE,
+                },
+              ],
+            },
           }),
-          include: expect.objectContaining({ categoria: true }),
+          include: expect.objectContaining({
+            categoria: true,
+            projetoMembros: true,
+            projetoMembroExternos: true,
+          }),
         }),
       );
     });
@@ -185,6 +241,19 @@ describe('ResearchService', () => {
 
       await expect(service.create(createDto)).rejects.toThrow(
         `Categoria id ${categoriaPadrao.id} não existente`,
+      );
+      expect(prisma.projeto_pesquisa.create).not.toHaveBeenCalled();
+    });
+
+    it('deve lançar erro quando um usuário membro não existir', async () => {
+      prisma.unidade_academica.findUnique.mockResolvedValue({ id: 3 });
+      prisma.palavra_chave.findMany.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+      prisma.objetivo_desenvolvimento_sustentavel.findMany.mockResolvedValue([{ id: 10 }]);
+      prisma.categoria_edital.findUnique.mockResolvedValue({ id: 1 });
+      prisma.usuario.findMany.mockResolvedValue([]);
+
+      await expect(service.create(createDto)).rejects.toThrow(
+        'Usuário(s) não encontrado(s) para os ids: 7',
       );
       expect(prisma.projeto_pesquisa.create).not.toHaveBeenCalled();
     });
@@ -325,7 +394,7 @@ describe('ResearchService', () => {
             {
               descricao: 'Atividade de pesquisa',
               meses: {
-                create: [{ data: '2026-01-01' }, { data: '2026-02-01' }],
+                create: [{ data: new Date('2026-01-01') }, { data: new Date('2026-02-01') }],
               },
             },
           ],

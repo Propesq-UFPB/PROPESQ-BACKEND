@@ -217,7 +217,7 @@ describe('ResearchService', () => {
         userId: 1,
         email: 'admin@test.com',
         nome: 'Admin',
-        funcao: 'ADMIN',
+        funcao: 'GESTOR',
       });
 
       expect(result.total).toBe(1);

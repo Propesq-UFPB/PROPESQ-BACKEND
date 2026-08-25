@@ -36,7 +36,7 @@ export class WorkPlanListQueryDto {
 
   @ApiPropertyOptional({
     description:
-      'Filtro explícito por usuario_id do plano (ADMIN/GESTOR). COORDENADOR ignora e usa escopo próprio.',
+      'Filtro explícito por usuario_id do plano (GESTOR). COORDENADOR ignora e usa escopo próprio.',
   })
   @IsOptional()
   @Type(() => Number)

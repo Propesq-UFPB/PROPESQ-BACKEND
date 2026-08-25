@@ -44,7 +44,7 @@ export class WorkPlanController {
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('COORDENADOR', 'ADMIN', 'GESTOR')
+  @Roles('COORDENADOR', 'GESTOR')
   @ApiOperation({
     summary: 'Cria um novo plano de trabalho com corpo e atividades',
   })
@@ -71,7 +71,7 @@ export class WorkPlanController {
   @ApiOperation({
     summary: 'Obtém planos de trabalho com paginação e filtros',
     description:
-      'COORDENADOR vê apenas planos de projetos em que é Orientador/Coordenador/Coordenador Adjunto. ADMIN/GESTOR veem tudo (filtro usuario_id opcional).',
+      'COORDENADOR vê apenas planos de projetos em que é Orientador/Coordenador/Coordenador Adjunto. GESTOR vê tudo (filtro usuario_id opcional).',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -87,12 +87,12 @@ export class WorkPlanController {
 
   @Get('indicacoes')
   @UseGuards(RolesGuard)
-  @Roles('COORDENADOR', 'ADMIN', 'GESTOR')
+  @Roles('COORDENADOR', 'GESTOR')
   @ApiOperation({
     summary: 'Lista planos elegíveis para indicação (visão coordenador)',
     description:
       'Retorna projeto, edital, prazos, vagas, candidatos (resumo) e status de indicação. ' +
-      'Escopo: ADMIN/GESTOR veem todos os elegíveis; COORDENADOR apenas projetos em que é ' +
+      'Escopo: GESTOR vê todos os elegíveis; COORDENADOR apenas projetos em que é ' +
       'Orientador, Coordenador ou Coordenador Adjunto (só Orientador se edital.apenas_orient_coordena_plano).',
   })
   @ApiResponse({
@@ -109,7 +109,7 @@ export class WorkPlanController {
 
   @Get('indicacoes/:id')
   @UseGuards(RolesGuard)
-  @Roles('COORDENADOR', 'ADMIN', 'GESTOR')
+  @Roles('COORDENADOR', 'GESTOR')
   @ApiOperation({
     summary: 'Detalhe de indicação com candidatos enriquecidos',
   })
@@ -133,7 +133,7 @@ export class WorkPlanController {
 
   @Post(':id/indicacao')
   @UseGuards(RolesGuard)
-  @Roles('COORDENADOR', 'ADMIN', 'GESTOR')
+  @Roles('COORDENADOR', 'GESTOR')
   @ApiOperation({
     summary: 'Confirma indicação de discente no plano',
     description:
@@ -160,11 +160,11 @@ export class WorkPlanController {
 
   @Post(':id/interesses')
   @UseGuards(RolesGuard)
-  @Roles('ALUNO', 'ADMIN', 'GESTOR')
+  @Roles('ALUNO', 'GESTOR')
   @ApiOperation({
     summary: 'Registra interesse de discente no plano',
     description:
-      'ALUNO usa o discente vinculado ao JWT. ADMIN/GESTOR devem informar discente_id.',
+      'ALUNO usa o discente vinculado ao JWT. GESTOR deve informar discente_id.',
   })
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({
@@ -183,7 +183,7 @@ export class WorkPlanController {
 
   @Get(':id/interesses')
   @UseGuards(RolesGuard)
-  @Roles('COORDENADOR', 'ADMIN', 'GESTOR')
+  @Roles('COORDENADOR', 'GESTOR')
   @ApiOperation({ summary: 'Lista interesses (candidatos) do plano' })
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: HttpStatus.OK, type: [InteresseResponseDto] })
@@ -199,7 +199,7 @@ export class WorkPlanController {
     summary: 'Obtém um plano de trabalho pelo ID',
     description:
       'COORDENADOR só acessa planos de projetos em que é Orientador/Coordenador/Coordenador Adjunto. ' +
-      'ADMIN/GESTOR acessam qualquer plano. ALUNO e demais roles autenticadas podem ler (fluxo discente).',
+      'GESTOR acessa qualquer plano. ALUNO e demais roles autenticadas podem ler (fluxo discente).',
   })
   @ApiParam({
     name: 'id',
@@ -228,7 +228,7 @@ export class WorkPlanController {
 
   @Patch(':id')
   @UseGuards(RolesGuard)
-  @Roles('COORDENADOR', 'ADMIN', 'GESTOR')
+  @Roles('COORDENADOR', 'GESTOR')
   @ApiOperation({ summary: 'Atualiza um plano de trabalho pelo ID' })
   @ApiParam({
     name: 'id',
@@ -257,7 +257,7 @@ export class WorkPlanController {
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles('COORDENADOR', 'ADMIN', 'GESTOR')
+  @Roles('COORDENADOR', 'GESTOR')
   @ApiOperation({ summary: 'Remove um plano de trabalho pelo ID' })
   @ApiParam({
     name: 'id',

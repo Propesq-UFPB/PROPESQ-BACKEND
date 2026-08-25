@@ -34,4 +34,15 @@ describe('JwtStrategy', () => {
       unidade_id: undefined,
     });
   });
+
+  it('não reescreve ADMIN do token', async () => {
+    const result = await strategy.validate({
+      sub: 2,
+      email: 'dev@example.com',
+      nome: 'Dev',
+      funcao: 'ADMIN',
+    });
+
+    expect(result.funcao).toBe('ADMIN');
+  });
 });

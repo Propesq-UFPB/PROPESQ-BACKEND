@@ -12,11 +12,13 @@ import {
   Post,
   Put,
   Query,
+  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import { CreateEditalDto } from './dto/create-edital.dto';
 import {
   ApiBody,
@@ -57,7 +59,7 @@ export class EditalController {
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   @ApiOperation({
     summary: 'Cadastra um edital como rascunho ou o publica imediatamente',
   })
@@ -96,7 +98,7 @@ export class EditalController {
 
   @Post(':id/anexo')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   @UseInterceptors(FileInterceptor('arquivo'))
   @ApiConsumes('multipart/form-data')
   @ApiParam({ name: 'id', type: Number, description: 'ID do edital.' })
@@ -123,6 +125,23 @@ export class EditalController {
     @UploadedFile() arquivo?: UploadedEditalFile,
   ): Promise<EditalAttachmentResponseDto> {
     return this.editalService.uploadAttachment(id, arquivo);
+  }
+
+  @Get(':id/anexo')
+  @ApiParam({ name: 'id', type: Number, description: 'ID do edital.' })
+  @ApiOkResponse({ description: 'PDF do anexo retornado com sucesso.' })
+  @ApiNotFoundResponse({ description: 'Edital ou anexo não encontrado' })
+  async getAttachment(
+    @Param('id', ParseIntPipe) id: number,
+    @Res({ passthrough: false }) res: Response,
+  ): Promise<void> {
+    const anexo = await this.editalService.getAttachment(id);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="${anexo.nome.replaceAll('"', '')}"`,
+    );
+    res.send(anexo.arquivo);
   }
 
   @Get(':id')
@@ -157,7 +176,7 @@ export class EditalController {
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({ description: 'Edital deletado com sucesso' })
   @ApiNotFoundResponse({ description: 'Edital não encontrado' })
@@ -167,7 +186,7 @@ export class EditalController {
 
   @Patch(':id')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({ description: 'Edital atualizado com sucesso' })
   @ApiNotFoundResponse({ description: 'Edital não encontrado' })
@@ -183,7 +202,7 @@ export class EditalController {
 
   @Put(':id/academic-units')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({ description: 'Unidades acadêmicas do edital atualizadas com sucesso.' })
   @ApiNotFoundResponse({ description: 'Edital ou unidade acadêmica não encontrada.' })

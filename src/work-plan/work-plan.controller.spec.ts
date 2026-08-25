@@ -23,7 +23,7 @@ const currentUser: CurrentUserPayload = {
   userId: 1,
   email: 'admin@test.com',
   nome: 'Admin',
-  funcao: 'ADMIN',
+  funcao: 'GESTOR',
 };
 
 describe('WorkPlanController', () => {

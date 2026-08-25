@@ -90,7 +90,7 @@ describe('ResearchController', () => {
         userId: 1,
         email: 'admin@teste.com',
         nome: 'Admin',
-        funcao: 'ADMIN',
+        funcao: 'GESTOR',
       };
 
       await controller.findAll('10', '0', user);
@@ -104,7 +104,7 @@ describe('ResearchController', () => {
         userId: 1,
         email: 'admin@teste.com',
         nome: 'Admin',
-        funcao: 'ADMIN',
+        funcao: 'GESTOR',
       };
 
       await controller.findAll('20', '5', user);

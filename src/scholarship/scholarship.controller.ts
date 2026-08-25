@@ -49,7 +49,7 @@ export class ScholarshipController {
   })
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   create(@Body() createDto: CreateScholarshipDto): Promise<ScholarshipResponseDto> {
     return this.scholarshipService.create(createDto);
   }
@@ -66,7 +66,7 @@ export class ScholarshipController {
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Órgão financiador não encontrado.' })
   @Post('from-settings')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   createFromSettings(
     @Body() createDto: CreateScholarshipFromSettingsDto,
   ): Promise<ScholarshipResponseDto> {
@@ -147,7 +147,7 @@ export class ScholarshipController {
   })
   @Patch(':id')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateDto: UpdateScholarshipDto,
@@ -177,7 +177,7 @@ export class ScholarshipController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     await this.scholarshipService.remove(id);
   }

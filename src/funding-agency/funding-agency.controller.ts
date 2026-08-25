@@ -46,7 +46,7 @@ export class FundingAgencyController {
   @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Nome já cadastrado.' })
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   create(@Body() createDto: CreateFundingAgencyDto): Promise<FundingAgencyResponseDto> {
     return this.fundingAgencyService.create(createDto);
   }
@@ -100,7 +100,7 @@ export class FundingAgencyController {
   @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Nome já cadastrado.' })
   @Patch(':id')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateDto: UpdateFundingAgencyDto,
@@ -119,7 +119,7 @@ export class FundingAgencyController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     await this.fundingAgencyService.remove(id);
   }

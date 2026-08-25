@@ -38,7 +38,7 @@ export class ReportsController {
   @ApiResponse({ status: HttpStatus.CREATED, type: ReportResponseDto })
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   create(@Body() dto: CreateReportDto): Promise<ReportResponseDto> {
     return this.reportsService.create(dto);
   }
@@ -70,7 +70,7 @@ export class ReportsController {
   @ApiResponse({ status: HttpStatus.OK, type: ReportResponseDto })
   @Patch(':id')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateReportDto,

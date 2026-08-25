@@ -20,12 +20,12 @@ class PeriodoEditalDto {
   @ApiProperty({ type: 'string', format: 'date-time' })
   @IsNotEmpty()
   @IsDateString()
-  inicio: Date;
+  inicio!: Date;
 
   @ApiProperty({ type: 'string', format: 'date-time' })
   @IsNotEmpty()
   @IsDateString()
-  fim: Date;
+  fim!: Date;
 }
 
 export class CreateEditalDto {
@@ -37,7 +37,7 @@ export class CreateEditalDto {
   @ApiProperty({ required: true })
   @IsNotEmpty()
   @IsString()
-  descricao: string;
+  descricao!: string;
 
   @ApiProperty({
     required: true,
@@ -46,73 +46,95 @@ export class CreateEditalDto {
   })
   @IsNotEmpty()
   @IsIn([StatusEdital.RASCUNHO, StatusEdital.PUBLICADO])
-  status: StatusEdital;
+  status!: StatusEdital;
 
   @ApiProperty({ required: true, enum: TitulacaoMin })
   @IsNotEmpty()
   @IsEnum(TitulacaoMin)
-  titulacao_min: TitulacaoMin;
+  titulacao_min!: TitulacaoMin;
 
   @ApiProperty({ required: true, enum: TipoEdital })
   @IsNotEmpty()
   @IsEnum(TipoEdital)
-  tipo: TipoEdital;
+  tipo!: TipoEdital;
 
   @ApiProperty({ required: true, type: Number })
   @Type(() => Number)
   @IsNotEmpty()
   @IsInt()
-  limite_solicitacoes_orientador: number;
+  limite_solicitacoes_orientador!: number;
 
   @IsNotEmpty()
   @IsInt()
   @Min(1)
-  cota_bolsa_id: number;
+  cota_bolsa_id!: number;
 
   @ApiProperty({ required: true, type: Number })
   @Type(() => Number)
   @IsNotEmpty()
   @IsInt()
-  limite_planos_orientador: number;
+  limite_planos_orientador!: number;
 
   @ApiProperty({ required: true })
   @IsNotEmpty()
   @IsBoolean()
-  avaliacao_vigente: boolean;
+  avaliacao_vigente!: boolean;
 
   @ApiProperty({ required: true })
   @IsNotEmpty()
   @IsBoolean()
-  apenas_orient_coordena_plano: boolean;
+  apenas_orient_coordena_plano!: boolean;
 
   @ApiProperty({ required: true })
   @IsNotEmpty()
   @IsBoolean()
-  tec_admin_coord_proj: boolean;
+  tec_admin_coord_proj!: boolean;
 
   @ApiProperty({ required: true })
   @IsNotEmpty()
   @IsBoolean()
-  divulgar_resultado: boolean;
+  divulgar_resultado!: boolean;
+
+  @ApiProperty({ required: true })
+  @IsNotEmpty()
+  @IsBoolean()
+  edital_para_voluntarios!: boolean;
+
+  @ApiProperty({ required: true })
+  @IsNotEmpty()
+  @IsBoolean()
+  apenas_colab_vol_cadastra_plano!: boolean;
+
+  @ApiProperty({ required: true })
+  @IsNotEmpty()
+  @IsBoolean()
+  prof_subst_cadastra_proj!: boolean;
+
+  @ApiProperty({ required: true, type: Number })
+  @Type(() => Number)
+  @IsNotEmpty()
+  @IsInt()
+  @Min(2000)
+  ano!: number;
 
   @ApiProperty({ required: true, type: 'integer' })
   @IsNotEmpty()
   @IsInt()
   @Min(1)
-  categoria_id: number;
+  categoria_id!: number;
 
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => CreateEditalCotaDistribuicaoDto)
-  edital_cota_distribuicao: CreateEditalCotaDistribuicaoDto[];
+  edital_cota_distribuicao?: CreateEditalCotaDistribuicaoDto[];
 
   @IsNotEmpty()
   @ValidateNested()
   @Type(() => PeriodoEditalDto)
-  periodo_submissao: PeriodoEditalDto;
+  periodo_submissao!: PeriodoEditalDto;
 
   @IsNotEmpty()
   @ValidateNested()
   @Type(() => PeriodoEditalDto)
-  periodo_execucao: PeriodoEditalDto;
+  periodo_execucao!: PeriodoEditalDto;
 }

@@ -47,7 +47,7 @@ export class ProjectRolesController {
   @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Nome já cadastrado.' })
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   create(@Body() createDto: CreateProjectRoleDto): Promise<ProjectRoleResponseDto> {
     return this.projectRolesService.create(createDto);
   }
@@ -108,7 +108,7 @@ export class ProjectRolesController {
   @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Nome já cadastrado.' })
   @Patch(':id')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateDto: UpdateProjectRoleDto,
@@ -127,7 +127,7 @@ export class ProjectRolesController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     await this.projectRolesService.remove(id);
   }

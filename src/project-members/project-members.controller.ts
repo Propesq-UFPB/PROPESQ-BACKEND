@@ -39,7 +39,7 @@ export class ProjectMembersController {
   @ApiResponse({ status: HttpStatus.CREATED, type: ProjectMemberResponseDto })
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   create(@Body() dto: CreateProjectMemberDto): Promise<ProjectMemberResponseDto> {
     return this.projectMembersService.create(dto);
   }
@@ -72,7 +72,7 @@ export class ProjectMembersController {
   @ApiResponse({ status: HttpStatus.OK, type: ProjectMemberResponseDto })
   @Patch(':id')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateProjectMemberDto,
@@ -86,7 +86,7 @@ export class ProjectMembersController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     await this.projectMembersService.remove(id);
   }

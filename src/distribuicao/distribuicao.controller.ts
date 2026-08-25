@@ -13,7 +13,7 @@ export class DistribuicaoController {
 
   @Post(':editalId/distribute')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'GESTOR')
+  @Roles('GESTOR')
   @ApiOperation({ summary: 'Distribui projetos do edital para avaliadores' })
   @ApiParam({ name: 'editalId', type: Number })
   @ApiOkResponse({ description: 'Distribuição realizada com sucesso.' })

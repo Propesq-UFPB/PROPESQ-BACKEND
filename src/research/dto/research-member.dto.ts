@@ -6,7 +6,16 @@ import {
 } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class CreateResearchProjectMemberDto {
   @ApiProperty({ type: Number, description: 'ID do usuário cadastrado no sistema' })
@@ -48,6 +57,11 @@ export class CreateResearchProjectExternalMemberDto {
   @IsNotEmpty({ message: 'O nome do membro externo é obrigatório' })
   @MaxLength(255, { message: 'O nome deve possuir no máximo 255 caracteres' })
   nome!: string;
+
+  @ApiProperty({ maxLength: 255 })
+  @IsEmail({}, { message: 'O e-mail do membro externo deve ser válido' })
+  @MaxLength(255, { message: 'O e-mail deve possuir no máximo 255 caracteres' })
+  email!: string;
 
   @ApiProperty({ enum: TipoSexo })
   @IsEnum(TipoSexo, { message: 'O sexo do membro externo é inválido' })

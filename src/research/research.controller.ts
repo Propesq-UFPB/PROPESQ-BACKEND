@@ -10,8 +10,11 @@ import {
   HttpCode,
   HttpStatus,
   Delete,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -23,6 +26,10 @@ import { findOneResearchDto } from './dto/find-one-research.dto';
 import { projeto_pesquisa } from '@prisma/client';
 import {
   ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiCreatedResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiQuery,
@@ -33,6 +40,20 @@ import { updateResearchDto } from './dto/update-research.dto';
 import { AssignEvaluatorDto } from './dto/assign-evaluator.dto';
 import { EvaluateProjectDto } from './dto/evaluate-project.dto';
 import { FinalDecisionDto } from './dto/final-decision.dto';
+import {
+  ResearchAttachmentResponseDto,
+  ResearchGroupLookupDto,
+  ResearchLookupDto,
+  ResearchMemberLookupsDto,
+  ResearchUserLookupDto,
+} from './dto/research-lookups.dto';
+import { ResearchUserLookupQueryDto } from './dto/research-user-lookup-query.dto';
+
+type UploadedResearchFile = {
+  buffer?: Buffer;
+  mimetype?: string;
+  originalname?: string;
+};
 
 @ApiBearerAuth('bearer')
 @ApiTags('Projetos de pesquisa')
@@ -41,6 +62,8 @@ export class ResearchController {
   constructor(private readonly researchService: ResearchService) {}
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles('GESTOR', 'COORDENADOR')
   @ApiOperation({ summary: 'Cria um novo projeto de pesquisa' })
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -52,6 +75,52 @@ export class ResearchController {
   })
   create(@Body() createResearchDto: CreateResearchDto): Promise<projeto_pesquisa> {
     return this.researchService.create(createResearchDto);
+  }
+
+  @Get('sustainable-development-goals/lookup')
+  @ApiOkResponse({ type: [ResearchLookupDto] })
+  getSustainableDevelopmentGoals(): Promise<ResearchLookupDto<number>[]> {
+    return this.researchService.getSustainableDevelopmentGoals();
+  }
+
+  @Get('research-groups/lookup')
+  @ApiOkResponse({ type: [ResearchGroupLookupDto] })
+  getResearchGroups(): Promise<ResearchGroupLookupDto[]> {
+    return this.researchService.getResearchGroups();
+  }
+
+  @Get('members/lookups')
+  @ApiOkResponse({ type: ResearchMemberLookupsDto })
+  getMemberLookups(): ResearchMemberLookupsDto {
+    return this.researchService.getMemberLookups();
+  }
+
+  @Get('members/users/lookup')
+  @ApiOkResponse({ type: [ResearchUserLookupDto] })
+  getUsersLookup(@Query() query: ResearchUserLookupQueryDto): Promise<ResearchUserLookupDto[]> {
+    return this.researchService.getUsersLookup(query);
+  }
+
+  @Post(':id/anexo')
+  @UseGuards(RolesGuard)
+  @Roles('GESTOR', 'COORDENADOR')
+  @UseInterceptors(FileInterceptor('arquivo', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['arquivo'],
+      properties: {
+        arquivo: { type: 'string', format: 'binary', description: 'Arquivo PDF do projeto.' },
+      },
+    },
+  })
+  @ApiCreatedResponse({ type: ResearchAttachmentResponseDto })
+  uploadAttachment(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file?: UploadedResearchFile,
+  ): Promise<ResearchAttachmentResponseDto> {
+    return this.researchService.uploadAttachment(id, file);
   }
 
   @Get()

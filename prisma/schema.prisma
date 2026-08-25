@@ -346,6 +346,7 @@ model projeto_pesquisa {
   data_cadastro     DateTime
   cota              String?
   numero_protocolo  String?         @db.VarChar(255)
+  comite_etica      String?         @db.VarChar(255)
   linha_pesquisa    String?         @db.VarChar(512)
   pontuacao_final   Float?
   edital_id         Int?
@@ -416,6 +417,7 @@ model projeto_membro_externo {
   ch_dedicada Int
   cpf         String?               @db.VarChar(25) // nulo significa pessoa estrangeira (sem cpf)
   nome        String                @db.VarChar(255)
+  email       String                @db.VarChar(255)
   sexo        TipoSexo
   formacao    MembroExternoFormacao
   tipo        TipoMembroExterno

@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   Idioma,
@@ -14,6 +14,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ResearchService } from './research.service';
 import { CreateResearchDto } from './dto/create-research.dto';
 import { updateResearchDto } from './dto/update-research.dto';
+import { CategoriaMembroProjeto } from './dto/research-lookups.dto';
 
 const mockMembership = {
   buildAllowedPesquisaIds: jest.fn().mockResolvedValue(null),
@@ -57,6 +58,19 @@ const mockPrismaService = {
   $transaction: jest.fn(),
   unidade_academica: {
     findUnique: jest.fn(),
+  },
+  edital: {
+    findUnique: jest.fn(),
+  },
+  area_conhecimento: {
+    findUnique: jest.fn(),
+  },
+  grupo_pesquisa: {
+    findUnique: jest.fn(),
+    findMany: jest.fn(),
+  },
+  anexo_projeto_pesquisa: {
+    upsert: jest.fn(),
   },
   palavra_chave: {
     findMany: jest.fn(),
@@ -132,6 +146,7 @@ describe('ResearchService', () => {
       titulo: 'Projeto em PT',
       title: 'Project in EN',
       categoria_id: categoriaPadrao.id,
+      edital_id: 4,
       vigencia: new Date('2026-01-01') as any,
       data_inicio: new Date('2026-01-02') as any,
       data_fim: new Date('2026-12-31') as any,
@@ -142,6 +157,7 @@ describe('ResearchService', () => {
       atividades: atividadesProjeto,
       unidade_id: 3,
       area_conhecimento_id: 1,
+      linha_pesquisa: 'Linha de pesquisa aplicada',
       membros: [
         {
           user_id: 7,
@@ -155,6 +171,7 @@ describe('ResearchService', () => {
           ch_dedicada: 10,
           cpf: '123.456.789-00',
           nome: 'Pesquisadora Externa',
+          email: 'pesquisadora.externa@example.com',
           sexo: TipoSexo.FEMININO,
           formacao: MembroExternoFormacao.DOUTORADO,
           tipo: TipoMembroExterno.PROFESSOR_VISITANTE,
@@ -163,7 +180,9 @@ describe('ResearchService', () => {
     };
 
     it('deve persistir o projeto de pesquisa com as datas', async () => {
+      prisma.edital.findUnique.mockResolvedValue({ id: 4, categoria_id: 1 });
       prisma.unidade_academica.findUnique.mockResolvedValue({ id: 3 });
+      prisma.area_conhecimento.findUnique.mockResolvedValue({ id: 1 });
       prisma.palavra_chave.findMany.mockResolvedValue([{ id: 1 }, { id: 2 }]);
       prisma.objetivo_desenvolvimento_sustentavel.findMany.mockResolvedValue([{ id: 10 }]);
       prisma.categoria_edital.findUnique.mockResolvedValue({ id: 1 });
@@ -180,6 +199,9 @@ describe('ResearchService', () => {
             situacao: SituacaoProjeto.SUBMETIDO,
             data_inicio: createDto.data_inicio,
             data_fim: createDto.data_fim,
+            linha_pesquisa: 'Linha de pesquisa aplicada',
+            edital_rel: { connect: { id: 4 } },
+            area_conhecimento: { connect: { id: 1 } },
             categoria: {
               connect: { id: categoriaPadrao.id },
             },
@@ -212,6 +234,7 @@ describe('ResearchService', () => {
                   ch_dedicada: 10,
                   cpf: '123.456.789-00',
                   nome: 'Pesquisadora Externa',
+                  email: 'pesquisadora.externa@example.com',
                   sexo: TipoSexo.FEMININO,
                   formacao: MembroExternoFormacao.DOUTORADO,
                   tipo: TipoMembroExterno.PROFESSOR_VISITANTE,
@@ -229,24 +252,23 @@ describe('ResearchService', () => {
     });
 
     it('deve lançar erro quando a unidade acadêmica não existir', async () => {
+      prisma.edital.findUnique.mockResolvedValue({ id: 4, categoria_id: 1 });
       prisma.unidade_academica.findUnique.mockResolvedValue(null);
 
       await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
     });
 
-    it('deve lançar erro quando a categoria não existir', async () => {
-      prisma.unidade_academica.findUnique.mockResolvedValue({ id: 3 });
-      prisma.palavra_chave.findMany.mockResolvedValue([{ id: 1 }, { id: 2 }]);
-      prisma.categoria_edital.findUnique.mockResolvedValue(null);
+    it('deve lançar erro quando o edital não existir', async () => {
+      prisma.edital.findUnique.mockResolvedValue(null);
 
-      await expect(service.create(createDto)).rejects.toThrow(
-        `Categoria id ${categoriaPadrao.id} não existente`,
-      );
+      await expect(service.create(createDto)).rejects.toThrow('Edital com id 4 não encontrado');
       expect(prisma.projeto_pesquisa.create).not.toHaveBeenCalled();
     });
 
     it('deve lançar erro quando um usuário membro não existir', async () => {
+      prisma.edital.findUnique.mockResolvedValue({ id: 4, categoria_id: 1 });
       prisma.unidade_academica.findUnique.mockResolvedValue({ id: 3 });
+      prisma.area_conhecimento.findUnique.mockResolvedValue({ id: 1 });
       prisma.palavra_chave.findMany.mockResolvedValue([{ id: 1 }, { id: 2 }]);
       prisma.objetivo_desenvolvimento_sustentavel.findMany.mockResolvedValue([{ id: 10 }]);
       prisma.categoria_edital.findUnique.mockResolvedValue({ id: 1 });
@@ -256,6 +278,187 @@ describe('ResearchService', () => {
         'Usuário(s) não encontrado(s) para os ids: 7',
       );
       expect(prisma.projeto_pesquisa.create).not.toHaveBeenCalled();
+    });
+
+    it('deve criar palavras-chave textuais e persistir os campos condicionais', async () => {
+      prisma.edital.findUnique.mockResolvedValue({ id: 4, categoria_id: 1 });
+      prisma.unidade_academica.findUnique.mockResolvedValue({ id: 3 });
+      prisma.area_conhecimento.findUnique.mockResolvedValue({ id: 1 });
+      prisma.objetivo_desenvolvimento_sustentavel.findMany.mockResolvedValue([{ id: 10 }]);
+      prisma.usuario.findMany.mockResolvedValue([{ id: 7 }]);
+      prisma.grupo_pesquisa.findUnique.mockResolvedValue({ id: 5 });
+      prisma.projeto_pesquisa.create.mockResolvedValue({ id: 1 });
+
+      await service.create({
+        ...createDto,
+        palavras_chave_ids: undefined,
+        palavras_chave: [' pesquisa ', 'pesquisa'],
+        key_words: ['research'],
+        vinculado_grupo_pesquisa: true,
+        grupo_pesquisa_id: 5,
+        possui_comite_etica: true,
+        comite_etica: ' CEP/UFPB ',
+        numero_protocolo: ' 12345 ',
+      });
+
+      expect(prisma.projeto_pesquisa.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            palavra_chave: {
+              create: [
+                { palavra_chave: 'pesquisa', lingua: Idioma.PT },
+                { palavra_chave: 'research', lingua: Idioma.EN },
+              ],
+            },
+            grupo_pesquisa: { connect: { id: 5 } },
+            comite_etica: 'CEP/UFPB',
+            numero_protocolo: '12345',
+          }),
+        }),
+      );
+    });
+
+    it('deve exigir grupo quando o vínculo é marcado', async () => {
+      prisma.edital.findUnique.mockResolvedValue({ id: 4, categoria_id: 1 });
+      prisma.unidade_academica.findUnique.mockResolvedValue({ id: 3 });
+      prisma.area_conhecimento.findUnique.mockResolvedValue({ id: 1 });
+      prisma.palavra_chave.findMany.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+      prisma.objetivo_desenvolvimento_sustentavel.findMany.mockResolvedValue([{ id: 10 }]);
+      prisma.usuario.findMany.mockResolvedValue([{ id: 7 }]);
+
+      await expect(
+        service.create({
+          ...createDto,
+          vinculado_grupo_pesquisa: true,
+          grupo_pesquisa_id: undefined,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('deve exigir comitê e protocolo quando a opção é marcada', async () => {
+      prisma.edital.findUnique.mockResolvedValue({ id: 4, categoria_id: 1 });
+      prisma.unidade_academica.findUnique.mockResolvedValue({ id: 3 });
+      prisma.area_conhecimento.findUnique.mockResolvedValue({ id: 1 });
+      prisma.palavra_chave.findMany.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+      prisma.objetivo_desenvolvimento_sustentavel.findMany.mockResolvedValue([{ id: 10 }]);
+      prisma.usuario.findMany.mockResolvedValue([{ id: 7 }]);
+
+      await expect(
+        service.create({
+          ...createDto,
+          possui_comite_etica: true,
+          comite_etica: 'CEP/UFPB',
+          numero_protocolo: '',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('uploadAttachment', () => {
+    it('deve rejeitar arquivo que não seja PDF', async () => {
+      await expect(
+        service.uploadAttachment(1, {
+          buffer: Buffer.from('texto'),
+          mimetype: 'text/plain',
+          originalname: 'projeto.txt',
+        }),
+      ).rejects.toThrow('Apenas arquivos PDF são permitidos.');
+    });
+
+    it('deve substituir o PDF vinculado ao projeto', async () => {
+      prisma.projeto_pesquisa.findUnique.mockResolvedValue({ id: 1 });
+      prisma.anexo_projeto_pesquisa.upsert.mockResolvedValue({
+        id: 2,
+        projeto_pesquisa_id: 1,
+        tipo: 'application/pdf',
+      });
+
+      await service.uploadAttachment(1, {
+        buffer: Buffer.from('%PDF'),
+        mimetype: 'application/pdf',
+        originalname: 'projeto.pdf',
+      });
+
+      expect(prisma.anexo_projeto_pesquisa.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { projeto_pesquisa_id: 1 },
+          update: expect.objectContaining({ tipo: 'application/pdf' }),
+        }),
+      );
+    });
+  });
+
+  describe('lookups de cadastro', () => {
+    it('deve retornar nomes amigáveis para os enums de membros', () => {
+      const lookups = service.getMemberLookups();
+
+      expect(lookups.funcoes).toEqual(
+        expect.arrayContaining([
+          { id: TipoMembroProjeto.COORDENADOR_ADJ, name: 'Coordenador adjunto' },
+        ]),
+      );
+      expect(lookups.formacoes_externas).toEqual(
+        expect.arrayContaining([
+          { id: MembroExternoFormacao.POS_DOUTORADO, name: 'Pós-doutorado' },
+        ]),
+      );
+      expect(lookups.tipos_externos).toEqual(
+        expect.arrayContaining([
+          {
+            id: TipoMembroExterno.PROFESSOR_EM_CONVENIO_DE_COLABORACAO_TECNICA,
+            name: 'Professor em convênio de colaboração técnica',
+          },
+        ]),
+      );
+    });
+
+    it('deve listar ODS e grupos com suas linhas de pesquisa', async () => {
+      prisma.objetivo_desenvolvimento_sustentavel.findMany.mockResolvedValue([
+        { id: 1, tipo: 'Erradicação da Pobreza' },
+      ]);
+      prisma.grupo_pesquisa.findMany.mockResolvedValue([
+        {
+          id: 2,
+          titulo: 'Grupo de Pesquisa Aplicada',
+          grupo_pesquisa_linhas: [{ linha: 'Linha A' }],
+        },
+      ]);
+
+      await expect(service.getSustainableDevelopmentGoals()).resolves.toEqual([
+        { id: 1, name: 'Erradicação da Pobreza' },
+      ]);
+      await expect(service.getResearchGroups()).resolves.toEqual([
+        { id: 2, name: 'Grupo de Pesquisa Aplicada', linhas: ['Linha A'] },
+      ]);
+    });
+
+    it('deve filtrar usuários pela função docente', async () => {
+      prisma.usuario.findMany.mockResolvedValue([
+        {
+          id: 7,
+          nome: 'Docente Coordenadora',
+          email: 'docente@ufpb.br',
+          funcao: { nome: 'COORDENADOR' },
+          docente: [],
+          discente: [],
+        },
+      ]);
+
+      await expect(
+        service.getUsersLookup({ funcao: CategoriaMembroProjeto.DOCENTE }),
+      ).resolves.toEqual([
+        {
+          id: 7,
+          name: 'Docente Coordenadora',
+          email: 'docente@ufpb.br',
+          categoria: CategoriaMembroProjeto.DOCENTE,
+        },
+      ]);
+      expect(prisma.usuario.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ AND: expect.any(Array) }),
+        }),
+      );
     });
   });
 

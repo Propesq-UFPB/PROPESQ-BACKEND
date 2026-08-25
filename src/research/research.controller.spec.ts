@@ -4,6 +4,7 @@ import { ResearchService } from './research.service';
 import { CreateResearchDto } from './dto/create-research.dto';
 import { updateResearchDto } from './dto/update-research.dto';
 import { TipoProjeto } from '@prisma/client';
+import { ROLES_KEY } from '../auth/decorators/roles.decorator';
 
 const mockResearchService = {
   create: jest.fn(),
@@ -13,6 +14,7 @@ const mockResearchService = {
   publish: jest.fn(),
   finalDecision: jest.fn(),
   getRanking: jest.fn(),
+  uploadAttachment: jest.fn(),
   delete: jest.fn(),
 };
 
@@ -44,12 +46,20 @@ describe('ResearchController', () => {
   });
 
   describe('create', () => {
+    it('deve permitir criação apenas para gestor e coordenador', () => {
+      expect(Reflect.getMetadata(ROLES_KEY, ResearchController.prototype.create)).toEqual([
+        'GESTOR',
+        'COORDENADOR',
+      ]);
+    });
+
     it('deve chamar service.create com o payload correto', async () => {
       const dto: CreateResearchDto = {
         tipo: TipoProjeto.INTERNO,
         titulo: 'Projeto em PT',
         title: 'Project in EN',
         categoria_id: 1,
+        edital_id: 2,
         vigencia: new Date('2026-01-01') as any,
         data_inicio: new Date('2026-01-02') as any,
         data_fim: new Date('2026-12-31') as any,
@@ -72,6 +82,7 @@ describe('ResearchController', () => {
         ],
         unidade_id: 3,
         area_conhecimento_id: 1,
+        linha_pesquisa: 'Linha de pesquisa',
       };
 
       mockResearchService.create.mockResolvedValue({ id: 1 });
@@ -80,6 +91,24 @@ describe('ResearchController', () => {
 
       expect(service.create).toHaveBeenCalledWith(dto);
       expect(result).toEqual({ id: 1 });
+    });
+  });
+
+  describe('uploadAttachment', () => {
+    it('deve delegar o envio do arquivo e possuir as mesmas permissões da criação', async () => {
+      const file = {
+        buffer: Buffer.from('%PDF'),
+        mimetype: 'application/pdf',
+        originalname: 'projeto.pdf',
+      };
+      mockResearchService.uploadAttachment.mockResolvedValue({ id: 1 });
+
+      await controller.uploadAttachment(2, file);
+
+      expect(service.uploadAttachment).toHaveBeenCalledWith(2, file);
+      expect(Reflect.getMetadata(ROLES_KEY, ResearchController.prototype.uploadAttachment)).toEqual(
+        ['GESTOR', 'COORDENADOR'],
+      );
     });
   });
 

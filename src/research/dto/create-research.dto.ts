@@ -2,6 +2,7 @@ import { TipoProjeto } from '@prisma/client';
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEmail,
   IsEnum,
@@ -11,7 +12,9 @@ import {
   IsNotEmptyObject,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -41,12 +44,22 @@ export class CreateResearchDto {
   @IsString({ message: 'O título em inglês deve ser um texto' })
   title!: string;
 
-  @ApiProperty({ required: true, type: 'integer' })
+  @ApiProperty({
+    required: false,
+    type: 'integer',
+    description: 'Mantido para compatibilidade; quando há edital, a categoria é obtida dele.',
+  })
+  @IsOptional()
   @Type(() => Number)
-  @IsNotEmpty()
   @IsInt({ message: 'O ID da categoria deve ser um número inteiro' })
   @Min(1, { message: 'O ID da categoria deve ser maior que zero' })
-  categoria_id!: number;
+  categoria_id?: number;
+
+  @ApiProperty({ required: true, type: 'integer', description: 'ID do edital de pesquisa' })
+  @Type(() => Number)
+  @IsInt({ message: 'O ID do edital deve ser um número inteiro' })
+  @Min(1, { message: 'O ID do edital deve ser maior que zero' })
+  edital_id!: number;
 
   @ApiProperty({ required: true })
   @IsNotEmpty({ message: 'A vigência é obrigatória' })
@@ -69,16 +82,38 @@ export class CreateResearchDto {
   email!: string;
 
   @ApiProperty({
-    required: true,
+    required: false,
     isArray: true,
     type: Number,
     description: 'IDs das palavras-chave cadastradas',
   })
-  @IsNotEmpty({ message: 'As palavras-chave são obrigatórias' })
+  @IsOptional()
   @IsArray({ message: 'As palavras-chave devem ser um array' })
   @Type(() => Number)
   @IsInt({ each: true, message: 'Cada palavra-chave deve ser um ID numérico válido' })
-  palavras_chave_ids!: number[];
+  palavras_chave_ids?: number[];
+
+  @ApiProperty({
+    required: false,
+    type: [String],
+    description: 'Palavras-chave em português a criar com o projeto',
+  })
+  @IsOptional()
+  @IsArray({ message: 'As palavras-chave devem ser um array' })
+  @ArrayMinSize(1, { message: 'Informe ao menos uma palavra-chave' })
+  @IsString({ each: true, message: 'Cada palavra-chave deve ser um texto' })
+  palavras_chave?: string[];
+
+  @ApiProperty({
+    required: false,
+    type: [String],
+    description: 'Palavras-chave em inglês a criar com o projeto',
+  })
+  @IsOptional()
+  @IsArray({ message: 'As palavras-chave em inglês devem ser um array' })
+  @ArrayMinSize(1, { message: 'Informe ao menos uma palavra-chave em inglês' })
+  @IsString({ each: true, message: 'Cada palavra-chave em inglês deve ser um texto' })
+  key_words?: string[];
 
   @ApiProperty({
     isArray: true,
@@ -121,7 +156,51 @@ export class CreateResearchDto {
   unidade_id!: number;
 
   @ApiProperty({ required: true, type: Number, description: 'ID da área de conhecimento' })
+  @Type(() => Number)
+  @IsInt({ message: 'O ID da área de conhecimento deve ser um número inteiro' })
+  @Min(1, { message: 'O ID da área de conhecimento deve ser maior que zero' })
   area_conhecimento_id!: number;
+
+  @ApiProperty({ required: true, maxLength: 512 })
+  @IsString({ message: 'A linha de pesquisa deve ser um texto' })
+  @IsNotEmpty({ message: 'A linha de pesquisa é obrigatória' })
+  @MaxLength(512, { message: 'A linha de pesquisa deve possuir no máximo 512 caracteres' })
+  linha_pesquisa!: string;
+
+  @ApiProperty({ required: false, default: false })
+  @IsOptional()
+  @IsBoolean({ message: 'O indicador de vínculo com grupo deve ser booleano' })
+  vinculado_grupo_pesquisa?: boolean;
+
+  @ApiProperty({ required: false, type: Number })
+  @ValidateIf((dto: CreateResearchDto) => dto.vinculado_grupo_pesquisa === true)
+  @Type(() => Number)
+  @IsInt({ message: 'O ID do grupo de pesquisa deve ser um número inteiro' })
+  @Min(1, { message: 'O ID do grupo de pesquisa deve ser maior que zero' })
+  grupo_pesquisa_id?: number;
+
+  @ApiProperty({ required: false, default: false })
+  @IsOptional()
+  @IsBoolean({ message: 'O indicador de comitê de ética deve ser booleano' })
+  possui_comite_etica?: boolean;
+
+  @ApiProperty({ required: false, maxLength: 255 })
+  @ValidateIf((dto: CreateResearchDto) => dto.possui_comite_etica === true)
+  @IsString({ message: 'O comitê de ética deve ser um texto' })
+  @IsNotEmpty({
+    message: 'O comitê de ética é obrigatório quando a opção correspondente é marcada',
+  })
+  @MaxLength(255, { message: 'O comitê de ética deve possuir no máximo 255 caracteres' })
+  comite_etica?: string;
+
+  @ApiProperty({ required: false, maxLength: 255 })
+  @ValidateIf((dto: CreateResearchDto) => dto.possui_comite_etica === true)
+  @IsString({ message: 'O número do protocolo deve ser um texto' })
+  @IsNotEmpty({
+    message: 'O número do protocolo é obrigatório quando a opção correspondente é marcada',
+  })
+  @MaxLength(255, { message: 'O número do protocolo deve possuir no máximo 255 caracteres' })
+  numero_protocolo?: string;
 
   @ApiProperty({
     required: false,

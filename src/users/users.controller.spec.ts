@@ -73,7 +73,7 @@ describe('UsersController', () => {
     it('deve chamar service.findOne convertendo ID', async () => {
       mockUsersService.findOne.mockResolvedValue({ id: 1 });
 
-      await controller.findOne('1');
+      await controller.findOne(1);
 
       expect(service.findOne).toHaveBeenCalledWith(1);
     });
@@ -84,7 +84,7 @@ describe('UsersController', () => {
       const dto = new UpdateUserDto();
       mockUsersService.update.mockResolvedValue({ id: 1 });
 
-      await controller.update('1', dto);
+      await controller.update(1, dto);
 
       expect(service.update).toHaveBeenCalledWith(1, dto);
     });
@@ -94,7 +94,7 @@ describe('UsersController', () => {
     it('deve chamar service.remove', async () => {
       mockUsersService.remove.mockResolvedValue({ id: 1 });
 
-      await controller.remove('1');
+      await controller.remove(1);
 
       expect(service.remove).toHaveBeenCalledWith(1);
     });

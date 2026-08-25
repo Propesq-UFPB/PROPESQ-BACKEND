@@ -104,7 +104,7 @@ describe('ResearchService', () => {
       tipo: TipoProjeto.INTERNO,
       titulo: 'Projeto em PT',
       title: 'Project in EN',
-      categoria: CategoriaProjeto.CATEGORIA_PADRAO,
+      categoria_id: 1,
       vigencia: new Date('2026-01-01') as any,
       data_inicio: new Date('2026-01-02') as any,
       data_fim: new Date('2026-12-31') as any,

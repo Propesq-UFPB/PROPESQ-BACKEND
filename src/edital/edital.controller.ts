@@ -212,4 +212,15 @@ export class EditalController {
   ) {
     await this.editalService.setAcademicUnits(id, dto.unidade_ids);
   }
+
+  @Get(':id/avaliacoes')
+  @ApiOperation({
+    summary: 'Lista as atribuições de avaliação de projetos e planos de trabalho de um edital',
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'ID do edital.' })
+  @ApiOkResponse({ description: 'Atribuições de avaliação retornadas com sucesso.' })
+  @ApiNotFoundResponse({ description: 'Edital não encontrado' })
+  async findEvaluationAssignments(@Param('id', ParseIntPipe) id: number) {
+    return this.editalService.findEvaluationAssignments(id);
+  }
 }

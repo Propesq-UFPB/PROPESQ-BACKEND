@@ -34,7 +34,7 @@ describe('AuthController', () => {
 
   describe('login', () => {
     it('deve chamar authService.login', async () => {
-      const loginDto: LoginDto = { email: 'test@test.com', senha: '123' };
+      const loginDto: LoginDto = { email: 'test@test.com', password: '123' };
       mockAuthService.login.mockResolvedValue({ access_token: 'token' });
 
       const result = await controller.login(loginDto);

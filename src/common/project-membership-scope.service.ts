@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { TipoMembroProjeto } from '@prisma/client';
 import { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { FUNCAO_ORIENTADOR, FUNCOES_GESTAO_PLANO } from './project-membership.constants';
@@ -34,26 +35,45 @@ export class ProjectMembershipScopeService {
       return null;
     }
 
-    const members = await this.prisma.membro_projeto.findMany({
-      where: {
-        usuario_id: user.userId,
-        ativo: true,
-        funcao_projeto: {
-          nome: { in: [...FUNCOES_GESTAO_PLANO] },
-        },
-      },
-      include: {
-        funcao_projeto: { select: { nome: true } },
-        projeto_pesquisa: {
-          select: {
-            id: true,
-            edital_rel: { select: { apenas_orient_coordena_plano: true } },
+    const [legacyMembers, researchMembers] = await Promise.all([
+      this.prisma.membro_projeto.findMany({
+        where: {
+          usuario_id: user.userId,
+          ativo: true,
+          funcao_projeto: {
+            nome: { in: [...FUNCOES_GESTAO_PLANO] },
           },
         },
-      },
-    });
+        include: {
+          funcao_projeto: { select: { nome: true } },
+          projeto_pesquisa: {
+            select: {
+              id: true,
+              edital_rel: { select: { apenas_orient_coordena_plano: true } },
+            },
+          },
+        },
+      }),
+      this.prisma.projeto_membro.findMany({
+        where: {
+          user_id: user.userId,
+          funcao: {
+            in: [TipoMembroProjeto.COORDENADOR, TipoMembroProjeto.COORDENADOR_ADJ],
+          },
+        },
+        select: {
+          projeto_id: true,
+          funcao: true,
+          projeto_pesquisa: {
+            select: {
+              edital_rel: { select: { apenas_orient_coordena_plano: true } },
+            },
+          },
+        },
+      }),
+    ]);
 
-    return members
+    const legacyProjectIds = legacyMembers
       .filter(member => {
         const apenasOrientador =
           member.projeto_pesquisa.edital_rel?.apenas_orient_coordena_plano === true;
@@ -63,6 +83,16 @@ export class ProjectMembershipScopeService {
         return true;
       })
       .map(member => member.projeto_pesquisa_id);
+
+    const researchProjectIds = researchMembers
+      .filter(member => {
+        const apenasOrientador =
+          member.projeto_pesquisa.edital_rel?.apenas_orient_coordena_plano === true;
+        return !apenasOrientador || member.funcao === TipoMembroProjeto.COORDENADOR;
+      })
+      .map(member => member.projeto_id);
+
+    return [...new Set([...legacyProjectIds, ...researchProjectIds])];
   }
 
   /**
@@ -99,7 +129,7 @@ export class ProjectMembershipScopeService {
     const apenasOrientador = projeto.edital_rel?.apenas_orient_coordena_plano === true;
     const allowedRoles = apenasOrientador ? [FUNCAO_ORIENTADOR] : [...FUNCOES_GESTAO_PLANO];
 
-    const membership = await this.prisma.membro_projeto.findFirst({
+    const legacyMembership = await this.prisma.membro_projeto.findFirst({
       where: {
         projeto_pesquisa_id: pesquisaId,
         usuario_id: user.userId,
@@ -108,7 +138,22 @@ export class ProjectMembershipScopeService {
       },
     });
 
-    if (!membership) {
+    if (legacyMembership) {
+      return;
+    }
+
+    const allowedResearchRoles = apenasOrientador
+      ? [TipoMembroProjeto.COORDENADOR]
+      : [TipoMembroProjeto.COORDENADOR, TipoMembroProjeto.COORDENADOR_ADJ];
+    const researchMembership = await this.prisma.projeto_membro.findFirst({
+      where: {
+        projeto_id: pesquisaId,
+        user_id: user.userId,
+        funcao: { in: allowedResearchRoles },
+      },
+    });
+
+    if (!researchMembership) {
       throw new ForbiddenException('Você não tem permissão para acessar este projeto de pesquisa.');
     }
   }

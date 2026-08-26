@@ -1,4 +1,5 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { TipoMembroProjeto } from '@prisma/client';
 import { Test, TestingModule } from '@nestjs/testing';
 import { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { ProjectMembershipScopeService } from '../common/project-membership-scope.service';
@@ -100,6 +101,10 @@ describe('ProjectMembershipScopeService', () => {
       findMany: jest.fn(),
       findFirst: jest.fn(),
     },
+    projeto_membro: {
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+    },
     projeto_pesquisa: {
       findUnique: jest.fn(),
     },
@@ -129,6 +134,10 @@ describe('ProjectMembershipScopeService', () => {
 
     service = module.get(ProjectMembershipScopeService);
     jest.clearAllMocks();
+    mockPrismaFull.membro_projeto.findMany.mockResolvedValue([]);
+    mockPrismaFull.projeto_membro.findMany.mockResolvedValue([]);
+    mockPrismaFull.membro_projeto.findFirst.mockResolvedValue(null);
+    mockPrismaFull.projeto_membro.findFirst.mockResolvedValue(null);
   });
 
   describe('buildAllowedPesquisaIds', () => {
@@ -186,6 +195,30 @@ describe('ProjectMembershipScopeService', () => {
         }),
       );
     });
+
+    it('inclui projetos cadastrados pela nova entidade de membros', async () => {
+      mockPrismaFull.projeto_membro.findMany.mockResolvedValue([
+        {
+          projeto_id: 300,
+          funcao: TipoMembroProjeto.COORDENADOR,
+          projeto_pesquisa: { edital_rel: { apenas_orient_coordena_plano: false } },
+        },
+      ]);
+
+      const ids = await service.buildAllowedPesquisaIds(coordUser, { forceMemberScope: true });
+
+      expect(ids).toEqual([300]);
+      expect(mockPrismaFull.projeto_membro.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            user_id: coordUser.userId,
+            funcao: {
+              in: [TipoMembroProjeto.COORDENADOR, TipoMembroProjeto.COORDENADOR_ADJ],
+            },
+          },
+        }),
+      );
+    });
   });
 
   describe('assertCanAccessPesquisa', () => {
@@ -216,6 +249,27 @@ describe('ProjectMembershipScopeService', () => {
       await expect(
         service.assertCanAccessPesquisa(coordUser, 1, { forceMemberScope: true }),
       ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('permite acesso pelo vínculo da nova entidade de membros', async () => {
+      mockPrismaFull.projeto_pesquisa.findUnique.mockResolvedValue({
+        id: 1,
+        edital_rel: { apenas_orient_coordena_plano: false },
+      });
+      mockPrismaFull.projeto_membro.findFirst.mockResolvedValue({ id: 2 });
+
+      await expect(
+        service.assertCanAccessPesquisa(coordUser, 1, { forceMemberScope: true }),
+      ).resolves.toBeUndefined();
+      expect(mockPrismaFull.projeto_membro.findFirst).toHaveBeenCalledWith({
+        where: {
+          projeto_id: 1,
+          user_id: coordUser.userId,
+          funcao: {
+            in: [TipoMembroProjeto.COORDENADOR, TipoMembroProjeto.COORDENADOR_ADJ],
+          },
+        },
+      });
     });
   });
 });

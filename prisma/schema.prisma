@@ -22,6 +22,7 @@ model anexo_projeto_pesquisa {
   id                  Int               @id @default(autoincrement())
   projeto_pesquisa_id Int               @unique
   arquivo             Bytes
+  nome                String            @db.VarChar(255)
   tipo                String            @db.VarChar(255)
   projeto_pesquisa    projeto_pesquisa? @relation(fields: [projeto_pesquisa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
@@ -34,6 +35,7 @@ model area_conhecimento {
   especialidade    String
   projeto_pesquisa projeto_pesquisa[]
   docentes         docente[]
+  grupoPesquisas   grupo_pesquisa[]
 }
 
 model atividade_projeto_pesquisa {
@@ -85,8 +87,8 @@ model corpo_projeto {
   introducao           String
   objetivos            String
   metodologia          String
+  resultados_esperados String?
   referencias          String
-  resultados_esperados String
   projeto_pesquisa_id  Int              @unique
   projeto_pesquisa     projeto_pesquisa @relation(fields: [projeto_pesquisa_id], references: [id], onDelete: Cascade)
 }
@@ -161,28 +163,28 @@ model docente {
 }
 
 model edital {
-  id                             Int           @id @default(autoincrement())
-  codigo                         String?       @unique @db.VarChar(255)
-  descricao                      String        @db.Text
-  status                         StatusEdital  @default(RASCUNHO)
-  ano                            Int
-  cota_bolsa_id                  Int
-  titulacao_min                  TitulacaoMin
-  tipo                           TipoEdital
-  limite_solicitacoes_orientador Int
-  limite_planos_orientador       Int
-  avaliacao_vigente              Boolean
-  apenas_orient_coordena_plano   Boolean
-  tec_admin_coord_proj           Boolean
-  divulgar_resultado             Boolean       @default(false)
-  edital_para_voluntarios        Boolean       @default(false)
-  apenas_colab_vol_cadastra_plano Boolean      @default(false)
-  prof_subst_cadastra_proj       Boolean       @default(false)
-  periodo_submissoes_id          Int
-  periodo_execucao_id            Int
-  categoria_id                   Int
-  data_cadastro                  DateTime
-  anexo                          anexo_edital?
+  id                              Int           @id @default(autoincrement())
+  codigo                          String?       @unique @db.VarChar(255)
+  descricao                       String        @db.Text
+  status                          StatusEdital  @default(RASCUNHO)
+  ano                             Int
+  cota_bolsa_id                   Int
+  titulacao_min                   TitulacaoMin
+  tipo                            TipoEdital
+  limite_solicitacoes_orientador  Int
+  limite_planos_orientador        Int
+  avaliacao_vigente               Boolean
+  apenas_orient_coordena_plano    Boolean
+  tec_admin_coord_proj            Boolean
+  divulgar_resultado              Boolean       @default(false)
+  edital_para_voluntarios         Boolean       @default(false)
+  apenas_colab_vol_cadastra_plano Boolean       @default(false)
+  prof_subst_cadastra_proj        Boolean       @default(false)
+  periodo_submissoes_id           Int
+  periodo_execucao_id             Int
+  categoria_id                    Int
+  data_cadastro                   DateTime
+  anexo                           anexo_edital?
 
   periodo_submissoes       periodo_edital             @relation("periodo_submissoes", fields: [periodo_submissoes_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   periodo_execucao_rel     periodo_edital             @relation("periodo_execucao", fields: [periodo_execucao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -333,22 +335,26 @@ model dados_bancarios_indicacao {
 }
 
 model projeto_pesquisa {
-  id              Int             @id @default(autoincrement())
-  codigo          String
-  tipo            TipoProjeto
-  titulo          String
-  title           String
-  categoria_id    Int
-  situacao        SituacaoProjeto @map("situação")
-  email           String
-  data_inicio     DateTime?       @db.Timestamp(6)
-  data_fim        DateTime?       @db.Timestamp(6)
-  vigencia        DateTime        @db.Timestamp(6)
-  data_cadastro   DateTime
-  edital          String?
-  cota            String?
-  pontuacao_final Float?
-  edital_id       Int?
+  id                Int             @id @default(autoincrement())
+  codigo            String
+  tipo              TipoProjeto
+  titulo            String
+  title             String
+  categoria_id      Int
+  situacao          SituacaoProjeto @map("situação")
+  email             String
+  data_inicio       DateTime?       @db.Timestamp(6)
+  data_fim          DateTime?       @db.Timestamp(6)
+  vigencia          DateTime        @db.Timestamp(6)
+  data_cadastro     DateTime
+  cota              String?
+  numero_protocolo  String?         @db.VarChar(255)
+  comite_etica      String?         @db.VarChar(255)
+  linha_pesquisa    String?         @db.VarChar(512)
+  pontuacao_final   Float?
+  edital_id         Int?
+  grupo_pesquisa_id Int?
+  grupo_pesquisa    grupo_pesquisa? @relation(fields: [grupo_pesquisa_id], references: [id])
 
   unidade_id        Int
   unidade_academica unidade_academica @relation(fields: [unidade_id], references: [id], onDelete: Cascade)
@@ -363,16 +369,64 @@ model projeto_pesquisa {
   anexo_projeto_pesquisa anexo_projeto_pesquisa?
   edital_rel             edital?                 @relation(fields: [edital_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  atividades          atividade_projeto_pesquisa[]
-  objetivos           pesquisa_objetivo[]
-  palavra_chave       palavra_chave[]
-  plano_trabalho      plano_trabalho[]
-  historico_avaliacao historico_avaliacao[]
-  categoria           categoria_edital             @relation(fields: [categoria_id], references: [id])
-  projeto_avaliacao   projeto_avaliacao[]
-  membros             membro_projeto[]
-  relatorios          relatorio[]
-  certificados        certificado[]
+  atividades            atividade_projeto_pesquisa[]
+  objetivos             pesquisa_objetivo[]
+  palavra_chave         palavra_chave[]
+  plano_trabalho        plano_trabalho[]
+  historico_avaliacao   historico_avaliacao[]
+  categoria             categoria_edital             @relation(fields: [categoria_id], references: [id])
+  projeto_avaliacao     projeto_avaliacao[]
+  membros               membro_projeto[]
+  relatorios            relatorio[]
+  certificados          certificado[]
+  projetoMembros        projeto_membro[]
+  projetoMembroExternos projeto_membro_externo[]
+}
+
+model grupo_pesquisa {
+  id         Int     @id @default(autoincrement())
+  titulo     String  @db.VarChar(255)
+  lider      String  @db.VarChar(255)
+  vice_lider String? @db.VarChar(255)
+
+  area_conhecimento_id Int
+  area_conhecimento    area_conhecimento @relation(fields: [area_conhecimento_id], references: [id])
+
+  grupo_pesquisa_linhas grupo_pesquisa_linha[]
+  projetoPesquisas      projeto_pesquisa[]
+}
+
+model grupo_pesquisa_linha {
+  id                Int            @id @default(autoincrement())
+  linha             String         @db.VarChar(512)
+  grupo_pesquisa_id Int
+  grupo_pesquisa    grupo_pesquisa @relation(fields: [grupo_pesquisa_id], references: [id])
+}
+
+model projeto_membro {
+  id           Int               @id @default(autoincrement())
+  user_id      Int
+  funcao       TipoMembroProjeto
+  ch_dedicadas Int
+  projeto_id   Int
+
+  user             usuario          @relation(fields: [user_id], references: [id])
+  projeto_pesquisa projeto_pesquisa @relation(fields: [projeto_id], references: [id], onDelete: Cascade)
+}
+
+model projeto_membro_externo {
+  id          Int                   @id @default(autoincrement())
+  funcao      TipoMembroProjeto
+  ch_dedicada Int
+  cpf         String?               @db.VarChar(25) // nulo significa pessoa estrangeira (sem cpf)
+  nome        String                @db.VarChar(255)
+  email       String                @db.VarChar(255)
+  sexo        TipoSexo
+  formacao    MembroExternoFormacao
+  tipo        TipoMembroExterno
+  projeto_id  Int
+
+  projeto_pesquisa projeto_pesquisa @relation(fields: [projeto_id], references: [id], onDelete: Cascade)
 }
 
 model historico_avaliacao {
@@ -504,6 +558,7 @@ model usuario {
   membros_projeto     membro_projeto[]
   certificados        certificado[]
   dados_bancarios     dados_bancarios_indicacao[]
+  projetoMembros      projeto_membro[]
 }
 
 model cota_bolsa {
@@ -609,23 +664,23 @@ model parametro_modulo_pesquisa {
 }
 
 model bolsa {
-  id                          Int                @id @default(autoincrement())
-  descricao                   String             @db.Text
-  categoria                   String             @db.Text
+  id                          Int                        @id @default(autoincrement())
+  descricao                   String                     @db.Text
+  categoria                   String                     @db.Text
   dia_limite_indicacao        Int
   dia_limite_finalizacao      Int
-  niveis                      String             @db.Bit(3)
+  niveis                      String                     @db.Bit(3)
   vinculado_cota              Boolean
   necessita_relatorio         Boolean
   necessidade_dados_bancarios Boolean
   possui_bancos_exclusivos    Boolean
   possui_tipo_conta_excls     Boolean
-  envio_relatorio_inicio      DateTime           @db.Date
-  envio_relatorio_fim         DateTime           @db.Date
+  envio_relatorio_inicio      DateTime                   @db.Date
+  envio_relatorio_fim         DateTime                   @db.Date
   orgao_id                    Int?
-  orgao                       orgao_financiador? @relation(fields: [orgao_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  valor                       Decimal?           @db.Decimal(12, 2)
-  permite_acumulo             Boolean            @default(false)
+  orgao                       orgao_financiador?         @relation(fields: [orgao_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  valor                       Decimal?                   @db.Decimal(12, 2)
+  permite_acumulo             Boolean                    @default(false)
   edital_cota_distribuicao    edital_cota_distribuicao[]
 }
 
@@ -687,50 +742,6 @@ enum SituacaoProjeto {
   DESATIVADO
   EXCLUIDO
   AGUARDANDO_AVALIACAO
-}
-
-enum CategoriaProjeto {
-  CATEGORIA_PADRAO
-  DESENVOLVIMENTO_CIENTIFICO_INSTITUCIONAL_E_TECNOLOGICO
-  FOMENTO_A_PESQUISA_CIENTIFICA_E_TECNOLOGICA
-  ESTUDOS_DE_CTI
-  SAUDE
-  BIOTECNOLOGIA
-  NANOTECNOLOGIA
-  BIOCOMBUSTIVEIS
-  ENERGIA_ELETRICA
-  ENERGIAS_RENOVAVEIS
-  PETROLEO_E_GAS
-  AGRONEGOCIO
-  BIODIVERSIDADE_E_RECURSOS_NATURAIS
-  RECURSOS_HIDRICOS
-  SEMIARIDO
-  AQUICULTURA_E_PESCA
-  METEOROLOGIA_E_MUDANCAS_CLIMATICAS
-  TECNOLOGIA_INDUSTRIAL
-  SEGURANCA_PUBLICA
-  TECNOLOGIA_SOCIAL
-  DESIGN
-  TECNOLOGIA_INCLUSIVA
-  ECONOMIA_CRIATIVA
-  INOVACAO
-  PROGRAMAS_DE_COMPUTADOR
-  MODELOS_DE_UTILIDADE
-  NOVA_CULTIVAR
-  CULTIVAR_DERIVADA
-  AGROINDUSTRIA
-  DESENHO_INDUSTRIAL
-  TOPOGRAFIA_DE_CIRCUITO_INDUSTRIAL
-  DESENVOLVIMENTO_DE_TECNOLOGIA
-  DESENVOLVIMENTO_DE_PRODUTO
-  DESENVOLVIMENTO_DE_PROCESSO
-  APERFEICOAMENTO_DE_TECNOLOGIA
-  APERFEICOAMENTO_DE_PROCESSO
-  APERFEICOAMENTO_DE_PRODUTO
-  SERVICO_INOVADOR
-  PESQUISA_CIENTIFICA
-  PESQUISA_BASICA
-  PESQUISA_APLICADA
 }
 
 enum TitulacaoMin {
@@ -799,4 +810,50 @@ enum StatusTermoCompromisso {
   AGUARDANDO_ACEITE
   ACEITO_PLATAFORMA
   PENDENTE_CORRECAO
+}
+
+enum TipoMembroProjeto {
+  COORDENADOR
+  COORDENADOR_ADJ
+  COLABORADOR
+}
+
+enum TipoSexo {
+  MASCULINO
+  FEMININO
+}
+
+enum MembroExternoFormacao {
+  NAO_INFORMADA
+  TECNICO_PROFISSIONALIZANTE_ENS_MEDIO
+  POS_TECNICO
+  GRADUACAO
+  ENSINO_FUNDAMENTAL_INCOMPLETO
+  ENSINO_FUNDAMENTAL
+  ENSINO_MEDIO_INCOMPLETO
+  ENSINO_MEDIO
+  APERFEICOAMENTO
+  ESPECIALIZACAO
+  MESTRADO
+  SEQUENCIAL
+  POS_DOUTORADO
+  DESCONHECIDA
+  TECNOLOGO_DE_NIVEL_SUPERIOR
+  DOUTORADO
+}
+
+enum TipoMembroExterno {
+  NAO_INFORMADO
+  PESQUISADOR_VISITANTE_DA_ANP
+  COLABORADOR_VOLUNTARIO_ANTIGO_ASSOCIADO
+  PROFESSOR_VISITANTE
+  PESQUISADOR_VISITANTE_BOLSA_DCR
+  PROFESSOR_EM_CONVENIO_DE_COLABORACAO_TECNICA
+  PESQUISADOR_VISITANTE_COM_BOLSA_FAPESQ
+  PESQUISADOR_VISITANTE_COM_BOLSA
+  PESQUISADOR_VISITANTE_COM_BOLSA_PRODOC_CAPES
+  PESQUISADOR_VISITANTE_COM_BOLSA_CNPQ
+  DOCENTE_EXTERNO_LATO_SENSU
+  DISCENTE_DA_INSTITUICAO
+  PROFESSOR_EXTERNO
 }

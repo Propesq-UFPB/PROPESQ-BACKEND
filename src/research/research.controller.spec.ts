@@ -3,7 +3,8 @@ import { ResearchController } from './research.controller';
 import { ResearchService } from './research.service';
 import { CreateResearchDto } from './dto/create-research.dto';
 import { updateResearchDto } from './dto/update-research.dto';
-import { CategoriaProjeto, TipoProjeto } from '@prisma/client';
+import { TipoProjeto } from '@prisma/client';
+import { ROLES_KEY } from '../auth/decorators/roles.decorator';
 
 const mockResearchService = {
   create: jest.fn(),
@@ -13,6 +14,8 @@ const mockResearchService = {
   publish: jest.fn(),
   finalDecision: jest.fn(),
   getRanking: jest.fn(),
+  uploadAttachment: jest.fn(),
+  getAttachment: jest.fn(),
   delete: jest.fn(),
 };
 
@@ -44,21 +47,44 @@ describe('ResearchController', () => {
   });
 
   describe('create', () => {
+    it('deve permitir criação apenas para gestor e coordenador', () => {
+      expect(Reflect.getMetadata(ROLES_KEY, ResearchController.prototype.create)).toEqual([
+        'GESTOR',
+        'COORDENADOR',
+      ]);
+    });
+
     it('deve chamar service.create com o payload correto', async () => {
       const dto: CreateResearchDto = {
         tipo: TipoProjeto.INTERNO,
         titulo: 'Projeto em PT',
         title: 'Project in EN',
         categoria_id: 1,
+        edital_id: 2,
         vigencia: new Date('2026-01-01') as any,
         data_inicio: new Date('2026-01-02') as any,
         data_fim: new Date('2026-12-31') as any,
         email: 'research@example.com',
         palavras_chave_ids: [1],
         pesquisa_objetivo_ids: [10],
-        corpo_projeto_id: 5,
-        atividade_projeto_pesquisa_ids: [7],
+        corpo_projeto: {
+          resumo: 'Resumo',
+          abstract: 'Abstract',
+          introducao: 'Introdução',
+          objetivos: 'Objetivos',
+          metodologia: 'Metodologia',
+          resultados_esperados: 'Resultados esperados',
+          referencias: 'Referências',
+        },
+        atividades: [
+          {
+            descricao: 'Atividade de pesquisa',
+            meses: [{ data: '2026-01-01' }],
+          },
+        ],
         unidade_id: 3,
+        area_conhecimento_id: 1,
+        linha_pesquisa: 'Linha de pesquisa',
       };
 
       mockResearchService.create.mockResolvedValue({ id: 1 });
@@ -67,6 +93,55 @@ describe('ResearchController', () => {
 
       expect(service.create).toHaveBeenCalledWith(dto);
       expect(result).toEqual({ id: 1 });
+    });
+  });
+
+  describe('uploadAttachment', () => {
+    it('deve delegar o envio do arquivo e possuir as mesmas permissões da criação', async () => {
+      const file = {
+        buffer: Buffer.from('%PDF'),
+        mimetype: 'application/pdf',
+        originalname: 'projeto.pdf',
+      };
+      mockResearchService.uploadAttachment.mockResolvedValue({ id: 1 });
+
+      await controller.uploadAttachment(2, file);
+
+      expect(service.uploadAttachment).toHaveBeenCalledWith(2, file);
+      expect(Reflect.getMetadata(ROLES_KEY, ResearchController.prototype.uploadAttachment)).toEqual(
+        ['GESTOR', 'COORDENADOR'],
+      );
+    });
+  });
+
+  describe('getAttachment', () => {
+    it('deve enviar o PDF associado ao projeto', async () => {
+      const currentUser = {
+        userId: 1,
+        email: 'gestor@teste.com',
+        nome: 'Gestor',
+        funcao: 'GESTOR',
+      };
+      const response = {
+        setHeader: jest.fn(),
+        send: jest.fn(),
+      };
+      const arquivo = Buffer.from('%PDF');
+      mockResearchService.getAttachment.mockResolvedValue({
+        arquivo,
+        nome: 'projeto-pesquisa.pdf',
+        tipo: 'application/pdf',
+      });
+
+      await controller.getAttachment(2, currentUser, response as any);
+
+      expect(service.getAttachment).toHaveBeenCalledWith(2, currentUser);
+      expect(response.setHeader).toHaveBeenCalledWith('Content-Type', 'application/pdf');
+      expect(response.setHeader).toHaveBeenCalledWith(
+        'Content-Disposition',
+        'inline; filename="projeto-pesquisa.pdf"',
+      );
+      expect(response.send).toHaveBeenCalledWith(arquivo);
     });
   });
 

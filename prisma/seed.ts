@@ -1,7 +1,6 @@
 import 'dotenv/config';
 import {
   CategoriaFuncaoProjeto,
-  CategoriaProjeto,
   Idioma,
   Prisma,
   PrismaClient,
@@ -14,12 +13,33 @@ import {
   TitulacaoMin,
 } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL as string,
 });
 
 const prisma = new PrismaClient({ adapter });
+
+type AreaConhecimentoCnpq = {
+  codigo: string;
+  grande_area: string;
+  area: string;
+  sub_area: string;
+  especialidade: string;
+};
+
+type TabelaAreasConhecimentoCnpq = {
+  fonte: string;
+  relatorio_gerado_em: string;
+  quantidade: number;
+  areas: AreaConhecimentoCnpq[];
+};
+
+const TABELA_AREAS_CONHECIMENTO = JSON.parse(
+  readFileSync(resolve(__dirname, 'data/areas-conhecimento-cnpq.json'), 'utf8'),
+) as TabelaAreasConhecimentoCnpq;
 
 const FUNCOES = [
   { nome: 'GESTOR', descricao: 'Acesso às funcionalidades de gestor' },
@@ -47,7 +67,53 @@ const OBJETIVOS_SUSTENTAVEL = [
   { tipo: 'Parcerias e Meios de Implementação' },
 ];
 
-const CATEGORIAS_EDITAL = Object.values(CategoriaProjeto).map((denominacao, index) => ({
+const DENOMINACOES_CATEGORIA_EDITAL = [
+  'CATEGORIA_PADRAO',
+  'DESENVOLVIMENTO_CIENTIFICO_INSTITUCIONAL_E_TECNOLOGICO',
+  'FOMENTO_A_PESQUISA_CIENTIFICA_E_TECNOLOGICA',
+  'ESTUDOS_DE_CTI',
+  'SAUDE',
+  'BIOTECNOLOGIA',
+  'NANOTECNOLOGIA',
+  'BIOCOMBUSTIVEIS',
+  'ENERGIA_ELETRICA',
+  'ENERGIAS_RENOVAVEIS',
+  'PETROLEO_E_GAS',
+  'AGRONEGOCIO',
+  'BIODIVERSIDADE_E_RECURSOS_NATURAIS',
+  'RECURSOS_HIDRICOS',
+  'SEMIARIDO',
+  'AQUICULTURA_E_PESCA',
+  'METEOROLOGIA_E_MUDANCAS_CLIMATICAS',
+  'TECNOLOGIA_INDUSTRIAL',
+  'SEGURANCA_PUBLICA',
+  'TECNOLOGIA_SOCIAL',
+  'DESIGN',
+  'TECNOLOGIA_INCLUSIVA',
+  'ECONOMIA_CRIATIVA',
+  'INOVACAO',
+  'PROGRAMAS_DE_COMPUTADOR',
+  'MODELOS_DE_UTILIDADE',
+  'NOVA_CULTIVAR',
+  'CULTIVAR_DERIVADA',
+  'AGROINDUSTRIA',
+  'DESENHO_INDUSTRIAL',
+  'TOPOGRAFIA_DE_CIRCUITO_INDUSTRIAL',
+  'DESENVOLVIMENTO_DE_TECNOLOGIA',
+  'DESENVOLVIMENTO_DE_PRODUTO',
+  'DESENVOLVIMENTO_DE_PROCESSO',
+  'APERFEICOAMENTO_DE_TECNOLOGIA',
+  'APERFEICOAMENTO_DE_PROCESSO',
+  'APERFEICOAMENTO_DE_PRODUTO',
+  'SERVICO_INOVADOR',
+  'PESQUISA_CIENTIFICA',
+  'PESQUISA_BASICA',
+  'PESQUISA_APLICADA',
+] as const;
+
+const CATEGORIA_PADRAO = DENOMINACOES_CATEGORIA_EDITAL[0];
+
+const CATEGORIAS_EDITAL = DENOMINACOES_CATEGORIA_EDITAL.map((denominacao, index) => ({
   denominacao,
   ordem: index + 1,
   ativo: true,
@@ -114,11 +180,7 @@ const TIPOS_USUARIO_SEED = [
   {
     nome: 'Coordenador de Projeto',
     descricao: 'Pode criar/gerenciar projetos e submeter propostas em editais.',
-    publicos: [
-      PublicoAlvo.DOCENTE,
-      PublicoAlvo.TECNICO_ADMINISTRATIVO,
-      PublicoAlvo.POS_DOUTORANDO,
-    ],
+    publicos: [PublicoAlvo.DOCENTE, PublicoAlvo.TECNICO_ADMINISTRATIVO, PublicoAlvo.POS_DOUTORANDO],
   },
   {
     nome: 'Discente',
@@ -175,6 +237,48 @@ const USUARIOS_SEED = [
     label: 'aluno',
   },
 ];
+
+function areaConhecimentoKey(
+  area: Pick<AreaConhecimentoCnpq, 'grande_area' | 'area' | 'sub_area' | 'especialidade'>,
+) {
+  return JSON.stringify([area.grande_area, area.area, area.sub_area, area.especialidade]);
+}
+
+async function seedAreasConhecimento() {
+  console.log('Iniciando seed de áreas de conhecimento do CNPq...');
+
+  if (TABELA_AREAS_CONHECIMENTO.quantidade !== TABELA_AREAS_CONHECIMENTO.areas.length) {
+    throw new Error('A quantidade declarada de áreas do CNPq não corresponde ao JSON.');
+  }
+
+  const areasExistentes = await prisma.area_conhecimento.findMany({
+    select: {
+      grande_area: true,
+      area: true,
+      sub_area: true,
+      especialidade: true,
+    },
+  });
+  const chavesExistentes = new Set(areasExistentes.map(areaConhecimentoKey));
+  const novasAreas = TABELA_AREAS_CONHECIMENTO.areas.filter(
+    area => !chavesExistentes.has(areaConhecimentoKey(area)),
+  );
+
+  if (novasAreas.length > 0) {
+    await prisma.area_conhecimento.createMany({
+      data: novasAreas.map(area => ({
+        grande_area: area.grande_area,
+        area: area.area,
+        sub_area: area.sub_area,
+        especialidade: area.especialidade,
+      })),
+    });
+  }
+
+  console.log(
+    `Seed de áreas de conhecimento finalizado: ${novasAreas.length} inserida(s), ${TABELA_AREAS_CONHECIMENTO.areas.length - novasAreas.length} já existente(s).`,
+  );
+}
 
 async function seedFuncoes() {
   console.log('Iniciando seed de funções...');
@@ -368,22 +472,32 @@ async function ensurePalavraChave(palavra_chave: string, lingua: Idioma) {
   });
 }
 
-async function ensureAtividadeSeed() {
-  const existing = await prisma.atividade_projeto_pesquisa.findFirst({
-    where: {
-      descricao: 'Atividade seed de projeto de pesquisa',
-      projeto_pesquisa_id: null,
-    },
-  });
+const CORPO_PROJETO_SEED = {
+  resumo: 'Resumo do projeto seed ativo.',
+  abstract: 'Abstract of the active seed project.',
+  introducao: 'Introdução do projeto seed ativo.',
+  objetivos: 'Objetivos do projeto seed ativo.',
+  metodologia: 'Metodologia do projeto seed ativo.',
+  referencias: 'Referências do projeto seed ativo.',
+};
 
-  if (existing) {
-    return;
-  }
-
-  await prisma.atividade_projeto_pesquisa.create({
-    data: { descricao: 'Atividade seed de projeto de pesquisa' },
-  });
-}
+const ATIVIDADES_PROJETO_SEED = [
+  {
+    descricao: 'Levantamento bibliográfico e definição do referencial teórico.',
+    meses: [
+      { data: new Date('2026-04-01T00:00:00.000Z') },
+      { data: new Date('2026-05-01T00:00:00.000Z') },
+    ],
+  },
+  {
+    descricao: 'Execução dos experimentos e análise dos resultados.',
+    meses: [
+      { data: new Date('2026-06-01T00:00:00.000Z') },
+      { data: new Date('2026-07-01T00:00:00.000Z') },
+      { data: new Date('2026-08-01T00:00:00.000Z') },
+    ],
+  },
+];
 
 async function seedProjetoPesquisa(unidadeId: number, categoriaId: number, editalId: number) {
   try {
@@ -409,6 +523,15 @@ async function seedProjetoPesquisa(unidadeId: number, categoriaId: number, edita
           data_fim: dataFim,
           vigencia: dataFim,
           data_cadastro: new Date(),
+          corpo_projeto: {
+            create: CORPO_PROJETO_SEED,
+          },
+          atividades: {
+            create: ATIVIDADES_PROJETO_SEED.map(atividade => ({
+              descricao: atividade.descricao,
+              meses: { create: atividade.meses },
+            })),
+          },
         },
       });
     }
@@ -424,6 +547,19 @@ async function seedProjetoPesquisa(unidadeId: number, categoriaId: number, edita
         data_inicio: new Date('2026-04-01T00:00:00.000Z'),
         data_fim: dataFim,
         vigencia: dataFim,
+        corpo_projeto: {
+          upsert: {
+            create: CORPO_PROJETO_SEED,
+            update: CORPO_PROJETO_SEED,
+          },
+        },
+        atividades: {
+          deleteMany: {},
+          create: ATIVIDADES_PROJETO_SEED.map(atividade => ({
+            descricao: atividade.descricao,
+            meses: { create: atividade.meses },
+          })),
+        },
       },
     });
   } catch (error: unknown) {
@@ -584,7 +720,7 @@ async function seedEntidadesPesquisa() {
   });
 
   const categoriaPadrao = await prisma.categoria_edital.findUnique({
-    where: { denominacao: CategoriaProjeto.CATEGORIA_PADRAO },
+    where: { denominacao: CATEGORIA_PADRAO },
   });
 
   if (!categoriaPadrao) {
@@ -785,7 +921,6 @@ async function seedEntidadesPesquisa() {
   });
   await ensurePalavraChave('pesquisa', Idioma.PT);
   await ensurePalavraChave('research', Idioma.EN);
-  await ensureAtividadeSeed();
   const projeto = await seedProjetoPesquisa(unidadeAcademica.id, categoriaPadrao.id, editalSeed.id);
 
   if (projeto) {
@@ -819,6 +954,7 @@ async function seedParametrosModuloPesquisa() {
 }
 
 async function main() {
+  await seedAreasConhecimento();
   await seedFuncoes();
   await seedObjetivosSustentavel();
   await seedCategoriasEdital();

@@ -13,33 +13,12 @@ import {
   TitulacaoMin,
 } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL as string,
 });
 
 const prisma = new PrismaClient({ adapter });
-
-type AreaConhecimentoCnpq = {
-  codigo: string;
-  grande_area: string;
-  area: string;
-  sub_area: string;
-  especialidade: string;
-};
-
-type TabelaAreasConhecimentoCnpq = {
-  fonte: string;
-  relatorio_gerado_em: string;
-  quantidade: number;
-  areas: AreaConhecimentoCnpq[];
-};
-
-const TABELA_AREAS_CONHECIMENTO = JSON.parse(
-  readFileSync(resolve(__dirname, 'data/areas-conhecimento-cnpq.json'), 'utf8'),
-) as TabelaAreasConhecimentoCnpq;
 
 const FUNCOES = [
   { nome: 'GESTOR', descricao: 'Acesso às funcionalidades de gestor' },
@@ -237,48 +216,6 @@ const USUARIOS_SEED = [
     label: 'aluno',
   },
 ];
-
-function areaConhecimentoKey(
-  area: Pick<AreaConhecimentoCnpq, 'grande_area' | 'area' | 'sub_area' | 'especialidade'>,
-) {
-  return JSON.stringify([area.grande_area, area.area, area.sub_area, area.especialidade]);
-}
-
-async function seedAreasConhecimento() {
-  console.log('Iniciando seed de áreas de conhecimento do CNPq...');
-
-  if (TABELA_AREAS_CONHECIMENTO.quantidade !== TABELA_AREAS_CONHECIMENTO.areas.length) {
-    throw new Error('A quantidade declarada de áreas do CNPq não corresponde ao JSON.');
-  }
-
-  const areasExistentes = await prisma.area_conhecimento.findMany({
-    select: {
-      grande_area: true,
-      area: true,
-      sub_area: true,
-      especialidade: true,
-    },
-  });
-  const chavesExistentes = new Set(areasExistentes.map(areaConhecimentoKey));
-  const novasAreas = TABELA_AREAS_CONHECIMENTO.areas.filter(
-    area => !chavesExistentes.has(areaConhecimentoKey(area)),
-  );
-
-  if (novasAreas.length > 0) {
-    await prisma.area_conhecimento.createMany({
-      data: novasAreas.map(area => ({
-        grande_area: area.grande_area,
-        area: area.area,
-        sub_area: area.sub_area,
-        especialidade: area.especialidade,
-      })),
-    });
-  }
-
-  console.log(
-    `Seed de áreas de conhecimento finalizado: ${novasAreas.length} inserida(s), ${TABELA_AREAS_CONHECIMENTO.areas.length - novasAreas.length} já existente(s).`,
-  );
-}
 
 async function seedFuncoes() {
   console.log('Iniciando seed de funções...');
@@ -954,7 +891,6 @@ async function seedParametrosModuloPesquisa() {
 }
 
 async function main() {
-  await seedAreasConhecimento();
   await seedFuncoes();
   await seedObjetivosSustentavel();
   await seedCategoriasEdital();

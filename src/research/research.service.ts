@@ -329,20 +329,45 @@ export class ResearchService {
     }
 
     await this.assertResearchExists(id);
+    const attachmentName = this.normalizeAttachmentName(file.originalname);
 
     return this.prisma.anexo_projeto_pesquisa.upsert({
       where: { projeto_pesquisa_id: id },
       create: {
         projeto_pesquisa_id: id,
         arquivo: Uint8Array.from(file.buffer),
+        nome: attachmentName,
         tipo: file.mimetype || 'application/pdf',
       },
       update: {
         arquivo: Uint8Array.from(file.buffer),
+        nome: attachmentName,
         tipo: file.mimetype || 'application/pdf',
       },
-      select: { id: true, projeto_pesquisa_id: true, tipo: true },
+      select: { id: true, projeto_pesquisa_id: true, nome: true, tipo: true },
     });
+  }
+
+  async getAttachment(
+    id: number,
+    currentUser: CurrentUserPayload,
+  ): Promise<{ arquivo: Buffer; nome: string; tipo: string }> {
+    await this.membership.assertCanAccessPesquisa(currentUser, id);
+
+    const attachment = await this.prisma.anexo_projeto_pesquisa.findUnique({
+      where: { projeto_pesquisa_id: id },
+      select: { arquivo: true, nome: true, tipo: true },
+    });
+
+    if (!attachment) {
+      throw new NotFoundException(`O projeto de pesquisa com ID ${id} não possui PDF associado.`);
+    }
+
+    return {
+      arquivo: Buffer.from(attachment.arquivo),
+      nome: attachment.nome,
+      tipo: attachment.tipo,
+    };
   }
 
   async findAll(
@@ -366,7 +391,7 @@ export class ResearchService {
           include: {
             corpo_projeto: true,
             palavra_chave: true,
-            objetivos: true,
+            objetivos: { include: { objetivo: true } },
             categoria: true,
           },
           take: limit,
@@ -399,7 +424,7 @@ export class ResearchService {
           include: {
             corpo_projeto: true,
             palavra_chave: true,
-            objetivos: true,
+            objetivos: { include: { objetivo: true } },
             categoria: true,
           },
           take: limit,
@@ -430,7 +455,7 @@ export class ResearchService {
           include: {
             corpo_projeto: true,
             palavra_chave: true,
-            objetivos: true,
+            objetivos: { include: { objetivo: true } },
             categoria: true,
           },
           take: limit,
@@ -465,6 +490,35 @@ export class ResearchService {
         corpo_projeto: true,
         anexo_projeto_pesquisa: true,
         categoria: true,
+        membros: {
+          where: { ativo: true },
+          include: {
+            usuario: {
+              select: {
+                nome: true,
+                email: true,
+                funcao: { select: { nome: true } },
+                docente: { select: { id: true }, take: 1 },
+                discente: { select: { id: true }, take: 1 },
+              },
+            },
+            funcao_projeto: { select: { nome: true } },
+          },
+        },
+        projetoMembros: {
+          include: {
+            user: {
+              select: {
+                nome: true,
+                email: true,
+                funcao: { select: { nome: true } },
+                docente: { select: { id: true }, take: 1 },
+                discente: { select: { id: true }, take: 1 },
+              },
+            },
+          },
+        },
+        projetoMembroExternos: true,
         atividades: {
           include: {
             meses: true,
@@ -580,9 +634,13 @@ export class ResearchService {
         .map(_ => {
           return _.palavra_chave;
         }),
-      objetivos: research?.objetivos?.map(objetivo => {
-        return objetivo.objetivo;
-      }),
+      objetivos:
+        research?.objetivos
+          ?.filter(item => Boolean(item.objetivo))
+          .map(item => ({
+            id: item.objetivo.id,
+            name: item.objetivo.tipo,
+          })) ?? [],
       atividades: research?.atividades?.map(atividade => {
         return {
           descricao: atividade.descricao,
@@ -593,15 +651,64 @@ export class ResearchService {
       }),
     };
 
-    if (full) {
+    if (full && research.corpo_projeto) {
       formatted_research.corpo = {
         resumo: research.corpo_projeto.resumo,
         abstract: research.corpo_projeto.abstract,
         introducao: research.corpo_projeto.introducao,
         objetivos: research.corpo_projeto.objetivos,
         metodologia: research.corpo_projeto.metodologia,
+        resultados_esperados: research.corpo_projeto.resultados_esperados,
         referencias: research.corpo_projeto.referencias,
       };
+    }
+
+    if (full) {
+      formatted_research.unidade = research.unidade_academica
+        ? `${research.unidade_academica.sigla} — ${research.unidade_academica.nome}`
+        : undefined;
+      formatted_research.membros = [
+        ...(research.membros ?? []).map(member => {
+          const categoria = this.resolveMemberCategory(member.usuario);
+          return {
+            id: member.id,
+            nome: member.usuario.nome,
+            email: member.usuario.email,
+            funcao: member.funcao_projeto.nome,
+            categoria: this.memberCategoryLabel(categoria),
+          };
+        }),
+        ...(research.projetoMembros ?? []).map(member => {
+          const categoria = this.resolveMemberCategory(member.user);
+          return {
+            id: member.id,
+            nome: member.user.nome,
+            email: member.user.email,
+            funcao: TipoMembroProjetoMapper[member.funcao],
+            categoria: this.memberCategoryLabel(categoria),
+            carga_horaria: member.ch_dedicadas,
+          };
+        }),
+        ...(research.projetoMembroExternos ?? []).map(member => ({
+          id: member.id,
+          nome: member.nome,
+          email: member.email,
+          funcao: TipoMembroProjetoMapper[member.funcao],
+          categoria: 'Externo',
+          carga_horaria: member.ch_dedicada,
+          cpf: member.cpf ?? undefined,
+          sexo: TipoSexoMapper[member.sexo],
+          formacao: MembroExternoFormacaoMapper[member.formacao],
+          tipo: TipoMembroExternoMapper[member.tipo],
+        })),
+      ];
+      formatted_research.anexo = research.anexo_projeto_pesquisa
+        ? {
+            id: research.anexo_projeto_pesquisa.id,
+            nome: research.anexo_projeto_pesquisa.nome,
+            tipo: research.anexo_projeto_pesquisa.tipo,
+          }
+        : undefined;
     }
 
     return formatted_research;
@@ -862,6 +969,15 @@ export class ResearchService {
     return hasPdfMimeType && hasPdfExtension && hasPdfSignature;
   }
 
+  private normalizeAttachmentName(originalName?: string): string {
+    const fileName = originalName
+      ?.split(/[\\/]/)
+      .pop()
+      ?.replace(/[\r\n"]/g, '')
+      .trim();
+    return (fileName || 'projeto.pdf').slice(0, 255);
+  }
+
   private resolveMemberCategory(row: {
     funcao: { nome: string };
     docente: { id: number }[];
@@ -877,6 +993,16 @@ export class ResearchService {
       return CategoriaMembroProjeto.DISCENTE;
     }
     return CategoriaMembroProjeto.TECNICO_ADMINISTRATIVO;
+  }
+
+  private memberCategoryLabel(categoria: CategoriaMembroProjeto): string {
+    const labels: Record<CategoriaMembroProjeto, string> = {
+      [CategoriaMembroProjeto.DOCENTE]: 'Docente',
+      [CategoriaMembroProjeto.DISCENTE]: 'Discente',
+      [CategoriaMembroProjeto.TECNICO_ADMINISTRATIVO]: 'Servidor técnico-administrativo',
+      [CategoriaMembroProjeto.EXTERNO]: 'Externo',
+    };
+    return labels[categoria];
   }
 
   private async assertPalavrasChaveExist(ids: number[]): Promise<void> {

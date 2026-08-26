@@ -28,6 +28,11 @@ export class CreateResearchProjectBodyDto {
   metodologia!: string;
 
   @ApiProperty()
+  @IsString({ message: 'Os resultados esperados devem ser um texto' })
+  @IsNotEmpty({ message: 'Os resultados esperados são obrigatórios' })
+  resultados_esperados!: string;
+
+  @ApiProperty()
   @IsString({ message: 'As referências devem ser um texto' })
   @IsNotEmpty({ message: 'As referências são obrigatórias' })
   referencias!: string;

@@ -22,6 +22,7 @@ model anexo_projeto_pesquisa {
   id                  Int               @id @default(autoincrement())
   projeto_pesquisa_id Int               @unique
   arquivo             Bytes
+  nome                String            @db.VarChar(255)
   tipo                String            @db.VarChar(255)
   projeto_pesquisa    projeto_pesquisa? @relation(fields: [projeto_pesquisa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
@@ -80,15 +81,16 @@ model corpo_plano_trabalho {
 }
 
 model corpo_projeto {
-  id                  Int              @id @default(autoincrement())
-  resumo              String
-  abstract            String
-  introducao          String
-  objetivos           String
-  metodologia         String
-  referencias         String
-  projeto_pesquisa_id Int              @unique
-  projeto_pesquisa    projeto_pesquisa @relation(fields: [projeto_pesquisa_id], references: [id], onDelete: Cascade)
+  id                   Int              @id @default(autoincrement())
+  resumo               String
+  abstract             String
+  introducao           String
+  objetivos            String
+  metodologia          String
+  resultados_esperados String?
+  referencias          String
+  projeto_pesquisa_id  Int              @unique
+  projeto_pesquisa     projeto_pesquisa @relation(fields: [projeto_pesquisa_id], references: [id], onDelete: Cascade)
 }
 
 model discente {

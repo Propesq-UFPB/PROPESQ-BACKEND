@@ -60,4 +60,7 @@ export class ResearchAttachmentResponseDto {
 
   @ApiProperty({ example: 'application/pdf' })
   tipo!: string;
+
+  @ApiProperty({ example: 'projeto-pesquisa.pdf' })
+  nome!: string;
 }

@@ -18,6 +18,7 @@ import { CategoriaMembroProjeto } from './dto/research-lookups.dto';
 
 const mockMembership = {
   buildAllowedPesquisaIds: jest.fn().mockResolvedValue(null),
+  assertCanAccessPesquisa: jest.fn().mockResolvedValue(undefined),
 };
 
 const categoriaPadrao = {
@@ -33,6 +34,7 @@ const corpoProjeto = {
   introducao: 'Introdução',
   objetivos: 'Objetivos',
   metodologia: 'Metodologia',
+  resultados_esperados: 'Resultados esperados',
   referencias: 'Referências',
 };
 
@@ -71,6 +73,7 @@ const mockPrismaService = {
   },
   anexo_projeto_pesquisa: {
     upsert: jest.fn(),
+    findUnique: jest.fn(),
   },
   palavra_chave: {
     findMany: jest.fn(),
@@ -108,6 +111,7 @@ describe('ResearchService', () => {
       introducao: 'Introducao',
       objetivos: 'Objetivos',
       metodologia: 'Metodologia',
+      resultados_esperados: 'Resultados esperados',
       referencias: 'Referencias',
     },
   };
@@ -370,6 +374,7 @@ describe('ResearchService', () => {
       prisma.anexo_projeto_pesquisa.upsert.mockResolvedValue({
         id: 2,
         projeto_pesquisa_id: 1,
+        nome: 'projeto.pdf',
         tipo: 'application/pdf',
       });
 
@@ -382,9 +387,48 @@ describe('ResearchService', () => {
       expect(prisma.anexo_projeto_pesquisa.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { projeto_pesquisa_id: 1 },
-          update: expect.objectContaining({ tipo: 'application/pdf' }),
+          update: expect.objectContaining({
+            nome: 'projeto.pdf',
+            tipo: 'application/pdf',
+          }),
         }),
       );
+    });
+  });
+
+  describe('getAttachment', () => {
+    it('deve retornar o PDF quando o usuário puder acessar o projeto', async () => {
+      const currentUser = {
+        userId: 7,
+        email: 'coord@teste.com',
+        nome: 'Coordenador',
+        funcao: 'COORDENADOR',
+      };
+      prisma.anexo_projeto_pesquisa.findUnique.mockResolvedValue({
+        arquivo: Uint8Array.from(Buffer.from('%PDF')),
+        nome: 'projeto-pesquisa.pdf',
+        tipo: 'application/pdf',
+      });
+
+      const attachment = await service.getAttachment(1, currentUser);
+
+      expect(mockMembership.assertCanAccessPesquisa).toHaveBeenCalledWith(currentUser, 1);
+      expect(attachment.tipo).toBe('application/pdf');
+      expect(attachment.nome).toBe('projeto-pesquisa.pdf');
+      expect(attachment.arquivo).toEqual(Buffer.from('%PDF'));
+    });
+
+    it('deve informar quando o projeto não possuir PDF', async () => {
+      prisma.anexo_projeto_pesquisa.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.getAttachment(1, {
+          userId: 1,
+          email: 'gestor@teste.com',
+          nome: 'Gestor',
+          funcao: 'GESTOR',
+        }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -545,13 +589,75 @@ describe('ResearchService', () => {
           introducao: 'Introducao',
           objetivos: 'Objetivos',
           metodologia: 'Metodologia',
+          resultados_esperados: 'Resultados esperados',
           referencias: 'Referencias',
+        },
+        unidade_academica: { sigla: 'CI', nome: 'Centro de Informática' },
+        membros: [
+          {
+            id: 4,
+            usuario: {
+              nome: 'Orientador Legado',
+              email: 'orientador@ufpb.br',
+              funcao: { nome: 'COORDENADOR' },
+              docente: [{ id: 2 }],
+              discente: [],
+            },
+            funcao_projeto: { nome: 'Orientador' },
+          },
+        ],
+        projetoMembros: [
+          {
+            id: 5,
+            funcao: TipoMembroProjeto.COORDENADOR,
+            ch_dedicadas: 20,
+            user: {
+              nome: 'Docente Coordenadora',
+              email: 'docente@ufpb.br',
+              funcao: { nome: 'COORDENADOR' },
+              docente: [{ id: 1 }],
+              discente: [],
+            },
+          },
+        ],
+        projetoMembroExternos: [
+          {
+            id: 6,
+            nome: 'Pesquisadora Externa',
+            email: 'externa@example.com',
+            funcao: TipoMembroProjeto.COLABORADOR,
+            ch_dedicada: 10,
+            cpf: null,
+            sexo: TipoSexo.FEMININO,
+            formacao: MembroExternoFormacao.DOUTORADO,
+            tipo: TipoMembroExterno.PROFESSOR_VISITANTE,
+          },
+        ],
+        anexo_projeto_pesquisa: {
+          id: 9,
+          nome: 'projeto-pesquisa.pdf',
+          tipo: 'application/pdf',
         },
       });
 
       const result = await service.findOne(1);
 
       expect(result.corpo?.resumo).toBe('Resumo');
+      expect(result.corpo?.resultados_esperados).toBe('Resultados esperados');
+      expect(result.objetivos).toEqual([{ id: 10, name: 'ODS 10' }]);
+      expect(result.unidade).toBe('CI — Centro de Informática');
+      expect(result.membros).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ nome: 'Docente Coordenadora', funcao: 'Coordenador' }),
+          expect.objectContaining({ nome: 'Pesquisadora Externa', categoria: 'Externo' }),
+          expect.objectContaining({ nome: 'Orientador Legado', funcao: 'Orientador' }),
+        ]),
+      );
+      expect(result.anexo).toEqual({
+        id: 9,
+        nome: 'projeto-pesquisa.pdf',
+        tipo: 'application/pdf',
+      });
       expect(result.atividades[0].descricao).toBe('Atividade');
     });
 
@@ -749,7 +855,7 @@ describe('ResearchService', () => {
         include: {
           corpo_projeto: true,
           palavra_chave: true,
-          objetivos: true,
+          objetivos: { include: { objetivo: true } },
           categoria: true,
         },
         take: 10,

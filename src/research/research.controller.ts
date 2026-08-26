@@ -7,6 +7,7 @@ import {
   Param,
   ParseIntPipe,
   Patch,
+  Res,
   HttpCode,
   HttpStatus,
   Delete,
@@ -15,6 +16,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -121,6 +123,23 @@ export class ResearchController {
     @UploadedFile() file?: UploadedResearchFile,
   ): Promise<ResearchAttachmentResponseDto> {
     return this.researchService.uploadAttachment(id, file);
+  }
+
+  @Get(':id/anexo')
+  @ApiParam({ name: 'id', type: Number, description: 'ID do projeto de pesquisa.' })
+  @ApiOkResponse({ description: 'PDF associado ao projeto retornado com sucesso.' })
+  async getAttachment(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() currentUser: CurrentUserPayload,
+    @Res({ passthrough: false }) res: Response,
+  ): Promise<void> {
+    const attachment = await this.researchService.getAttachment(id, currentUser);
+    res.setHeader('Content-Type', attachment.tipo);
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="${attachment.nome.replaceAll('"', '')}"`,
+    );
+    res.send(attachment.arquivo);
   }
 
   @Get()

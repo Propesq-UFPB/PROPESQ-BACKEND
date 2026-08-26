@@ -15,6 +15,7 @@ const mockResearchService = {
   finalDecision: jest.fn(),
   getRanking: jest.fn(),
   uploadAttachment: jest.fn(),
+  getAttachment: jest.fn(),
   delete: jest.fn(),
 };
 
@@ -72,6 +73,7 @@ describe('ResearchController', () => {
           introducao: 'Introdução',
           objetivos: 'Objetivos',
           metodologia: 'Metodologia',
+          resultados_esperados: 'Resultados esperados',
           referencias: 'Referências',
         },
         atividades: [
@@ -109,6 +111,37 @@ describe('ResearchController', () => {
       expect(Reflect.getMetadata(ROLES_KEY, ResearchController.prototype.uploadAttachment)).toEqual(
         ['GESTOR', 'COORDENADOR'],
       );
+    });
+  });
+
+  describe('getAttachment', () => {
+    it('deve enviar o PDF associado ao projeto', async () => {
+      const currentUser = {
+        userId: 1,
+        email: 'gestor@teste.com',
+        nome: 'Gestor',
+        funcao: 'GESTOR',
+      };
+      const response = {
+        setHeader: jest.fn(),
+        send: jest.fn(),
+      };
+      const arquivo = Buffer.from('%PDF');
+      mockResearchService.getAttachment.mockResolvedValue({
+        arquivo,
+        nome: 'projeto-pesquisa.pdf',
+        tipo: 'application/pdf',
+      });
+
+      await controller.getAttachment(2, currentUser, response as any);
+
+      expect(service.getAttachment).toHaveBeenCalledWith(2, currentUser);
+      expect(response.setHeader).toHaveBeenCalledWith('Content-Type', 'application/pdf');
+      expect(response.setHeader).toHaveBeenCalledWith(
+        'Content-Disposition',
+        'inline; filename="projeto-pesquisa.pdf"',
+      );
+      expect(response.send).toHaveBeenCalledWith(arquivo);
     });
   });
 

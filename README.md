@@ -81,6 +81,7 @@ Login via `POST /authentications/sessions` (vide Swagger).
 | `npm run start:dev` | API em modo watch |
 | `npm run db:migrate:dev` | migrate + generate |
 | `npm run db:migrate:deploy` | migrate em ambiente deploy |
+| `npm run db:seed:areas-conhecimento` | cadastra as áreas de conhecimento do CNPq |
 | `npm run build` / `npm run start:prod` | build e produção |
 
 ## Observações

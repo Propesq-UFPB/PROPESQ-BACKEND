@@ -303,6 +303,7 @@ model plano_trabalho {
   projeto_pesquisa         projeto_pesquisa           @relation(fields: [pesquisa_id], references: [id], onDelete: Cascade)
   interesses               interesse_plano_trabalho[]
   dados_bancarios          dados_bancarios_indicacao?
+  planos_avaliacao         plano_avaliacao[]
 }
 
 model interesse_plano_trabalho {
@@ -448,9 +449,29 @@ model projeto_avaliacao {
   criado_em     DateTime @default(now()) @db.Timestamp(6)
   atualizado_em DateTime @default(now()) @updatedAt @db.Timestamp(6)
 
-  avaliador        usuario          @relation("avaliador_projeto_avaliacao", fields: [avaliador_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  projeto_pesquisa projeto_pesquisa @relation(fields: [projeto_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  avaliador        usuario           @relation("avaliador_projeto_avaliacao", fields: [avaliador_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  projeto_pesquisa projeto_pesquisa  @relation(fields: [projeto_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   notas            avaliacao_nota[]
+  planos_avaliacao plano_avaliacao[]
+
+  @@index([avaliador_id])
+  @@index([projeto_id])
+}
+
+model plano_avaliacao {
+  id                    Int      @id @default(autoincrement())
+  projeto_avaliacao_id  Int
+  plano_trabalho_id     Int
+  descricao             String?  @db.Text
+  criado_em             DateTime @default(now()) @db.Timestamp(6)
+  atualizado_em         DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
+  projeto_avaliacao projeto_avaliacao @relation(fields: [projeto_avaliacao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  plano_trabalho    plano_trabalho    @relation(fields: [plano_trabalho_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  notas             avaliacao_nota[]
+
+  @@unique([projeto_avaliacao_id, plano_trabalho_id])
+  @@index([plano_trabalho_id])
 }
 
 model criterio_avaliacao {
@@ -470,11 +491,16 @@ model criterio_avaliacao {
 model avaliacao_nota {
   id                    Int    @id @default(autoincrement())
   avaliacao_id          Int?
-  criterio_avaliacao_id Int?
+  plano_avaliacao_id    Int?
+  criterio_avaliacao_id Int
   nota                  Float?
 
-  avaliacao          projeto_avaliacao?  @relation(fields: [avaliacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  criterio_avaliacao criterio_avaliacao? @relation(fields: [criterio_avaliacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  avaliacao          projeto_avaliacao?  @relation(fields: [avaliacao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  plano_avaliacao    plano_avaliacao?    @relation(fields: [plano_avaliacao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  criterio_avaliacao criterio_avaliacao  @relation(fields: [criterio_avaliacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([avaliacao_id, criterio_avaliacao_id])
+  @@unique([plano_avaliacao_id, criterio_avaliacao_id])
 }
 
 model objetivo_desenvolvimento_sustentavel {

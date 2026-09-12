@@ -92,6 +92,31 @@ describe('EditalService', () => {
     ]);
   });
 
+  it('inclui o período de execução no lookup de editais', async () => {
+    const periodoExecucao = {
+      inicio: new Date('2026-08-01T00:00:00.000Z'),
+      fim: new Date('2027-07-31T00:00:00.000Z'),
+    };
+    prisma.edital.findMany.mockResolvedValue([
+      {
+        id: 1,
+        codigo: 'EDITAL-2026-01',
+        descricao: 'Edital PIBIC 2026',
+        periodo_execucao_rel: periodoExecucao,
+      },
+    ]);
+
+    await expect(service.getLookup()).resolves.toEqual([
+      {
+        id: 1,
+        codigo: 'EDITAL-2026-01',
+        descricao: 'Edital PIBIC 2026',
+        name: 'EDITAL-2026-01 - Edital PIBIC 2026',
+        periodo_execucao_rel: periodoExecucao,
+      },
+    ]);
+  });
+
   it('salva o status escolhido ao cadastrar o edital', async () => {
     prisma.edital.findUnique.mockResolvedValue(null);
     prisma.edital.create.mockResolvedValue({ id: 1 });

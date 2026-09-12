@@ -48,6 +48,12 @@ export class EditalService {
         id: true,
         codigo: true,
         descricao: true,
+        periodo_execucao_rel: {
+          select: {
+            inicio: true,
+            fim: true,
+          },
+        },
       },
       orderBy: [{ data_cadastro: 'desc' }, { id: 'desc' }],
     });
@@ -56,6 +62,7 @@ export class EditalService {
       id: row.id,
       codigo: row.codigo,
       descricao: row.descricao,
+      periodo_execucao_rel: row.periodo_execucao_rel,
       name: row.codigo ? `${row.codigo} - ${row.descricao}` : row.descricao,
     }));
   }

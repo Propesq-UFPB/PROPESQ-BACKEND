@@ -877,8 +877,6 @@ async function seedParametrosModuloPesquisa() {
       late_submission_tolerance_days: 0,
       max_renewals_per_project: 0,
       max_project_duration_months: 12,
-      max_quota_requests_per_project: 1,
-      max_work_plans_per_advisor: 5,
       scholarship_change_cutoff_day: 20,
       email_scholarship_changes: '',
       email_invention_notifications: '',

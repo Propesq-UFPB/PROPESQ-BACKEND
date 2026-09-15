@@ -7,7 +7,7 @@ import { PaginatedResult } from '../common/dto/paginated.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(createUserDto: CreateUserDto) {
     const funcao = await this.prisma.funcao.findUnique({

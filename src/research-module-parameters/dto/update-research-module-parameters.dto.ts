@@ -35,20 +35,6 @@ export class UpdateResearchModuleParametersDto {
   @Max(120)
   maxProjectDurationMonths!: number;
 
-  @ApiProperty({ example: 1 })
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(99)
-  maxQuotaRequestsPerProject!: number;
-
-  @ApiProperty({ example: 5 })
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(200)
-  maxWorkPlansPerAdvisor!: number;
-
   @ApiProperty({ example: 20 })
   @Type(() => Number)
   @IsInt()

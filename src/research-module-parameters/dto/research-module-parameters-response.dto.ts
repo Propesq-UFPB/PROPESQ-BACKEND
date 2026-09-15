@@ -10,12 +10,6 @@ export class ResearchModuleParametersResponseDto {
   @ApiProperty({ example: 12 })
   maxProjectDurationMonths!: number;
 
-  @ApiProperty({ example: 1 })
-  maxQuotaRequestsPerProject!: number;
-
-  @ApiProperty({ example: 5 })
-  maxWorkPlansPerAdvisor!: number;
-
   @ApiProperty({ example: 20 })
   scholarshipChangeCutoffDay!: number;
 

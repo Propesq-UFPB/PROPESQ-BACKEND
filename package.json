@@ -74,7 +74,9 @@
   },
   "overrides": {
     "hono": "^4.10.7",
-    "valibot": "^1.2.0"
+    "valibot": "^1.2.0",
+    "multer": "^2.3.0",
+    "deepmerge-ts": "^8.0.1"
   },
   "jest": {
     "moduleFileExtensions": [

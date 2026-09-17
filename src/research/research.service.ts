@@ -47,7 +47,7 @@ export class ResearchService {
   ) {}
 
   async create(createResearchDto: CreateResearchDto): Promise<any> {
-    const edital = await this.assertEditalExists(createResearchDto.edital_id);
+    await this.assertEditalExists(createResearchDto.edital_id);
     await this.assertAcademicUnitExists(createResearchDto.unidade_id);
     await this.assertKnowledgeAreaExists(createResearchDto.area_conhecimento_id);
 
@@ -65,10 +65,8 @@ export class ResearchService {
       );
     }
 
-    const categoriaId = edital.categoria_id;
-    if (createResearchDto.categoria_id && createResearchDto.categoria_id !== categoriaId) {
-      throw new BadRequestException('A categoria informada não corresponde à categoria do edital.');
-    }
+    const categoriaId = createResearchDto.categoria_id;
+    if (categoriaId != null) await this.assertCategoria(categoriaId);
 
     if (Array.isArray(createResearchDto.pesquisa_objetivo_ids)) {
       await this.assertObjetivosSustentavelExist(createResearchDto.pesquisa_objetivo_ids);
@@ -119,11 +117,9 @@ export class ResearchService {
         data_cadastro: new Date(),
         titulo: createResearchDto.titulo,
         title: createResearchDto.title,
-        categoria: {
-          connect: {
-            id: categoriaId,
-          },
-        },
+        ...(categoriaId != null && {
+          categoria: { connect: { id: categoriaId } },
+        }),
         email: createResearchDto.email,
         situacao: SituacaoProjeto.SUBMETIDO,
         data_inicio: createResearchDto.data_inicio
@@ -619,7 +615,7 @@ export class ResearchService {
       tipo: TipoProjetoMapper[research.tipo],
       titulo: research.titulo,
       title: research.title,
-      categoria: research.categoria.denominacao,
+      categoria: research.categoria?.denominacao ?? "",
       codigo: research.codigo,
       email: research.email,
       situacao: SituacaoProjetoMapper[research.situacao],
@@ -899,10 +895,10 @@ export class ResearchService {
 
   private async assertEditalExists(
     editalId: number,
-  ): Promise<{ id: number; categoria_id: number }> {
+  ): Promise<{ id: number }> {
     const edital = await this.prisma.edital.findUnique({
       where: { id: editalId },
-      select: { id: true, categoria_id: true },
+      select: { id: true },
     });
 
     if (!edital) {

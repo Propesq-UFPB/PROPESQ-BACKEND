@@ -152,12 +152,6 @@ export class UpdateEditalDto {
   @Min(2000)
   ano?: number;
 
-  @ApiPropertyOptional({ type: Number })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  categoria_id?: number;
 
   @ApiPropertyOptional({ type: [CreateEditalCotaDistribuicaoDto] })
   @IsOptional()

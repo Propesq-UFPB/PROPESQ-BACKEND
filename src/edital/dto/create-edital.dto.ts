@@ -117,11 +117,6 @@ export class CreateEditalDto {
   @Min(2000)
   ano!: number;
 
-  @ApiProperty({ required: true, type: 'integer' })
-  @IsNotEmpty()
-  @IsInt()
-  @Min(1)
-  categoria_id!: number;
 
   @IsOptional()
   @ValidateNested({ each: true })

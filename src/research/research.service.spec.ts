@@ -183,6 +183,23 @@ describe('ResearchService', () => {
       ],
     };
 
+    it('permite cadastrar projeto em edital sem categoria', async () => {
+      prisma.edital.findUnique.mockResolvedValue({ id: 4, categoria_id: null });
+      prisma.unidade_academica.findUnique.mockResolvedValue({ id: 3 });
+      prisma.area_conhecimento.findUnique.mockResolvedValue({ id: 1 });
+      prisma.palavra_chave.findMany.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+      prisma.objetivo_desenvolvimento_sustentavel.findMany.mockResolvedValue([{ id: 10 }]);
+      prisma.categoria_edital.findUnique.mockResolvedValue({ id: 1 });
+      prisma.usuario.findMany.mockResolvedValue([{ id: 7 }]);
+      prisma.projeto_pesquisa.create.mockResolvedValue({ id: 1 });
+
+
+      await service.create({ ...createDto, categoria_id: undefined });
+      expect(prisma.projeto_pesquisa.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.not.objectContaining({ categoria: expect.anything() }),
+      }));
+    });
+
     it('deve persistir o projeto de pesquisa com as datas', async () => {
       prisma.edital.findUnique.mockResolvedValue({ id: 4, categoria_id: 1 });
       prisma.unidade_academica.findUnique.mockResolvedValue({ id: 3 });

@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   Idioma,
@@ -15,6 +15,8 @@ import { ResearchService } from './research.service';
 import { CreateResearchDto } from './dto/create-research.dto';
 import { updateResearchDto } from './dto/update-research.dto';
 import { CategoriaMembroProjeto } from './dto/research-lookups.dto';
+
+const editor = { userId: 10, email: 'coord@teste.com', nome: 'Coord', funcao: 'COORDENADOR' };
 
 const mockMembership = {
   buildAllowedPesquisaIds: jest.fn().mockResolvedValue(null),
@@ -382,7 +384,7 @@ describe('ResearchService', () => {
           buffer: Buffer.from('texto'),
           mimetype: 'text/plain',
           originalname: 'projeto.txt',
-        }),
+        }, editor),
       ).rejects.toThrow('Apenas arquivos PDF são permitidos.');
     });
 
@@ -399,7 +401,7 @@ describe('ResearchService', () => {
         buffer: Buffer.from('%PDF'),
         mimetype: 'application/pdf',
         originalname: 'projeto.pdf',
-      });
+      }, editor);
 
       expect(prisma.anexo_projeto_pesquisa.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -702,7 +704,7 @@ describe('ResearchService', () => {
       prisma.unidade_academica.findUnique.mockResolvedValue({ id: 3 });
       prisma.projeto_pesquisa.update.mockResolvedValue({ id: 1 });
 
-      await service.update(1, updateDto);
+      await service.update(1, updateDto, editor);
 
       const [call] = prisma.projeto_pesquisa.update.mock.calls[0];
       expect(call.data).toMatchObject({
@@ -894,5 +896,79 @@ describe('ResearchService', () => {
       expect(result.total).toBe(0);
       expect(result.results).toHaveLength(0);
     });
+  });
+});
+
+describe('Autorização de alteração de projetos', () => {
+  const file = { buffer: Buffer.from('%PDF'), mimetype: 'application/pdf', originalname: 'p.pdf' };
+  let service: ResearchService;
+  const db = {
+    projeto_pesquisa: { findUnique: jest.fn(), update: jest.fn() },
+    membro_projeto: { findFirst: jest.fn() },
+    projeto_membro: { findFirst: jest.fn() },
+    anexo_projeto_pesquisa: { upsert: jest.fn() },
+  };
+
+  beforeEach(() => {
+    Object.values(db).forEach(model => Object.values(model).forEach(mock => mock.mockReset()));
+    db.projeto_pesquisa.findUnique.mockResolvedValue({ id: 1 });
+    db.anexo_projeto_pesquisa.upsert.mockResolvedValue({ id: 1 });
+    const prisma = db as unknown as PrismaService;
+    service = new ResearchService(prisma, new ProjectMembershipScopeService(prisma));
+    jest.spyOn(service, 'findOne').mockResolvedValue({ id: 1 } as never);
+  });
+
+  it('permite gestor sem vínculo', async () => {
+    const user = { ...editor, funcao: 'GESTOR' };
+    await service.update(1, { titulo: 'Novo' }, user);
+    await service.uploadAttachment(1, file, user);
+    expect(db.projeto_pesquisa.update).toHaveBeenCalled();
+    expect(db.anexo_projeto_pesquisa.upsert).toHaveBeenCalled();
+    expect(db.membro_projeto.findFirst).not.toHaveBeenCalled();
+  });
+
+  it.each(['legado', 'atual'])('permite coordenador com vínculo autorizado (%s)', async origem => {
+    const lookup = origem === 'legado' ? db.membro_projeto : db.projeto_membro;
+    lookup.findFirst.mockResolvedValue({ id: 1 });
+    await service.update(1, { titulo: 'Novo' }, editor);
+    await service.uploadAttachment(1, file, editor);
+    expect(db.projeto_pesquisa.update).toHaveBeenCalled();
+    expect(db.anexo_projeto_pesquisa.upsert).toHaveBeenCalled();
+    expect(lookup.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining(origem === 'legado'
+        ? { usuario_id: editor.userId, projeto_pesquisa_id: 1, ativo: true }
+        : { user_id: editor.userId, projeto_id: 1 }),
+    }));
+  });
+
+  it.each(['COORDENADOR', 'ALUNO', 'DISCENTE', 'AVALIADOR', undefined])(
+    'bloqueia alteração e PDF sem autorização (%s)', async funcao => {
+      const user = { ...editor, funcao };
+      await expect(service.update(1, { titulo: 'Novo' }, user)).rejects.toThrow(ForbiddenException);
+      await expect(service.uploadAttachment(1, file, user)).rejects.toThrow(ForbiddenException);
+      expect(db.projeto_pesquisa.update).not.toHaveBeenCalled();
+      expect(db.anexo_projeto_pesquisa.upsert).not.toHaveBeenCalled();
+    },
+  );
+
+  it('respeita a restrição do edital a orientador', async () => {
+    db.projeto_pesquisa.findUnique.mockResolvedValue({
+      id: 1, edital_rel: { apenas_orient_coordena_plano: true },
+    });
+    await expect(service.update(1, {}, editor)).rejects.toThrow(ForbiddenException);
+    expect(db.membro_projeto.findFirst).toHaveBeenCalledWith({
+      where: { projeto_pesquisa_id: 1, usuario_id: 10, ativo: true, funcao_projeto: { nome: { in: ['Orientador'] } } },
+    });
+    expect(db.projeto_membro.findFirst).toHaveBeenCalledWith({
+      where: { projeto_id: 1, user_id: 10, funcao: { in: ['COORDENADOR'] } },
+    });
+  });
+
+  it('retorna não encontrado sem gravar quando o projeto não existe', async () => {
+    db.projeto_pesquisa.findUnique.mockResolvedValue(null);
+    await expect(service.update(99, {}, editor)).rejects.toThrow(NotFoundException);
+    await expect(service.uploadAttachment(99, file, editor)).rejects.toThrow(NotFoundException);
+    expect(db.projeto_pesquisa.update).not.toHaveBeenCalled();
+    expect(db.anexo_projeto_pesquisa.upsert).not.toHaveBeenCalled();
   });
 });

@@ -120,9 +120,10 @@ export class ResearchController {
   @ApiCreatedResponse({ type: ResearchAttachmentResponseDto })
   uploadAttachment(
     @Param('id', ParseIntPipe) id: number,
-    @UploadedFile() file?: UploadedResearchFile,
+    @UploadedFile() file: UploadedResearchFile | undefined,
+    @CurrentUser() currentUser: CurrentUserPayload,
   ): Promise<ResearchAttachmentResponseDto> {
-    return this.researchService.uploadAttachment(id, file);
+    return this.researchService.uploadAttachment(id, file, currentUser);
   }
 
   @Get(':id/anexo')
@@ -220,8 +221,17 @@ export class ResearchController {
   }
 
   @Patch(':id')
+  @UseGuards(RolesGuard)
+  @Roles('GESTOR', 'COORDENADOR')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Atualiza registro de um projeto de pesquisa' })
+  @ApiOperation({
+    summary: 'Atualiza registro de um projeto de pesquisa',
+    description: 'Gestores podem alterar qualquer projeto; coordenadores precisam de vínculo autorizado com o projeto.',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Perfil ou vínculo não autoriza a alteração do projeto.',
+  })
   @ApiParam({
     name: 'id',
     type: Number,
@@ -238,8 +248,9 @@ export class ResearchController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateResearchDto: updateResearchDto,
+    @CurrentUser() currentUser: CurrentUserPayload,
   ): Promise<void> {
-    await this.researchService.update(id, updateResearchDto);
+    await this.researchService.update(id, updateResearchDto, currentUser);
   }
 
   @Patch(':id/publish')

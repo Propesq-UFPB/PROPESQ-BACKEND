@@ -95,6 +95,7 @@ export class UpdateEditalDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
+  @Min(0)
   limite_solicitacoes_orientador?: number;
 
   @ApiPropertyOptional({ type: Number })
@@ -108,6 +109,7 @@ export class UpdateEditalDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
+  @Min(0)
   limite_planos_orientador?: number;
 
   @ApiPropertyOptional()

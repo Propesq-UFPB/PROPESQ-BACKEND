@@ -6,6 +6,8 @@ import { updateResearchDto } from './dto/update-research.dto';
 import { TipoProjeto } from '@prisma/client';
 import { ROLES_KEY } from '../auth/decorators/roles.decorator';
 
+const editor = { userId: 10, email: 'coord@teste.com', nome: 'Coord', funcao: 'COORDENADOR' };
+
 const mockResearchService = {
   create: jest.fn(),
   findAll: jest.fn(),
@@ -105,9 +107,9 @@ describe('ResearchController', () => {
       };
       mockResearchService.uploadAttachment.mockResolvedValue({ id: 1 });
 
-      await controller.uploadAttachment(2, file);
+      await controller.uploadAttachment(2, file, editor);
 
-      expect(service.uploadAttachment).toHaveBeenCalledWith(2, file);
+      expect(service.uploadAttachment).toHaveBeenCalledWith(2, file, editor);
       expect(Reflect.getMetadata(ROLES_KEY, ResearchController.prototype.uploadAttachment)).toEqual(
         ['GESTOR', 'COORDENADOR'],
       );
@@ -186,6 +188,11 @@ describe('ResearchController', () => {
   });
 
   describe('update', () => {
+    it('restringe alteração a gestor e coordenador', () => {
+      expect(Reflect.getMetadata(ROLES_KEY, ResearchController.prototype.update)).toEqual([
+        'GESTOR', 'COORDENADOR',
+      ]);
+    });
     it('deve chamar service.update com o dto de atualização', async () => {
       const dto: updateResearchDto = {
         titulo: 'Novo título',
@@ -194,9 +201,9 @@ describe('ResearchController', () => {
 
       mockResearchService.update.mockResolvedValue({ id: 1 });
 
-      await controller.update(1, dto);
+      await controller.update(1, dto, editor);
 
-      expect(service.update).toHaveBeenCalledWith(1, dto);
+      expect(service.update).toHaveBeenCalledWith(1, dto, editor);
     });
   });
 

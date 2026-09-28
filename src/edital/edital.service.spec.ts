@@ -4,6 +4,7 @@ import { StatusEdital, TipoEdital, TitulacaoMin } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
+import { UpdateEditalDto } from './dto/update-edital.dto';
 import { CreateEditalDto } from './dto/create-edital.dto';
 import { CreateEditalCotaDistribuicaoDto } from './dto/create-cota-distribuicao.dto';
 import { EditalService } from './edital.service';
@@ -470,4 +471,27 @@ describe('CreateEditalDto', () => {
     const statusError = errors.find(error => error.property === 'status');
     expect(statusError?.constraints?.isIn).toBeDefined();
   });
+});
+
+
+describe('Limites de solicitações do edital', () => {
+  for (const field of ['limite_solicitacoes_orientador', 'limite_planos_orientador']) {
+    it.each([-1, 1.5])(`rejeita ${field} inválido: %s no cadastro e alteração`, async value => {
+      const createErrors = await validate(plainToInstance(CreateEditalDto, {
+        ...validCreatePayload, [field]: value,
+      }));
+      const updateErrors = await validate(plainToInstance(UpdateEditalDto, { [field]: value }));
+      expect(createErrors.some(error => error.property === field)).toBe(true);
+      expect(updateErrors.some(error => error.property === field)).toBe(true);
+    });
+
+    it.each([0, 3])(`aceita ${field}: %s no cadastro e alteração`, async value => {
+      const createErrors = await validate(plainToInstance(CreateEditalDto, {
+        ...validCreatePayload, [field]: value,
+      }));
+      const updateErrors = await validate(plainToInstance(UpdateEditalDto, { [field]: value }));
+      expect(createErrors.some(error => error.property === field)).toBe(false);
+      expect(updateErrors).toEqual([]);
+    });
+  }
 });

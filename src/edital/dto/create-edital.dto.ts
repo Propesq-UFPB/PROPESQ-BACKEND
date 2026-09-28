@@ -62,6 +62,7 @@ export class CreateEditalDto {
   @Type(() => Number)
   @IsNotEmpty()
   @IsInt()
+  @Min(0)
   limite_solicitacoes_orientador!: number;
 
   @IsNotEmpty()
@@ -73,6 +74,7 @@ export class CreateEditalDto {
   @Type(() => Number)
   @IsNotEmpty()
   @IsInt()
+  @Min(0)
   limite_planos_orientador!: number;
 
   @ApiProperty({ required: true })

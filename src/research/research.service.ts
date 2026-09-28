@@ -315,7 +315,9 @@ export class ResearchService {
   async uploadAttachment(
     id: number,
     file: UploadedResearchFile | undefined,
+    currentUser: CurrentUserPayload,
   ): Promise<ResearchAttachmentResponseDto> {
+    await this.assertCanEdit(id, currentUser);
     if (!file?.buffer?.length) {
       throw new BadRequestException('Arquivo do projeto não informado.');
     }
@@ -530,7 +532,15 @@ export class ResearchService {
     return this.formatResearch(data, true);
   }
 
-  async update(id: number, updateResearchDto: updateResearchDto) {
+  private async assertCanEdit(id: number, user: CurrentUserPayload): Promise<void> {
+    if (!['GESTOR', 'COORDENADOR'].includes(user?.funcao?.toUpperCase() ?? '')) {
+      throw new ForbiddenException('Apenas gestores e coordenadores podem alterar projetos.');
+    }
+    await this.membership.assertCanAccessPesquisa(user, id);
+  }
+
+  async update(id: number, updateResearchDto: updateResearchDto, currentUser: CurrentUserPayload) {
+    await this.assertCanEdit(id, currentUser);
     await this.findOne(id);
 
     if (updateResearchDto.unidade_id !== undefined) {

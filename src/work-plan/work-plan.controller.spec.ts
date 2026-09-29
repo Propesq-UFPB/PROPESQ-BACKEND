@@ -9,6 +9,7 @@ import { TipoIndicacao } from '@prisma/client';
 const mockWorkPlanService = {
   create: jest.fn(),
   findAll: jest.fn(),
+  findCreationProjects: jest.fn(),
   findOne: jest.fn(),
   findIndicacoes: jest.fn(),
   findIndicacaoById: jest.fn(),
@@ -53,13 +54,21 @@ describe('WorkPlanController', () => {
     expect(controller).toBeDefined();
   });
 
+  it('encaminha usuário autenticado e paginação na seleção de projetos', async () => {
+    const query = { limit: 10, offset: 20 };
+    const response = { results: [], total: 0, ...query };
+    mockWorkPlanService.findCreationProjects.mockResolvedValue(response);
+    expect(await controller.findCreationProjects(query, currentUser)).toEqual(response);
+    expect(service.findCreationProjects).toHaveBeenCalledWith(query, currentUser);
+  });
+
   describe('create', () => {
     it('deve chamar service.create com os parâmetros corretos', async () => {
       const dto: CreateWorkPlanDto = {
         pesquisa_id: 1,
         modalidade: 'PIBIC',
         status: 'ATIVO',
-        tipo_bolsa: 'REMUNERADA',
+        bolsa_id: 3,
         direcionamento_plano: 'Direcionamento',
         corpo_plano_trabalho: {
           titulo: 'Titulo',

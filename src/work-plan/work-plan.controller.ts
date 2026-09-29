@@ -1,3 +1,4 @@
+import { WorkPlanCreationProjectsQueryDto } from './dto/work-plan-creation-projects-query.dto';
 import {
   Body,
   Controller,
@@ -44,9 +45,10 @@ export class WorkPlanController {
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('COORDENADOR', 'GESTOR')
+  @Roles('DOCENTE', 'COORDENADOR', 'GESTOR')
   @ApiOperation({
     summary: 'Cria um novo plano de trabalho com corpo e atividades',
+    description: 'Exige vínculo do usuário com o projeto e edital PUBLICADO. Conta os planos criados pelo usuário em todos os projetos do edital; limite zero impede novos cadastros.',
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -60,6 +62,7 @@ export class WorkPlanController {
     status: HttpStatus.FORBIDDEN,
     description: 'Sem permissão para criar plano neste projeto.',
   })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Edital não publicado ou limite de planos por orientador atingido.' })
   create(
     @Body() createWorkPlanDto: CreateWorkPlanDto,
     @CurrentUser() currentUser: CurrentUserPayload,
@@ -83,6 +86,20 @@ export class WorkPlanController {
     @CurrentUser() currentUser: CurrentUserPayload,
   ): Promise<PaginatedResult<unknown>> {
     return this.workPlanService.findAll(query, currentUser);
+  }
+
+  @Get('creation-projects')
+  @UseGuards(RolesGuard)
+  @Roles('DOCENTE', 'COORDENADOR', 'GESTOR')
+  @ApiOperation({
+    summary: 'Lista projetos do usuário para criação de planos',
+    description: 'Exige vínculo de orientação/coordenação, inclusive para gestores, e edital PUBLICADO. Retorna limite de planos por orientador do edital.',
+  })
+  findCreationProjects(
+    @Query() query: WorkPlanCreationProjectsQueryDto,
+    @CurrentUser() currentUser: CurrentUserPayload,
+  ) {
+    return this.workPlanService.findCreationProjects(query, currentUser);
   }
 
   @Get('indicacoes')

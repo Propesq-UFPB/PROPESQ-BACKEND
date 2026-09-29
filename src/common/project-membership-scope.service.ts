@@ -24,9 +24,9 @@ export class ProjectMembershipScopeService {
    */
   async buildAllowedPesquisaIds(
     user: CurrentUserPayload,
-    options?: { forceMemberScope?: boolean },
+    options?: { forceMemberScope?: boolean; requireGestorMembership?: boolean },
   ): Promise<number[] | null> {
-    if (this.isGestor(user)) {
+    if (this.isGestor(user) && !options?.requireGestorMembership) {
       return null;
     }
 
@@ -103,7 +103,7 @@ export class ProjectMembershipScopeService {
   async assertCanAccessPesquisa(
     user: CurrentUserPayload,
     pesquisaId: number,
-    options?: { forceMemberScope?: boolean },
+    options?: { forceMemberScope?: boolean; requireGestorMembership?: boolean },
   ): Promise<void> {
     const projeto = await this.prisma.projeto_pesquisa.findUnique({
       where: { id: pesquisaId },
@@ -117,7 +117,7 @@ export class ProjectMembershipScopeService {
       throw new NotFoundException(`Projeto de pesquisa com ID ${pesquisaId} não encontrado`);
     }
 
-    if (this.isGestor(user)) {
+    if (this.isGestor(user) && !options?.requireGestorMembership) {
       return;
     }
 

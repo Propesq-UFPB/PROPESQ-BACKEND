@@ -1,11 +1,14 @@
+import { WorkPlanCreationProjectsQueryDto } from './dto/work-plan-creation-projects-query.dto';
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import {
   Prisma,
+  StatusEdital,
   StatusIndicacaoPlano,
   StatusInteressePlano,
   TipoIndicacao,
@@ -24,14 +27,12 @@ import {
   UpdateMonthWorkPlanDto,
   UpdateWorkPlanDto,
 } from './dto/update-work-plan.dto';
-import {
-  CandidatoResumoDto,
-  WorkPlanIndicacaoItemDto,
-} from './dto/work-plan-indicacao-item.dto';
+import { CandidatoResumoDto, WorkPlanIndicacaoItemDto } from './dto/work-plan-indicacao-item.dto';
 import { WorkPlanIndicacaoDetalheDto } from './dto/work-plan-indicacao-detalhe.dto';
 import { WorkPlanIndicacoesQueryDto } from './dto/work-plan-indicacoes-query.dto';
 import { WorkPlanListQueryDto } from './dto/work-plan-list-query.dto';
 import { WorkPlanAccessService } from './work-plan-access.service';
+import { connect } from 'node:http2';
 
 const indicacaoInclude = {
   corpo_plano_trabalho: true,
@@ -65,10 +66,7 @@ const STATUS_PERMITE_INDICACAO: StatusIndicacaoPlano[] = [
 ];
 
 function normalizeModalidade(modalidade: string): string {
-  return modalidade
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '');
+  return modalidade.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '');
 }
 
 function isTipoIndicacaoAllowed(modalidade: string, tipo: TipoIndicacao): boolean {
@@ -95,6 +93,9 @@ export class WorkPlanService {
   ) {}
 
   async create(createWorkPlanDto: CreateWorkPlanDto, user: CurrentUserPayload) {
+    if (!['DOCENTE', 'COORDENADOR', 'GESTOR'].includes(user.funcao?.toUpperCase() ?? '')) {
+      throw new ForbiddenException('Perfil não autorizado a criar planos de trabalho.');
+    }
     const projeto = await this.prisma.projeto_pesquisa.findUnique({
       where: { id: createWorkPlanDto.pesquisa_id },
     });
@@ -107,17 +108,36 @@ export class WorkPlanService {
 
     await this.access.assertCanAccessPesquisa(user, createWorkPlanDto.pesquisa_id, {
       forceMemberScope: true,
+      requireGestorMembership: true,
     });
 
+    if (!projeto.edital_id) {
+      throw new BadRequestException('O projeto deve estar vinculado a um edital publicado.');
+    }
+
     const workPlan = await this.prisma.$transaction(async tx => {
+      // Serializa cadastros no mesmo edital para não ultrapassar o limite em requisições simultâneas.
+      await tx.$queryRawUnsafe('SELECT id FROM edital WHERE id = $1 FOR UPDATE', projeto.edital_id);
+      const edital = await tx.edital.findUnique({ where: { id: projeto.edital_id! } });
+      if (!edital || edital.status !== StatusEdital.PUBLICADO) {
+        throw new BadRequestException('O projeto deve estar vinculado a um edital publicado.');
+      }
+      const total = await tx.plano_trabalho.count({
+        where: { usuario_id: user.userId, projeto_pesquisa: { edital_id: edital.id } },
+      });
+      if (total >= edital.limite_planos_orientador) {
+        throw new BadRequestException(
+          `Limite de ${edital.limite_planos_orientador} planos por orientador atingido neste edital.`,
+        );
+      }
       const createdWorkPlan = await tx.plano_trabalho.create({
         data: {
           pesquisa_id: createWorkPlanDto.pesquisa_id,
           modalidade: createWorkPlanDto.modalidade,
           status: createWorkPlanDto.status,
-          tipo_bolsa: createWorkPlanDto.tipo_bolsa,
           direcionamento_plano: createWorkPlanDto.direcionamento_plano,
           usuario_id: user.userId,
+          bolsa_id: createWorkPlanDto.bolsa_id,
         },
         include: this.defaultInclude(),
       });
@@ -193,12 +213,47 @@ export class WorkPlanService {
     };
   }
 
+  async findCreationProjects(query: WorkPlanCreationProjectsQueryDto, user: CurrentUserPayload) {
+    const scope = await this.access.buildScopeWhere(user, {
+      forceMemberScope: true,
+      requireGestorMembership: true,
+    });
+    const where: Prisma.projeto_pesquisaWhereInput = {
+      edital_rel: { status: StatusEdital.PUBLICADO },
+      id: {
+        in:
+          typeof scope?.pesquisa_id === 'object' && Array.isArray(scope.pesquisa_id.in)
+            ? scope.pesquisa_id.in
+            : [],
+      },
+    };
+    const limit = query.limit ?? 10;
+    const offset = query.offset ?? 0;
+    const [results, total] = await Promise.all([
+      this.prisma.projeto_pesquisa.findMany({
+        where,
+        take: limit,
+        skip: offset,
+        orderBy: { id: 'desc' },
+        select: {
+          id: true,
+          codigo: true,
+          titulo: true,
+          situacao: true,
+          data_inicio: true,
+          data_fim: true,
+          edital_rel: { select: { id: true, descricao: true, limite_planos_orientador: true } },
+        },
+      }),
+      this.prisma.projeto_pesquisa.count({ where }),
+    ]);
+    return { results, total, limit, offset };
+  }
+
   async findOne(id: number, user?: CurrentUserPayload) {
     if (user) {
       // COORDENADOR: membership obrigatória; GESTOR/ALUNO: sem force (ALUNO lê livre).
-      const options = this.access.isCoordenador(user)
-        ? { forceMemberScope: true }
-        : undefined;
+      const options = this.access.isCoordenador(user) ? { forceMemberScope: true } : undefined;
       await this.access.assertCanAccessPlan(user, id, options);
     }
 
@@ -299,9 +354,7 @@ export class WorkPlanService {
     });
 
     if (!interesse || interesse.plano_trabalho_id !== id) {
-      throw new NotFoundException(
-        `Interesse ${dto.interesse_id} não encontrado neste plano.`,
-      );
+      throw new NotFoundException(`Interesse ${dto.interesse_id} não encontrado neste plano.`);
     }
 
     if (interesse.status !== StatusInteressePlano.APTO_PARA_INDICACAO) {
@@ -416,9 +469,7 @@ export class WorkPlanService {
     });
 
     if (existing) {
-      throw new ConflictException(
-        'Já existe interesse registrado deste discente neste plano.',
-      );
+      throw new ConflictException('Já existe interesse registrado deste discente neste plano.');
     }
 
     const created = await this.prisma.interesse_plano_trabalho.create({
@@ -438,10 +489,7 @@ export class WorkPlanService {
     };
   }
 
-  async listInteresses(
-    planoId: number,
-    user: CurrentUserPayload,
-  ): Promise<InteresseResponseDto[]> {
+  async listInteresses(planoId: number, user: CurrentUserPayload): Promise<InteresseResponseDto[]> {
     await this.access.assertCanAccessPlan(user, planoId, { forceMemberScope: true });
 
     const plan = await this.prisma.plano_trabalho.findUnique({
@@ -497,8 +545,8 @@ export class WorkPlanService {
           ...(updateWorkPlanDto.status !== undefined && {
             status: updateWorkPlanDto.status,
           }),
-          ...(updateWorkPlanDto.tipo_bolsa !== undefined && {
-            tipo_bolsa: updateWorkPlanDto.tipo_bolsa,
+          ...(updateWorkPlanDto.bolsa_id !== undefined && {
+            bolsa_id: updateWorkPlanDto.bolsa_id,
           }),
           ...(updateWorkPlanDto.direcionamento_plano !== undefined && {
             direcionamento_plano: updateWorkPlanDto.direcionamento_plano,
@@ -535,9 +583,7 @@ export class WorkPlanService {
     query: WorkPlanIndicacoesQueryDto,
     user: CurrentUserPayload,
   ): Promise<Prisma.plano_trabalhoWhereInput> {
-    const parts: Prisma.plano_trabalhoWhereInput[] = [
-      this.access.buildElegibilidadeWhere(),
-    ];
+    const parts: Prisma.plano_trabalhoWhereInput[] = [this.access.buildElegibilidadeWhere()];
 
     const scope = await this.access.buildScopeWhere(user, { forceMemberScope: true });
     if (scope) {
@@ -568,9 +614,7 @@ export class WorkPlanService {
 
   private mapToIndicacaoItem(row: PlanoIndicacaoRow): WorkPlanIndicacaoItemDto {
     const base = this.mapIndicacaoBase(row);
-    const candidatos = row.interesses.map(interesse =>
-      this.mapCandidatoResumo(interesse),
-    );
+    const candidatos = row.interesses.map(interesse => this.mapCandidatoResumo(interesse));
 
     let alunoIndicado: CandidatoResumoDto | null = null;
     if (row.discente_id) {
@@ -602,9 +646,7 @@ export class WorkPlanService {
 
   private mapToIndicacaoDetalhe(row: PlanoIndicacaoRow): WorkPlanIndicacaoDetalheDto {
     const base = this.mapIndicacaoBase(row);
-    const candidatos = row.interesses.map(interesse =>
-      this.mapCandidatoDetalhe(interesse),
-    );
+    const candidatos = row.interesses.map(interesse => this.mapCandidatoDetalhe(interesse));
 
     let alunoIndicado: CandidatoDetalheDto | null = null;
     if (row.discente_id) {
@@ -631,8 +673,7 @@ export class WorkPlanService {
   private mapIndicacaoBase(row: PlanoIndicacaoRow) {
     const edital = row.projeto_pesquisa.edital_rel;
     const periodo = edital?.periodo_execucao_rel;
-    const vigenciaInicio =
-      row.projeto_pesquisa.data_inicio ?? periodo?.inicio ?? null;
+    const vigenciaInicio = row.projeto_pesquisa.data_inicio ?? periodo?.inicio ?? null;
     const vigenciaFim = row.projeto_pesquisa.data_fim ?? periodo?.fim ?? null;
     const anoSource = vigenciaInicio ?? periodo?.inicio ?? null;
 
@@ -651,13 +692,11 @@ export class WorkPlanService {
       modalidade: row.modalidade,
       vagas: row.vagas,
       carga_horaria: row.carga_horaria,
-      status_indicacao: row.status_indicacao as StatusIndicacaoPlano,
+      status_indicacao: row.status_indicacao,
       aprovado_em: null as string | null,
       vigencia_inicio: vigenciaInicio ? new Date(vigenciaInicio).toISOString() : null,
       vigencia_fim: vigenciaFim ? new Date(vigenciaFim).toISOString() : null,
-      prazo_indicacao: row.prazo_indicacao
-        ? new Date(row.prazo_indicacao).toISOString()
-        : null,
+      prazo_indicacao: row.prazo_indicacao ? new Date(row.prazo_indicacao).toISOString() : null,
       prazo_substituicao: row.prazo_substituicao
         ? new Date(row.prazo_substituicao).toISOString()
         : null,
@@ -732,9 +771,7 @@ export class WorkPlanService {
         ? {
             cpf: perfil.cpf,
             rg: perfil.rg,
-            rg_emissao: perfil.rg_emissao
-              ? new Date(perfil.rg_emissao).toISOString()
-              : null,
+            rg_emissao: perfil.rg_emissao ? new Date(perfil.rg_emissao).toISOString() : null,
             orgao_emissor: perfil.orgao_emissor,
             titulo_eleitor: perfil.titulo_eleitor,
             zona_eleitoral: perfil.zona_eleitoral,
@@ -1028,6 +1065,7 @@ export class WorkPlanService {
 
   private defaultInclude() {
     return {
+      bolsa: { select: { id: true, descricao: true } },
       corpo_plano_trabalho: true,
       discente: true,
       usuario: true,

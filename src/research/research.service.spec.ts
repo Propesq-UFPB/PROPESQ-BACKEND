@@ -195,11 +195,12 @@ describe('ResearchService', () => {
       prisma.usuario.findMany.mockResolvedValue([{ id: 7 }]);
       prisma.projeto_pesquisa.create.mockResolvedValue({ id: 1 });
 
-
       await service.create({ ...createDto, categoria_id: undefined });
-      expect(prisma.projeto_pesquisa.create).toHaveBeenCalledWith(expect.objectContaining({
-        data: expect.not.objectContaining({ categoria: expect.anything() }),
-      }));
+      expect(prisma.projeto_pesquisa.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.not.objectContaining({ categoria: expect.anything() }),
+        }),
+      );
     });
 
     it('deve persistir o projeto de pesquisa com as datas', async () => {
@@ -380,11 +381,15 @@ describe('ResearchService', () => {
   describe('uploadAttachment', () => {
     it('deve rejeitar arquivo que não seja PDF', async () => {
       await expect(
-        service.uploadAttachment(1, {
-          buffer: Buffer.from('texto'),
-          mimetype: 'text/plain',
-          originalname: 'projeto.txt',
-        }, editor),
+        service.uploadAttachment(
+          1,
+          {
+            buffer: Buffer.from('texto'),
+            mimetype: 'text/plain',
+            originalname: 'projeto.txt',
+          },
+          editor,
+        ),
       ).rejects.toThrow('Apenas arquivos PDF são permitidos.');
     });
 
@@ -397,11 +402,15 @@ describe('ResearchService', () => {
         tipo: 'application/pdf',
       });
 
-      await service.uploadAttachment(1, {
-        buffer: Buffer.from('%PDF'),
-        mimetype: 'application/pdf',
-        originalname: 'projeto.pdf',
-      }, editor);
+      await service.uploadAttachment(
+        1,
+        {
+          buffer: Buffer.from('%PDF'),
+          mimetype: 'application/pdf',
+          originalname: 'projeto.pdf',
+        },
+        editor,
+      );
 
       expect(prisma.anexo_projeto_pesquisa.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -934,15 +943,20 @@ describe('Autorização de alteração de projetos', () => {
     await service.uploadAttachment(1, file, editor);
     expect(db.projeto_pesquisa.update).toHaveBeenCalled();
     expect(db.anexo_projeto_pesquisa.upsert).toHaveBeenCalled();
-    expect(lookup.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining(origem === 'legado'
-        ? { usuario_id: editor.userId, projeto_pesquisa_id: 1, ativo: true }
-        : { user_id: editor.userId, projeto_id: 1 }),
-    }));
+    expect(lookup.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining(
+          origem === 'legado'
+            ? { usuario_id: editor.userId, projeto_pesquisa_id: 1, ativo: true }
+            : { user_id: editor.userId, projeto_id: 1 },
+        ),
+      }),
+    );
   });
 
   it.each(['COORDENADOR', 'ALUNO', 'DISCENTE', 'AVALIADOR', undefined])(
-    'bloqueia alteração e PDF sem autorização (%s)', async funcao => {
+    'bloqueia alteração e PDF sem autorização (%s)',
+    async funcao => {
       const user = { ...editor, funcao };
       await expect(service.update(1, { titulo: 'Novo' }, user)).rejects.toThrow(ForbiddenException);
       await expect(service.uploadAttachment(1, file, user)).rejects.toThrow(ForbiddenException);
@@ -953,11 +967,17 @@ describe('Autorização de alteração de projetos', () => {
 
   it('respeita a restrição do edital a orientador', async () => {
     db.projeto_pesquisa.findUnique.mockResolvedValue({
-      id: 1, edital_rel: { apenas_orient_coordena_plano: true },
+      id: 1,
+      edital_rel: { apenas_orient_coordena_plano: true },
     });
     await expect(service.update(1, {}, editor)).rejects.toThrow(ForbiddenException);
     expect(db.membro_projeto.findFirst).toHaveBeenCalledWith({
-      where: { projeto_pesquisa_id: 1, usuario_id: 10, ativo: true, funcao_projeto: { nome: { in: ['Orientador'] } } },
+      where: {
+        projeto_pesquisa_id: 1,
+        usuario_id: 10,
+        ativo: true,
+        funcao_projeto: { nome: { in: ['Orientador'] } },
+      },
     });
     expect(db.projeto_membro.findFirst).toHaveBeenCalledWith({
       where: { projeto_id: 1, user_id: 10, funcao: { in: ['COORDENADOR'] } },

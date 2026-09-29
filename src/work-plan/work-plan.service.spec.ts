@@ -36,7 +36,10 @@ const mockPrismaService = {
   cronograma: {
     findUnique: jest.fn(),
   },
+  edital: { findUnique: jest.fn() },
   projeto_pesquisa: {
+    findMany: jest.fn(),
+    count: jest.fn(),
     findUnique: jest.fn(),
     update: jest.fn(),
   },
@@ -98,6 +101,7 @@ const alunoUser: CurrentUserPayload = {
 };
 
 const defaultInclude = {
+  bolsa: { select: { id: true, descricao: true } },
   corpo_plano_trabalho: true,
   discente: true,
   usuario: true,
@@ -152,7 +156,7 @@ describe('WorkPlanService', () => {
       pesquisa_id: 1,
       modalidade: 'PIBIC',
       status: 'ATIVO',
-      tipo_bolsa: 'REMUNERADA',
+      bolsa_id: 3,
       direcionamento_plano: 'Direcionamento',
       corpo_plano_trabalho: {
         titulo: 'Titulo',
@@ -169,25 +173,61 @@ describe('WorkPlanService', () => {
       ],
     };
 
-    it('deve criar plano de trabalho com sucesso sem cronograma_id', async () => {
-      prisma.projeto_pesquisa.findUnique.mockResolvedValue({ id: 1 });
+    beforeEach(() => {
+      prisma.edital.findUnique.mockResolvedValue({ id: 2, status: 'PUBLICADO', limite_planos_orientador: 2 });
+      prisma.plano_trabalho.count.mockResolvedValue(0);
+    });
+
+    it.each(['RASCUNHO', 'ENCERRADO', 'ARQUIVADO'])('bloqueia edital %s', async status => {
+      prisma.projeto_pesquisa.findUnique.mockResolvedValue({ id: 1, edital_id: 2 });
+      prisma.edital.findUnique.mockResolvedValue({ id: 2, status, limite_planos_orientador: 2 });
+      await expect(service.create(createDto, coordUser)).rejects.toThrow(BadRequestException);
+      expect(prisma.plano_trabalho.create).not.toHaveBeenCalled();
+    });
+
+    it.each([0, 2])('bloqueia limite %s atingido somando projetos do edital', async limite => {
+      prisma.projeto_pesquisa.findUnique.mockResolvedValue({ id: 1, edital_id: 2 });
+      prisma.edital.findUnique.mockResolvedValue({ id: 2, status: 'PUBLICADO', limite_planos_orientador: limite });
+      prisma.plano_trabalho.count.mockResolvedValue(limite);
+      await expect(service.create(createDto, coordUser)).rejects.toThrow('planos por orientador atingido');
+      expect(prisma.plano_trabalho.count).toHaveBeenCalledWith({ where: { usuario_id: coordUser.userId, projeto_pesquisa: { edital_id: 2 } } });
+      expect(prisma.$queryRawUnsafe).toHaveBeenCalledWith('SELECT id FROM edital WHERE id = $1 FOR UPDATE', 2);
+      expect(prisma.plano_trabalho.create).not.toHaveBeenCalled();
+    });
+
+    it('bloqueia projeto sem edital', async () => {
+      prisma.projeto_pesquisa.findUnique.mockResolvedValue({ id: 1, edital_id: null });
+      await expect(service.create(createDto, coordUser)).rejects.toThrow('edital publicado');
+      expect(prisma.plano_trabalho.create).not.toHaveBeenCalled();
+    });
+
+    it('bloqueia discente', async () => {
+      await expect(service.create(createDto, alunoUser)).rejects.toThrow(ForbiddenException);
+      expect(prisma.plano_trabalho.create).not.toHaveBeenCalled();
+    });
+
+    it.each(['DOCENTE', 'COORDENADOR', 'GESTOR'])('cria abaixo do limite como %s', async funcao => {
+      const creator = { ...adminUser, funcao };
+      prisma.plano_trabalho.count.mockResolvedValue(1);
+      prisma.projeto_pesquisa.findUnique.mockResolvedValue({ id: 1, edital_id: 2 });
       prisma.corpo_plano_trabalho.create.mockResolvedValue({ id: 99 });
       prisma.plano_trabalho.create.mockResolvedValue({ id: 1 });
       prisma.plano_trabalho.findUnique.mockResolvedValue({ id: 1 });
       prisma.plano_trabalho.update.mockResolvedValue({ id: 1 });
       prisma.$queryRawUnsafe.mockResolvedValue([]);
 
-      const result = await service.create({ ...createDto, atividades: [] }, adminUser);
+      const result = await service.create({ ...createDto, atividades: [] }, creator);
 
-      expect(mockAccessService.assertCanAccessPesquisa).toHaveBeenCalledWith(adminUser, 1, {
+      expect(mockAccessService.assertCanAccessPesquisa).toHaveBeenCalledWith(creator, 1, {
         forceMemberScope: true,
+        requireGestorMembership: true,
       });
       expect(prisma.plano_trabalho.create).toHaveBeenCalledWith({
         data: {
           pesquisa_id: 1,
           modalidade: 'PIBIC',
           status: 'ATIVO',
-          tipo_bolsa: 'REMUNERADA',
+          bolsa_id: 3,
           direcionamento_plano: 'Direcionamento',
           usuario_id: adminUser.userId,
         },
@@ -218,6 +258,27 @@ describe('WorkPlanService', () => {
         }),
       ).rejects.toBeInstanceOf(ForbiddenException);
       expect(prisma.plano_trabalho.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('findCreationProjects', () => {
+    it('restringe lista e total aos vínculos do usuário e edital publicado', async () => {
+      mockAccessService.buildScopeWhere.mockResolvedValueOnce({ pesquisa_id: { in: [1, 5] } });
+      prisma.projeto_pesquisa.findMany.mockResolvedValue([{ id: 5 }]);
+      prisma.projeto_pesquisa.count.mockResolvedValue(2);
+      expect(await service.findCreationProjects({ limit: 1, offset: 1 }, adminUser)).toEqual({ results: [{ id: 5 }], total: 2, limit: 1, offset: 1 });
+      const where = { edital_rel: { status: 'PUBLICADO' }, id: { in: [1, 5] } };
+      expect(mockAccessService.buildScopeWhere).toHaveBeenCalledWith(adminUser, { forceMemberScope: true, requireGestorMembership: true });
+      expect(prisma.projeto_pesquisa.findMany).toHaveBeenCalledWith(expect.objectContaining({ where, take: 1, skip: 1 }));
+      expect(prisma.projeto_pesquisa.count).toHaveBeenCalledWith({ where });
+    });
+
+    it('não amplia acesso quando nenhum vínculo é retornado', async () => {
+      mockAccessService.buildScopeWhere.mockResolvedValueOnce({ pesquisa_id: { in: [] } });
+      prisma.projeto_pesquisa.findMany.mockResolvedValue([]);
+      prisma.projeto_pesquisa.count.mockResolvedValue(0);
+      expect((await service.findCreationProjects({}, coordUser)).results).toEqual([]);
+      expect(prisma.projeto_pesquisa.count).toHaveBeenCalledWith({ where: { edital_rel: { status: 'PUBLICADO' }, id: { in: [] } } });
     });
   });
 

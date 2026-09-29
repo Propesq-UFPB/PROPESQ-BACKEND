@@ -66,7 +66,6 @@ describe('WorkPlanController', () => {
     it('deve chamar service.create com os parâmetros corretos', async () => {
       const dto: CreateWorkPlanDto = {
         pesquisa_id: 1,
-        modalidade: 'PIBIC',
         status: 'ATIVO',
         bolsa_id: 3,
         direcionamento_plano: 'Direcionamento',

@@ -23,6 +23,7 @@ const mockAccessService = {
 };
 
 const mockPrismaService = {
+  bolsa: { findUnique: jest.fn() },
   $transaction: jest.fn(),
   $queryRawUnsafe: jest.fn(),
   $executeRawUnsafe: jest.fn(),
@@ -154,7 +155,6 @@ describe('WorkPlanService', () => {
   describe('create', () => {
     const createDto: CreateWorkPlanDto = {
       pesquisa_id: 1,
-      modalidade: 'PIBIC',
       status: 'ATIVO',
       bolsa_id: 3,
       direcionamento_plano: 'Direcionamento',
@@ -174,6 +174,7 @@ describe('WorkPlanService', () => {
     };
 
     beforeEach(() => {
+      prisma.bolsa.findUnique.mockResolvedValue({ id: 3, descricao: 'PIBIC' });
       prisma.edital.findUnique.mockResolvedValue({ id: 2, status: 'PUBLICADO', limite_planos_orientador: 2 });
       prisma.plano_trabalho.count.mockResolvedValue(0);
     });

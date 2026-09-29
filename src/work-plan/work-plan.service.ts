@@ -130,10 +130,12 @@ export class WorkPlanService {
           `Limite de ${edital.limite_planos_orientador} planos por orientador atingido neste edital.`,
         );
       }
+      const bolsa = await tx.bolsa.findUnique({ where: { id: createWorkPlanDto.bolsa_id } });
+      if (!bolsa) throw new NotFoundException('Bolsa não encontrada.');
       const createdWorkPlan = await tx.plano_trabalho.create({
         data: {
           pesquisa_id: createWorkPlanDto.pesquisa_id,
-          modalidade: createWorkPlanDto.modalidade,
+          modalidade: bolsa.descricao,
           status: createWorkPlanDto.status,
           direcionamento_plano: createWorkPlanDto.direcionamento_plano,
           usuario_id: user.userId,
@@ -520,6 +522,10 @@ export class WorkPlanService {
     }
 
     const workPlan = await this.findOne(id);
+    const bolsa = updateWorkPlanDto.bolsa_id !== undefined
+      ? await this.prisma.bolsa.findUnique({ where: { id: updateWorkPlanDto.bolsa_id } })
+      : null;
+    if (updateWorkPlanDto.bolsa_id !== undefined && !bolsa) throw new NotFoundException('Bolsa não encontrada.');
 
     if (updateWorkPlanDto.pesquisa_id) {
       await this.validateForeignKeys(
@@ -539,9 +545,7 @@ export class WorkPlanService {
           ...(updateWorkPlanDto.pesquisa_id !== undefined && {
             pesquisa_id: updateWorkPlanDto.pesquisa_id,
           }),
-          ...(updateWorkPlanDto.modalidade !== undefined && {
-            modalidade: updateWorkPlanDto.modalidade,
-          }),
+          ...(bolsa && { modalidade: bolsa.descricao }),
           ...(updateWorkPlanDto.status !== undefined && {
             status: updateWorkPlanDto.status,
           }),

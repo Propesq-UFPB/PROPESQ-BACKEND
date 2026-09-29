@@ -69,11 +69,6 @@ export class CreateWorkPlanDto {
   pesquisa_id!: number;
 
   @ApiProperty({ required: true })
-  @IsNotEmpty({ message: 'A modalidade é obrigatória' })
-  @IsString({ message: 'A modalidade deve ser um texto' })
-  modalidade!: string;
-
-  @ApiProperty({ required: true })
   @IsNotEmpty({ message: 'O status é obrigatório' })
   @IsString({ message: 'O status deve ser um texto' })
   status!: string;

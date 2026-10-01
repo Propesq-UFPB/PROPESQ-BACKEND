@@ -48,7 +48,6 @@ describe('ResearchModuleParametersService', () => {
       maxProjectDurationMonths: 12,
       scholarshipChangeCutoffDay: 20,
       emailScholarshipChanges: '',
-      emailInventionNotifications: '',
       allowPartialReportsIC: false,
       allowIndependentENICSummaries: false,
       enicSummariesPerReviewer: 5,
@@ -65,13 +64,16 @@ describe('ResearchModuleParametersService', () => {
       maxProjectDurationMonths: 18,
       scholarshipChangeCutoffDay: 15,
       emailScholarshipChanges: 'a@b.com',
-      emailInventionNotifications: 'c@d.com',
       allowPartialReportsIC: true,
       allowIndependentENICSummaries: true,
       enicSummariesPerReviewer: 3,
     };
 
     await service.update(dto);
+
+    const mutation = mockPrisma.parametro_modulo_pesquisa.upsert.mock.calls[0][0];
+    expect(mutation.create).not.toHaveProperty('email_invention_notifications');
+    expect(mutation.update).not.toHaveProperty('email_invention_notifications');
 
     expect(mockPrisma.parametro_modulo_pesquisa.upsert).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -16,9 +16,6 @@ export class ResearchModuleParametersResponseDto {
   @ApiProperty({ example: 'bolsas@ufpb.br' })
   emailScholarshipChanges!: string;
 
-  @ApiProperty({ example: 'inovacao@ufpb.br' })
-  emailInventionNotifications!: string;
-
   @ApiProperty({ example: false })
   allowPartialReportsIC!: boolean;
 

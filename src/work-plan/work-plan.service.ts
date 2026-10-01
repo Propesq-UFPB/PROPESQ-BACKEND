@@ -32,7 +32,6 @@ import { WorkPlanIndicacaoDetalheDto } from './dto/work-plan-indicacao-detalhe.d
 import { WorkPlanIndicacoesQueryDto } from './dto/work-plan-indicacoes-query.dto';
 import { WorkPlanListQueryDto } from './dto/work-plan-list-query.dto';
 import { WorkPlanAccessService } from './work-plan-access.service';
-import { connect } from 'node:http2';
 
 const indicacaoInclude = {
   corpo_plano_trabalho: true,
@@ -183,10 +182,11 @@ export class WorkPlanService {
       where.status_indicacao = query.status_indicacao;
     }
 
+    // Filtra apenas planos de trabalho do projeto de pesquisa do user
     if (user) {
-      const scope = await this.access.buildScopeWhere(user);
+      const scope = await this.access.buildScopeWhere(user, { readOnly: true });
       if (scope) {
-        Object.assign(where, scope);
+        where.AND = [scope];
       } else if (query.usuario_id !== undefined) {
         where.usuario_id = query.usuario_id;
       }
@@ -255,7 +255,9 @@ export class WorkPlanService {
   async findOne(id: number, user?: CurrentUserPayload) {
     if (user) {
       // COORDENADOR: membership obrigatória; GESTOR/ALUNO: sem force (ALUNO lê livre).
-      const options = this.access.isCoordenador(user) ? { forceMemberScope: true } : undefined;
+      const options = this.access.isCoordenador(user)
+        ? { forceMemberScope: true, readOnly: true }
+        : undefined;
       await this.access.assertCanAccessPlan(user, id, options);
     }
 
@@ -522,10 +524,12 @@ export class WorkPlanService {
     }
 
     const workPlan = await this.findOne(id);
-    const bolsa = updateWorkPlanDto.bolsa_id !== undefined
-      ? await this.prisma.bolsa.findUnique({ where: { id: updateWorkPlanDto.bolsa_id } })
-      : null;
-    if (updateWorkPlanDto.bolsa_id !== undefined && !bolsa) throw new NotFoundException('Bolsa não encontrada.');
+    const bolsa =
+      updateWorkPlanDto.bolsa_id !== undefined
+        ? await this.prisma.bolsa.findUnique({ where: { id: updateWorkPlanDto.bolsa_id } })
+        : null;
+    if (updateWorkPlanDto.bolsa_id !== undefined && !bolsa)
+      throw new NotFoundException('Bolsa não encontrada.');
 
     if (updateWorkPlanDto.pesquisa_id) {
       await this.validateForeignKeys(

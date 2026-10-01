@@ -24,7 +24,7 @@ export class ProjectMembershipScopeService {
    */
   async buildAllowedPesquisaIds(
     user: CurrentUserPayload,
-    options?: { forceMemberScope?: boolean; requireGestorMembership?: boolean },
+    options?: { forceMemberScope?: boolean; requireGestorMembership?: boolean; readOnly?: boolean },
   ): Promise<number[] | null> {
     if (this.isGestor(user) && !options?.requireGestorMembership) {
       return null;
@@ -40,7 +40,7 @@ export class ProjectMembershipScopeService {
         where: {
           usuario_id: user.userId,
           ativo: true,
-          funcao_projeto: {
+          funcao_projeto: options?.readOnly ? undefined : {
             nome: { in: [...FUNCOES_GESTAO_PLANO] },
           },
         },
@@ -57,7 +57,7 @@ export class ProjectMembershipScopeService {
       this.prisma.projeto_membro.findMany({
         where: {
           user_id: user.userId,
-          funcao: {
+          funcao: options?.readOnly ? undefined : {
             in: [TipoMembroProjeto.COORDENADOR, TipoMembroProjeto.COORDENADOR_ADJ],
           },
         },
@@ -75,6 +75,7 @@ export class ProjectMembershipScopeService {
 
     const legacyProjectIds = legacyMembers
       .filter(member => {
+        if (options?.readOnly) return true;
         const apenasOrientador =
           member.projeto_pesquisa.edital_rel?.apenas_orient_coordena_plano === true;
         if (apenasOrientador) {
@@ -86,6 +87,7 @@ export class ProjectMembershipScopeService {
 
     const researchProjectIds = researchMembers
       .filter(member => {
+        if (options?.readOnly) return true;
         const apenasOrientador =
           member.projeto_pesquisa.edital_rel?.apenas_orient_coordena_plano === true;
         return !apenasOrientador || member.funcao === TipoMembroProjeto.COORDENADOR;
@@ -103,7 +105,7 @@ export class ProjectMembershipScopeService {
   async assertCanAccessPesquisa(
     user: CurrentUserPayload,
     pesquisaId: number,
-    options?: { forceMemberScope?: boolean; requireGestorMembership?: boolean },
+    options?: { forceMemberScope?: boolean; requireGestorMembership?: boolean; readOnly?: boolean },
   ): Promise<void> {
     const projeto = await this.prisma.projeto_pesquisa.findUnique({
       where: { id: pesquisaId },
@@ -134,7 +136,7 @@ export class ProjectMembershipScopeService {
         projeto_pesquisa_id: pesquisaId,
         usuario_id: user.userId,
         ativo: true,
-        funcao_projeto: { nome: { in: allowedRoles } },
+        funcao_projeto: options?.readOnly ? undefined : { nome: { in: allowedRoles } },
       },
     });
 
@@ -149,7 +151,7 @@ export class ProjectMembershipScopeService {
       where: {
         projeto_id: pesquisaId,
         user_id: user.userId,
-        funcao: { in: allowedResearchRoles },
+        funcao: options?.readOnly ? undefined : { in: allowedResearchRoles },
       },
     });
 

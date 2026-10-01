@@ -74,7 +74,7 @@ export class WorkPlanController {
   @ApiOperation({
     summary: 'Obtém planos de trabalho com paginação e filtros',
     description:
-      'COORDENADOR vê apenas planos de projetos em que é Orientador/Coordenador/Coordenador Adjunto. GESTOR vê tudo (filtro usuario_id opcional).',
+      'COORDENADOR vê os planos dos projetos em que é membro, independentemente da função no projeto. GESTOR vê tudo (filtro usuario_id opcional).',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -215,7 +215,7 @@ export class WorkPlanController {
   @ApiOperation({
     summary: 'Obtém um plano de trabalho pelo ID',
     description:
-      'COORDENADOR só acessa planos de projetos em que é Orientador/Coordenador/Coordenador Adjunto. ' +
+      'COORDENADOR acessa os planos dos projetos em que é membro, independentemente da função no projeto. ' +
       'GESTOR acessa qualquer plano. ALUNO e demais roles autenticadas podem ler (fluxo discente).',
   })
   @ApiParam({

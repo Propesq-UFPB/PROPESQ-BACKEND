@@ -20,13 +20,10 @@ export class WorkPlanAccessService {
     return this.membership.isCoordenador(user);
   }
 
-  /* Monta um filtro para retornar ids de projetos de pesquisas do usuário.
-  Retorna apenas os ids de projetos pertencentes ao coordenador e que estejam
-  em um edital publicado (ativo)
-  */
+  /** Escopo de projetos por vínculo; readOnly permite qualquer função de membro. */
   async buildScopeWhere(
     user: CurrentUserPayload,
-    options?: { forceMemberScope?: boolean; requireGestorMembership?: boolean },
+    options?: { forceMemberScope?: boolean; requireGestorMembership?: boolean; readOnly?: boolean },
   ): Promise<Prisma.plano_trabalhoWhereInput | undefined> {
     const ids = await this.membership.buildAllowedPesquisaIds(user, options);
     if (ids === null) {
@@ -50,7 +47,7 @@ export class WorkPlanAccessService {
   async assertCanAccessPesquisa(
     user: CurrentUserPayload,
     pesquisaId: number,
-    options?: { forceMemberScope?: boolean; requireGestorMembership?: boolean },
+    options?: { forceMemberScope?: boolean; requireGestorMembership?: boolean; readOnly?: boolean },
   ): Promise<void> {
     return this.membership.assertCanAccessPesquisa(user, pesquisaId, options);
   }
@@ -63,7 +60,7 @@ export class WorkPlanAccessService {
   async assertCanAccessPlan(
     user: CurrentUserPayload,
     planoId: number,
-    options?: { forceMemberScope?: boolean; requireGestorMembership?: boolean },
+    options?: { forceMemberScope?: boolean; requireGestorMembership?: boolean; readOnly?: boolean },
   ): Promise<void> {
     const plan = await this.prisma.plano_trabalho.findUnique({
       where: { id: planoId },

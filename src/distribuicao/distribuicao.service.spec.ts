@@ -61,6 +61,12 @@ describe('DistribuicaoService', () => {
 
   afterEach(() => jest.clearAllMocks());
 
+  it('loads the packaged runtime and reuses the initialized solver', async () => {
+    const highs = await service['initHighsModule']();
+    expect(typeof highs.solve).toBe('function');
+    expect(await service['initHighsModule']()).toBe(highs);
+  });
+
   // --- calcScoreMatrix ---
   describe('calcScoreMatrix', () => {
     const area = (overrides: Partial<area_conhecimento> = {}): area_conhecimento => ({
@@ -137,13 +143,32 @@ describe('DistribuicaoService', () => {
   describe('buildLpProblem', () => {
     const params = { alpha: 10, beta: 10, Lmin: 1, Lmax: 2, Dj: 1 };
 
+    it('solves the generated allocation model with the real solver', async () => {
+      const highs = await service['initHighsModule']();
+      const lp = service.buildLpProblem([[null, 100], [200, null]], 2, 2, params);
+      const solution = highs.solve(lp, { output_flag: false });
+      expect(solution.Status).toBe('Optimal');
+      expect(solution.ObjectiveValue).toBe(300);
+      expect(solution.Columns.x_0_1.Primal).toBe(1);
+      expect(solution.Columns.x_1_0.Primal).toBe(1);
+    });
+
+    it('uses slack variables when no evaluator is eligible', async () => {
+      const highs = await service['initHighsModule']();
+      const lp = service.buildLpProblem([[null]], 1, 1, params);
+      const solution = highs.solve(lp, { output_flag: false });
+      expect(solution.Status).toBe('Optimal');
+      expect(solution.Columns.y_0.Primal).toBe(1);
+      expect(solution.Columns.z_0.Primal).toBe(1);
+    });
+
     it('contains objective function', () => {
       const matrix = [
         [360, 0],
         [0, 200],
       ];
       const lp = service.buildLpProblem(matrix, 2, 2, params);
-      expect(lp).toContain('max:');
+      expect(lp).toContain('Maximize\nobjective:');
     });
 
     it('declares binary variables', () => {
@@ -152,7 +177,7 @@ describe('DistribuicaoService', () => {
         [0, 200],
       ];
       const lp = service.buildLpProblem(matrix, 2, 2, params);
-      expect(lp).toContain('bin');
+      expect(lp).toContain('Binary\n');
     });
 
     it('includes y and z slack variables in objective', () => {

@@ -1,22 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import * as path from 'path';
+import loadHighs from 'highs';
 import { PrismaService } from '../prisma/prisma.service';
 import { area_conhecimento } from '@prisma/client';
 import { DistribuicaoParamsDto } from './dto/distribute.dto';
 
-const requireFunc = require;
-
-interface HighsModule {
-  solve: (
-    modelStr: string,
-    options?: Record<string, any>,
-  ) => {
-    Status: string;
-    Columns: Record<string, { Primal: number }>;
-    Rows: any[];
-    ObjectiveValue: number;
-  };
-}
+type HighsModule = Awaited<ReturnType<typeof loadHighs>>;
 
 interface LpParams {
   alpha: number;
@@ -38,9 +26,7 @@ export class DistribuicaoService {
     }
 
     try {
-      const higgsPath = path.join(__dirname, 'highs-js', 'highs.js');
-      const Module = requireFunc(higgsPath) as Promise<HighsModule>;
-      this.highs = await Module;
+      this.highs = await loadHighs();
 
       if (!this.highs) {
         throw new Error('Falha ao inicializar o módulo HiGHS');
@@ -117,7 +103,7 @@ export class DistribuicaoService {
           objTerms.push(`${benefitMatrix[i][j]} x_${i}_${j}`);
     for (let j = 0; j < n; j++) objTerms.push(`-${alpha} y_${j}`);
     for (let i = 0; i < m; i++) objTerms.push(`-${beta} z_${i}`);
-    const objFunction = `max: ${objTerms.join(' + ').replace(/\+ -/g, '- ')}`;
+    const objFunction = `objective: ${objTerms.join(' + ').replace(/\+ -/g, '- ')}`;
 
     // C1: sum_i(x_ij) + y_j = Dj  for each project j
     // y_j is the deficit (number of missing evaluators), penalized in objective
@@ -135,8 +121,8 @@ export class DistribuicaoService {
       const terms: string[] = [];
       for (let j = 0; j < n; j++) if (eligible(i, j)) terms.push(`x_${i}_${j}`);
       const sum = terms.join(' + ');
-      constraint_2.push(`${sum} + z_${i} >= ${Lmin}`);
-      constraint_2.push(`${sum} <= ${Lmax}`);
+      constraint_2.push(`${sum ? `${sum} + ` : ''}z_${i} >= ${Lmin}`);
+      if (sum) constraint_2.push(`${sum} <= ${Lmax}`);
     }
 
     // Binary variables — all eligible pairs
@@ -151,11 +137,15 @@ export class DistribuicaoService {
     ];
 
     return [
-      `${objFunction};`,
-      constraint_1.map(c => `${c};`).join('\n'),
-      constraint_2.map(c => `${c};`).join('\n'),
-      bounds.map(b => `${b};`).join('\n'),
-      `bin ${binVars.join(', ')};`,
+      'Maximize',
+      objFunction,
+      'Subject To',
+      ...constraint_1,
+      ...constraint_2,
+      'Bounds',
+      ...bounds,
+      ...(binVars.length ? ['Binary', binVars.join(' ')] : []),
+      'End',
     ].join('\n');
   }
 
@@ -262,8 +252,8 @@ export class DistribuicaoService {
       const lpProblem = this.buildLpProblem(benefitMatrix, n, m, lpParams);
 
       const solverOptions = {
-        presolve: 'on',
-        run_crossover: 'off',
+        presolve: 'on' as const,
+        run_crossover: 'off' as const,
         log_to_console: false,
         output_flag: false,
         time_limit: 30,

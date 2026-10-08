@@ -3,6 +3,7 @@ import { EvaluationCriteriaController } from './evaluation-criteria.controller';
 import { EvaluationCriteriaService } from './evaluation-criteria.service';
 import { CreateEvaluationCriterionDto } from './dto/create-evaluation-criterion.dto';
 import { UpdateEvaluationCriterionDto } from './dto/update-evaluation-criterion.dto';
+import { ROLES_KEY } from '../auth/decorators/roles.decorator';
 
 const mockService = {
   create: jest.fn(),
@@ -51,6 +52,12 @@ describe('EvaluationCriteriaController', () => {
   });
 
   describe('findAll', () => {
+    it('exige papel GESTOR', () => {
+      expect(Reflect.getMetadata(ROLES_KEY, EvaluationCriteriaController.prototype.findAll)).toEqual([
+        'GESTOR',
+      ]);
+    });
+
     it('deve chamar service.findAll com valores padrão', async () => {
       mockService.findAll.mockResolvedValue({ results: [], total: 0, limit: 10, offset: 0 });
 
@@ -69,6 +76,12 @@ describe('EvaluationCriteriaController', () => {
   });
 
   describe('getLookup', () => {
+    it('exige papel GESTOR', () => {
+      expect(Reflect.getMetadata(ROLES_KEY, EvaluationCriteriaController.prototype.getLookup)).toEqual([
+        'GESTOR',
+      ]);
+    });
+
     it('deve chamar service.getLookup', async () => {
       mockService.getLookup.mockResolvedValue([]);
 
@@ -79,6 +92,12 @@ describe('EvaluationCriteriaController', () => {
   });
 
   describe('findOne', () => {
+    it('exige papel GESTOR', () => {
+      expect(Reflect.getMetadata(ROLES_KEY, EvaluationCriteriaController.prototype.findOne)).toEqual([
+        'GESTOR',
+      ]);
+    });
+
     it('deve chamar service.findOne', async () => {
       mockService.findOne.mockResolvedValue({ id: 1 });
 

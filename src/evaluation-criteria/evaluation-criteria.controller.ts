@@ -73,6 +73,8 @@ export class EvaluationCriteriaController {
     type: Paginated(EvaluationCriterionResponseDto),
   })
   @Get()
+  @UseGuards(RolesGuard)
+  @Roles('GESTOR')
   findAll(
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
     @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
@@ -88,6 +90,8 @@ export class EvaluationCriteriaController {
     type: [EvaluationCriterionLookupDto],
   })
   @Get('lookup')
+  @UseGuards(RolesGuard)
+  @Roles('GESTOR')
   getLookup(): Promise<EvaluationCriterionLookupDto[]> {
     return this.evaluationCriteriaService.getLookup();
   }
@@ -104,6 +108,8 @@ export class EvaluationCriteriaController {
     description: 'Critério de avaliação não encontrado.',
   })
   @Get(':id')
+  @UseGuards(RolesGuard)
+  @Roles('GESTOR')
   findOne(@Param('id', ParseIntPipe) id: number): Promise<EvaluationCriterionResponseDto> {
     return this.evaluationCriteriaService.findOne(id);
   }

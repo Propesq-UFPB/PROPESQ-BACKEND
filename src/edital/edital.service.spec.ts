@@ -4,6 +4,7 @@ import { StatusEdital, TipoEdital, TitulacaoMin } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
+import { UpdateEditalDto } from './dto/update-edital.dto';
 import { CreateEditalDto } from './dto/create-edital.dto';
 import { CreateEditalCotaDistribuicaoDto } from './dto/create-cota-distribuicao.dto';
 import { EditalService } from './edital.service';
@@ -54,7 +55,6 @@ const validCreatePayload = {
   edital_para_voluntarios: false,
   apenas_colab_vol_cadastra_plano: false,
   prof_subst_cadastra_proj: false,
-  categoria_id: 1,
   edital_cota_distribuicao: [],
   periodo_submissao: {
     inicio: '2026-05-01',
@@ -115,6 +115,15 @@ describe('EditalService', () => {
         periodo_execucao_rel: periodoExecucao,
       },
     ]);
+  });
+
+  it('cadastra edital sem conectar categoria quando não informada', async () => {
+    prisma.edital.findUnique.mockResolvedValue(null);
+    prisma.edital.create.mockResolvedValue({ id: 1 });
+    await service.create({ ...validCreatePayload, categoria_id: null } as unknown as CreateEditalDto);
+    expect(prisma.edital.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.not.objectContaining({ categoria: expect.anything() }),
+    }));
   });
 
   it('salva o status escolhido ao cadastrar o edital', async () => {
@@ -316,7 +325,6 @@ describe('EditalService', () => {
       limite_solicitacoes_orientador: 2,
       limite_planos_orientador: 3,
       cota_bolsa_id: 5,
-      categoria_id: 7,
       avaliacao_vigente: true,
       apenas_orient_coordena_plano: false,
       tec_admin_coord_proj: true,
@@ -435,6 +443,11 @@ describe('EditalService', () => {
 });
 
 describe('CreateEditalDto', () => {
+  it.each([undefined, null])('aceita categoria ausente: %s', async categoria_id => {
+    const dto = plainToInstance(CreateEditalDto, { ...validCreatePayload, categoria_id });
+    await expect(validate(dto)).resolves.toEqual([]);
+  });
+
   it.each([StatusEdital.RASCUNHO, StatusEdital.PUBLICADO])(
     'aceita o status inicial %s',
     async status => {
@@ -458,4 +471,27 @@ describe('CreateEditalDto', () => {
     const statusError = errors.find(error => error.property === 'status');
     expect(statusError?.constraints?.isIn).toBeDefined();
   });
+});
+
+
+describe('Limites de solicitações do edital', () => {
+  for (const field of ['limite_solicitacoes_orientador', 'limite_planos_orientador']) {
+    it.each([-1, 1.5])(`rejeita ${field} inválido: %s no cadastro e alteração`, async value => {
+      const createErrors = await validate(plainToInstance(CreateEditalDto, {
+        ...validCreatePayload, [field]: value,
+      }));
+      const updateErrors = await validate(plainToInstance(UpdateEditalDto, { [field]: value }));
+      expect(createErrors.some(error => error.property === field)).toBe(true);
+      expect(updateErrors.some(error => error.property === field)).toBe(true);
+    });
+
+    it.each([0, 3])(`aceita ${field}: %s no cadastro e alteração`, async value => {
+      const createErrors = await validate(plainToInstance(CreateEditalDto, {
+        ...validCreatePayload, [field]: value,
+      }));
+      const updateErrors = await validate(plainToInstance(UpdateEditalDto, { [field]: value }));
+      expect(createErrors.some(error => error.property === field)).toBe(false);
+      expect(updateErrors).toEqual([]);
+    });
+  }
 });

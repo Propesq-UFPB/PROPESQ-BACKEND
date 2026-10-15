@@ -20,14 +20,10 @@ export class WorkPlanAccessService {
     return this.membership.isCoordenador(user);
   }
 
-  /**
-   * Where clause scoping planos to the caller's project membership.
-   * GESTOR (e roles sem escopo de coordenação) → undefined (sem filtro).
-   * COORDENADOR → filtro por membro Orientador|Coordenador|Coordenador Adjunto.
-   */
+  /** Escopo de projetos por vínculo; readOnly permite qualquer função de membro. */
   async buildScopeWhere(
     user: CurrentUserPayload,
-    options?: { forceMemberScope?: boolean },
+    options?: { forceMemberScope?: boolean; requireGestorMembership?: boolean; readOnly?: boolean },
   ): Promise<Prisma.plano_trabalhoWhereInput | undefined> {
     const ids = await this.membership.buildAllowedPesquisaIds(user, options);
     if (ids === null) {
@@ -51,7 +47,7 @@ export class WorkPlanAccessService {
   async assertCanAccessPesquisa(
     user: CurrentUserPayload,
     pesquisaId: number,
-    options?: { forceMemberScope?: boolean },
+    options?: { forceMemberScope?: boolean; requireGestorMembership?: boolean; readOnly?: boolean },
   ): Promise<void> {
     return this.membership.assertCanAccessPesquisa(user, pesquisaId, options);
   }
@@ -64,7 +60,7 @@ export class WorkPlanAccessService {
   async assertCanAccessPlan(
     user: CurrentUserPayload,
     planoId: number,
-    options?: { forceMemberScope?: boolean },
+    options?: { forceMemberScope?: boolean; requireGestorMembership?: boolean; readOnly?: boolean },
   ): Promise<void> {
     const plan = await this.prisma.plano_trabalho.findUnique({
       where: { id: planoId },

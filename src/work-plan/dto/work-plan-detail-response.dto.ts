@@ -76,8 +76,8 @@ export class WorkPlanDetailResponseDto {
   @ApiProperty()
   status!: string;
 
-  @ApiProperty()
-  tipo_bolsa!: string;
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  bolsa_id!: number | null;
 
   @ApiPropertyOptional({
     nullable: true,

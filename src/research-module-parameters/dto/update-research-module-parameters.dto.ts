@@ -50,14 +50,6 @@ export class UpdateResearchModuleParametersDto {
   })
   emailScholarshipChanges!: string;
 
-  @ApiProperty({ example: 'inovacao@ufpb.br' })
-  @IsString()
-  @MaxLength(255)
-  @Matches(OPTIONAL_EMAIL, {
-    message: 'O e-mail de notificações de invenção é inválido.',
-  })
-  emailInventionNotifications!: string;
-
   @ApiProperty({ example: false })
   @IsBoolean()
   allowPartialReportsIC!: boolean;

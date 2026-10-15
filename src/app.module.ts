@@ -27,6 +27,7 @@ import { DiscentesModule } from './discentes/discentes.module';
 import { ProjectMembershipModule } from './common/project-membership.module';
 import { KnowledgeAreaModule } from './knowledge-area/knowledge-area.module';
 import { DocentesModule } from './docentes/docentes.module';
+import { AvaliadoresModule } from './avaliadores/avaliadores.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { DocentesModule } from './docentes/docentes.module';
     ResearchModuleParametersModule,
     KnowledgeAreaModule,
     DocentesModule,
+    AvaliadoresModule,
   ],
   providers: [
     {

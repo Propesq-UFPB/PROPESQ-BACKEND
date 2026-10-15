@@ -19,6 +19,7 @@ import {
   AtribuicaoPreviewDto,
   AtribuicaoRespostaDto,
   CandidatoDto,
+  MinhaAtribuicaoDto,
   DistribuicaoConfirmResultDto,
   DistribuicaoPanoramaDto,
   DistribuicaoPreviewDto,
@@ -695,6 +696,47 @@ export class DistribuicaoService {
         respondido_em: a.respondido_em,
       })),
     };
+  }
+
+  /** Convites de avaliação recebidos pelo usuário, do mais recente ao mais antigo. */
+  async minhasAtribuicoes(usuarioId: number): Promise<MinhaAtribuicaoDto[]> {
+    const rows = await this.prisma.projeto_avaliacao.findMany({
+      where: { avaliador_id: usuarioId },
+      select: {
+        id: true,
+        status: true,
+        motivo_recusa: true,
+        criado_em: true,
+        respondido_em: true,
+        ...temNotasSelect,
+        projeto_pesquisa: {
+          select: {
+            id: true,
+            codigo: true,
+            titulo: true,
+            area_conhecimento: true,
+            edital_rel: { select: { id: true, codigo: true, descricao: true, ano: true } },
+          },
+        },
+      },
+      orderBy: { criado_em: 'desc' },
+    });
+
+    return rows.map(({ projeto_pesquisa: p, ...a }) => ({
+      id: a.id,
+      status: a.status,
+      motivo_recusa: a.motivo_recusa,
+      criado_em: a.criado_em,
+      respondido_em: a.respondido_em,
+      tem_notas: temNotas(a),
+      projeto: {
+        id: p.id,
+        codigo: p.codigo,
+        titulo: p.titulo,
+        area_conhecimento: p.area_conhecimento,
+      },
+      edital: p.edital_rel,
+    }));
   }
 
   /** Resposta do próprio avaliador ao convite de avaliação. */

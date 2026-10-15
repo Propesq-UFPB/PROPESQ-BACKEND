@@ -1,9 +1,18 @@
-import { Body, Controller, HttpCode, HttpStatus, Param, ParseIntPipe, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseIntPipe,
+  Post,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { DistribuicaoService } from './distribuicao.service';
-import { AtribuicaoRespostaDto } from './dto/distribuicao-response.dto';
+import { AtribuicaoRespostaDto, MinhaAtribuicaoDto } from './dto/distribuicao-response.dto';
 import { RecusaAtribuicaoDto } from './dto/recusa-atribuicao.dto';
 
 @ApiBearerAuth('bearer')
@@ -11,6 +20,13 @@ import { RecusaAtribuicaoDto } from './dto/recusa-atribuicao.dto';
 @Controller('distribuicao/atribuicoes')
 export class AtribuicaoController {
   constructor(private readonly distribuicaoService: DistribuicaoService) {}
+
+  @Get('minhas')
+  @ApiOperation({ summary: 'Lista os convites de avaliação recebidos pelo usuário autenticado' })
+  @ApiOkResponse({ type: [MinhaAtribuicaoDto] })
+  minhas(@CurrentUser() user: CurrentUserPayload): Promise<MinhaAtribuicaoDto[]> {
+    return this.distribuicaoService.minhasAtribuicoes(user.userId);
+  }
 
   @Post(':id/aceite')
   @HttpCode(HttpStatus.OK)

@@ -684,6 +684,47 @@ describe('DistribuicaoService', () => {
     });
   });
 
+  // --- minhasAtribuicoes ---
+  describe('minhasAtribuicoes', () => {
+    it('lists the invitations of the user with projeto and edital', async () => {
+      const criado = new Date('2026-10-01');
+      prismaMock.projeto_avaliacao.findMany.mockResolvedValue([
+        {
+          ...avaliacaoRow(50, 10, 100, 1, ACEITO_COM_NOTAS),
+          motivo_recusa: null,
+          criado_em: criado,
+          respondido_em: criado,
+          projeto_pesquisa: {
+            id: 10,
+            codigo: 'P-10',
+            titulo: 'Projeto',
+            area_conhecimento: area(),
+            edital_rel: { id: 1, codigo: 'ED-1', descricao: 'Edital', ano: 2026 },
+          },
+        },
+      ]);
+
+      const result = await service.minhasAtribuicoes(100);
+
+      const [[args]] = prismaMock.projeto_avaliacao.findMany.mock.calls as [
+        [{ where: { avaliador_id: number } }],
+      ];
+      expect(args.where).toEqual({ avaliador_id: 100 });
+      expect(result).toEqual([
+        {
+          id: 50,
+          status: StatusAtribuicao.ACEITO,
+          motivo_recusa: null,
+          criado_em: criado,
+          respondido_em: criado,
+          tem_notas: true,
+          projeto: { id: 10, codigo: 'P-10', titulo: 'Projeto', area_conhecimento: area() },
+          edital: { id: 1, codigo: 'ED-1', descricao: 'Edital', ano: 2026 },
+        },
+      ]);
+    });
+  });
+
   // --- responder ---
   describe('responder', () => {
     it('lets the invited avaliador accept a pending invitation', async () => {

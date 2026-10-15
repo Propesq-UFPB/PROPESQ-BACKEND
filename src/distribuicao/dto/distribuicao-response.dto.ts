@@ -153,6 +153,60 @@ export class DistribuicaoPanoramaDto {
   atribuicoes: AtribuicaoPanoramaDto[];
 }
 
+export class MinhaAtribuicaoProjetoDto {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty()
+  codigo: string;
+
+  @ApiProperty()
+  titulo: string;
+
+  @ApiProperty({ type: AreaConhecimentoDto, nullable: true })
+  area_conhecimento: AreaConhecimentoDto | null;
+}
+
+export class MinhaAtribuicaoEditalDto {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty({ type: String, nullable: true })
+  codigo: string | null;
+
+  @ApiProperty()
+  descricao: string;
+
+  @ApiProperty()
+  ano: number;
+}
+
+export class MinhaAtribuicaoDto {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty({ enum: StatusAtribuicao })
+  status: StatusAtribuicao;
+
+  @ApiProperty({ type: String, nullable: true })
+  motivo_recusa: string | null;
+
+  @ApiProperty({ description: 'Possui notas lançadas (avaliação realizada)' })
+  tem_notas: boolean;
+
+  @ApiProperty({ description: 'Data do envio do convite' })
+  criado_em: Date;
+
+  @ApiProperty({ type: Date, nullable: true })
+  respondido_em: Date | null;
+
+  @ApiProperty({ type: MinhaAtribuicaoProjetoDto })
+  projeto: MinhaAtribuicaoProjetoDto;
+
+  @ApiProperty({ type: MinhaAtribuicaoEditalDto, nullable: true })
+  edital: MinhaAtribuicaoEditalDto | null;
+}
+
 export class AtribuicaoRespostaDto {
   @ApiProperty()
   id: number;

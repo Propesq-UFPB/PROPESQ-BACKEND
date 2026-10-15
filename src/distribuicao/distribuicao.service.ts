@@ -19,7 +19,8 @@ import {
   AtribuicaoPreviewDto,
   AtribuicaoRespostaDto,
   CandidatoDto,
-  MinhaAtribuicaoDto,
+  AtribuicaoAvaliadorDto,
+  ProjetoAtribuicaoDto,
   DistribuicaoConfirmResultDto,
   DistribuicaoPanoramaDto,
   DistribuicaoPreviewDto,
@@ -698,10 +699,16 @@ export class DistribuicaoService {
     };
   }
 
-  /** Convites de avaliação recebidos pelo usuário, do mais recente ao mais antigo. */
-  async minhasAtribuicoes(usuarioId: number): Promise<MinhaAtribuicaoDto[]> {
+  /** Convites de avaliação recebidos por um usuário, do mais recente ao mais antigo. */
+  async atribuicoesDoAvaliador(
+    usuarioId: number,
+    editalId?: number,
+  ): Promise<AtribuicaoAvaliadorDto[]> {
     const rows = await this.prisma.projeto_avaliacao.findMany({
-      where: { avaliador_id: usuarioId },
+      where: {
+        avaliador_id: usuarioId,
+        ...(editalId !== undefined && { projeto_pesquisa: { edital_id: editalId } }),
+      },
       select: {
         id: true,
         status: true,
@@ -736,6 +743,63 @@ export class DistribuicaoService {
         area_conhecimento: p.area_conhecimento,
       },
       edital: p.edital_rel,
+    }));
+  }
+
+  /** Convites de um consultor (visão do gestor), opcionalmente restritos a um edital. */
+  async atribuicoesDoConsultor(
+    consultorId: number,
+    editalId?: number,
+  ): Promise<AtribuicaoAvaliadorDto[]> {
+    const consultor = await this.prisma.consultor.findUnique({
+      where: { id: consultorId },
+      select: { usuario_id: true },
+    });
+    if (!consultor) {
+      throw new NotFoundException(`Consultor Id ${consultorId} não encontrado`);
+    }
+
+    // Pelo usuário, para incluir também atribuições anteriores ao cadastro de consultores
+    return this.atribuicoesDoAvaliador(consultor.usuario_id, editalId);
+  }
+
+  /** Convites de avaliação de um projeto, na ordem de envio. */
+  async atribuicoesDoProjeto(projetoId: number): Promise<ProjetoAtribuicaoDto[]> {
+    const projeto = await this.prisma.projeto_pesquisa.findUnique({
+      where: { id: projetoId },
+      select: { id: true },
+    });
+    if (!projeto) {
+      throw new NotFoundException(`Projeto Id ${projetoId} não encontrado`);
+    }
+
+    const rows = await this.prisma.projeto_avaliacao.findMany({
+      where: { projeto_id: projetoId },
+      select: {
+        id: true,
+        consultor_id: true,
+        avaliador_id: true,
+        avaliador: { select: { nome: true, email: true } },
+        status: true,
+        motivo_recusa: true,
+        criado_em: true,
+        respondido_em: true,
+        ...temNotasSelect,
+      },
+      orderBy: { criado_em: 'asc' },
+    });
+
+    return rows.map(a => ({
+      id: a.id,
+      consultor_id: a.consultor_id,
+      avaliador_id: a.avaliador_id,
+      avaliador_nome: a.avaliador.nome,
+      avaliador_email: a.avaliador.email,
+      status: a.status,
+      motivo_recusa: a.motivo_recusa,
+      tem_notas: temNotas(a),
+      criado_em: a.criado_em,
+      respondido_em: a.respondido_em,
     }));
   }
 

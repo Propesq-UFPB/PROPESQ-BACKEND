@@ -153,7 +153,7 @@ export class DistribuicaoPanoramaDto {
   atribuicoes: AtribuicaoPanoramaDto[];
 }
 
-export class MinhaAtribuicaoProjetoDto {
+export class AtribuicaoAvaliadorProjetoDto {
   @ApiProperty()
   id: number;
 
@@ -167,7 +167,7 @@ export class MinhaAtribuicaoProjetoDto {
   area_conhecimento: AreaConhecimentoDto | null;
 }
 
-export class MinhaAtribuicaoEditalDto {
+export class AtribuicaoAvaliadorEditalDto {
   @ApiProperty()
   id: number;
 
@@ -181,7 +181,7 @@ export class MinhaAtribuicaoEditalDto {
   ano: number;
 }
 
-export class MinhaAtribuicaoDto {
+export class AtribuicaoAvaliadorDto {
   @ApiProperty()
   id: number;
 
@@ -200,11 +200,43 @@ export class MinhaAtribuicaoDto {
   @ApiProperty({ type: Date, nullable: true })
   respondido_em: Date | null;
 
-  @ApiProperty({ type: MinhaAtribuicaoProjetoDto })
-  projeto: MinhaAtribuicaoProjetoDto;
+  @ApiProperty({ type: AtribuicaoAvaliadorProjetoDto })
+  projeto: AtribuicaoAvaliadorProjetoDto;
 
-  @ApiProperty({ type: MinhaAtribuicaoEditalDto, nullable: true })
-  edital: MinhaAtribuicaoEditalDto | null;
+  @ApiProperty({ type: AtribuicaoAvaliadorEditalDto, nullable: true })
+  edital: AtribuicaoAvaliadorEditalDto | null;
+}
+
+export class ProjetoAtribuicaoDto {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty({ type: Number, nullable: true })
+  consultor_id: number | null;
+
+  @ApiProperty()
+  avaliador_id: number;
+
+  @ApiProperty()
+  avaliador_nome: string;
+
+  @ApiProperty()
+  avaliador_email: string;
+
+  @ApiProperty({ enum: StatusAtribuicao })
+  status: StatusAtribuicao;
+
+  @ApiProperty({ type: String, nullable: true })
+  motivo_recusa: string | null;
+
+  @ApiProperty()
+  tem_notas: boolean;
+
+  @ApiProperty({ description: 'Data do envio do convite' })
+  criado_em: Date;
+
+  @ApiProperty({ type: Date, nullable: true })
+  respondido_em: Date | null;
 }
 
 export class AtribuicaoRespostaDto {

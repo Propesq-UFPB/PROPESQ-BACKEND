@@ -7,19 +7,29 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { DistribuicaoService } from './distribuicao.service';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { DistribuicaoParamsDto } from './dto/distribute.dto';
 import { ConfirmDistribuicaoDto } from './dto/confirm-distribuicao.dto';
 import {
+  AtribuicaoAvaliadorDto,
   CandidatoDto,
   DistribuicaoConfirmResultDto,
   DistribuicaoPanoramaDto,
   DistribuicaoPreviewDto,
+  ProjetoAtribuicaoDto,
 } from './dto/distribuicao-response.dto';
 
 @ApiBearerAuth('bearer')
@@ -27,6 +37,32 @@ import {
 @Controller('distribuicao')
 export class DistribuicaoController {
   constructor(private readonly distribuicaoService: DistribuicaoService) {}
+
+  @Get('projetos/:projetoId/atribuicoes')
+  @UseGuards(RolesGuard)
+  @Roles('GESTOR')
+  @ApiOperation({ summary: 'Lista os convites de avaliação de um projeto' })
+  @ApiParam({ name: 'projetoId', type: Number })
+  @ApiOkResponse({ type: [ProjetoAtribuicaoDto] })
+  atribuicoesDoProjeto(
+    @Param('projetoId', ParseIntPipe) projetoId: number,
+  ): Promise<ProjetoAtribuicaoDto[]> {
+    return this.distribuicaoService.atribuicoesDoProjeto(projetoId);
+  }
+
+  @Get('consultores/:consultorId/atribuicoes')
+  @UseGuards(RolesGuard)
+  @Roles('GESTOR')
+  @ApiOperation({ summary: 'Lista os convites de avaliação de um consultor' })
+  @ApiParam({ name: 'consultorId', type: Number })
+  @ApiQuery({ name: 'edital_id', required: false, type: Number })
+  @ApiOkResponse({ type: [AtribuicaoAvaliadorDto] })
+  atribuicoesDoConsultor(
+    @Param('consultorId', ParseIntPipe) consultorId: number,
+    @Query('edital_id', new ParseIntPipe({ optional: true })) editalId?: number,
+  ): Promise<AtribuicaoAvaliadorDto[]> {
+    return this.distribuicaoService.atribuicoesDoConsultor(consultorId, editalId);
+  }
 
   @Get(':editalId')
   @UseGuards(RolesGuard)

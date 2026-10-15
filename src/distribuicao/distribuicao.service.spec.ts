@@ -22,9 +22,10 @@ const txMock = {
 
 const prismaMock = {
   edital: { findUnique: jest.fn() },
-  projeto_pesquisa: { findMany: jest.fn() },
+  projeto_pesquisa: { findMany: jest.fn(), findUnique: jest.fn() },
   edital_consultor: { findMany: jest.fn() },
   projeto_avaliacao: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+  consultor: { findUnique: jest.fn() },
   $transaction: jest.fn(),
 };
 
@@ -685,7 +686,7 @@ describe('DistribuicaoService', () => {
   });
 
   // --- minhasAtribuicoes ---
-  describe('minhasAtribuicoes', () => {
+  describe('atribuicoesDoAvaliador', () => {
     it('lists the invitations of the user with projeto and edital', async () => {
       const criado = new Date('2026-10-01');
       prismaMock.projeto_avaliacao.findMany.mockResolvedValue([
@@ -704,7 +705,7 @@ describe('DistribuicaoService', () => {
         },
       ]);
 
-      const result = await service.minhasAtribuicoes(100);
+      const result = await service.atribuicoesDoAvaliador(100);
 
       const [[args]] = prismaMock.projeto_avaliacao.findMany.mock.calls as [
         [{ where: { avaliador_id: number } }],
@@ -722,6 +723,59 @@ describe('DistribuicaoService', () => {
           edital: { id: 1, codigo: 'ED-1', descricao: 'Edital', ano: 2026 },
         },
       ]);
+    });
+  });
+
+  // --- visões por consultor e por projeto ---
+  describe('atribuicoesDoConsultor', () => {
+    it('looks up the consultor user and filters by edital', async () => {
+      prismaMock.consultor.findUnique.mockResolvedValue({ usuario_id: 100 });
+
+      await service.atribuicoesDoConsultor(1, 7);
+
+      const [[args]] = prismaMock.projeto_avaliacao.findMany.mock.calls as [[{ where: object }]];
+      expect(args.where).toEqual({ avaliador_id: 100, projeto_pesquisa: { edital_id: 7 } });
+    });
+
+    it('throws NotFound for unknown consultor', async () => {
+      prismaMock.consultor.findUnique.mockResolvedValue(null);
+      await expect(service.atribuicoesDoConsultor(1)).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('atribuicoesDoProjeto', () => {
+    it('maps the invitations of the projeto', async () => {
+      const criado = new Date('2026-10-01');
+      prismaMock.projeto_pesquisa.findUnique.mockResolvedValue({ id: 10 });
+      prismaMock.projeto_avaliacao.findMany.mockResolvedValue([
+        {
+          ...avaliacaoRow(50, 10, 100, 1, RECUSADO),
+          avaliador: { nome: 'Consultor 1', email: 'c1@x.com' },
+          motivo_recusa: 'Sem tempo',
+          criado_em: criado,
+          respondido_em: criado,
+        },
+      ]);
+
+      expect(await service.atribuicoesDoProjeto(10)).toEqual([
+        {
+          id: 50,
+          consultor_id: 1,
+          avaliador_id: 100,
+          avaliador_nome: 'Consultor 1',
+          avaliador_email: 'c1@x.com',
+          status: StatusAtribuicao.RECUSADO,
+          motivo_recusa: 'Sem tempo',
+          tem_notas: false,
+          criado_em: criado,
+          respondido_em: criado,
+        },
+      ]);
+    });
+
+    it('throws NotFound for unknown projeto', async () => {
+      prismaMock.projeto_pesquisa.findUnique.mockResolvedValue(null);
+      await expect(service.atribuicoesDoProjeto(10)).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 

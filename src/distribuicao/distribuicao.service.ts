@@ -89,12 +89,23 @@ export class DistribuicaoService {
     return this.highs;
   }
 
+  /**
+   * area_conhecimento é hierárquica: níveis mais específicos ficam vazios em registros de
+   * nível superior. Um nível só pontua se não for vazio e se os níveis acima também coincidirem.
+   */
   protected scoreArea(pa: area_conhecimento, ca: area_conhecimento): number {
+    const niveis: Array<[keyof area_conhecimento, number]> = [
+      ['grande_area', 10],
+      ['area', 50],
+      ['sub_area', 100],
+      // ['especialidade', 200],
+    ];
+
     let score = 0;
-    if (pa.grande_area === ca.grande_area) score += 10;
-    if (pa.area === ca.area) score += 50;
-    if (pa.sub_area === ca.sub_area) score += 100;
-    // if (pa.especialidade === ca.especialidade) score += 200;
+    for (const [campo, pontos] of niveis) {
+      if (!pa[campo] || pa[campo] !== ca[campo]) break;
+      score += pontos;
+    }
     return score;
   }
 

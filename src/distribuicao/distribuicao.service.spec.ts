@@ -186,6 +186,23 @@ describe('DistribuicaoService', () => {
       expect(matrix.map(row => row[0])).toEqual([80, 160, 30]);
     });
 
+    it('does not score empty levels of hierarchical areas as matches', () => {
+      const grandeArea = area({ area: '', sub_area: '', especialidade: '' });
+      const matrix = service.calcScoreMatrix(
+        [projeto({ area_conhecimento: grandeArea }), projeto({ area_conhecimento: area() })],
+        [consultor({ area_principal: grandeArea })],
+      );
+      expect(matrix[0]).toEqual([10, 10]);
+    });
+
+    it('only scores a level when the levels above it also match', () => {
+      const matrix = service.calcScoreMatrix(
+        [projeto()],
+        [consultor({ area_principal: area({ grande_area: 'other' }) })],
+      );
+      expect(matrix[0][0]).toBe(0);
+    });
+
     it('returns 0 when projeto has no area_conhecimento', () => {
       const matrix = service.calcScoreMatrix([projeto({ area_conhecimento: null })], [consultor()]);
       expect(matrix[0][0]).toBe(0);

@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import highsLoader from 'highs';
-import { area_conhecimento, SituacaoProjeto } from '@prisma/client';
+import { area_conhecimento, SituacaoProjeto, StatusAtribuicao } from '@prisma/client';
 import {
   ConsultorDistribuicao,
   DistribuicaoService,
@@ -24,7 +24,7 @@ const prismaMock = {
   edital: { findUnique: jest.fn() },
   projeto_pesquisa: { findMany: jest.fn() },
   edital_consultor: { findMany: jest.fn() },
-  projeto_avaliacao: { findMany: jest.fn() },
+  projeto_avaliacao: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
   $transaction: jest.fn(),
 };
 
@@ -105,15 +105,23 @@ const avaliacaoRow = (
   projeto_id: number,
   avaliador_id: number,
   consultor_id: number | null,
-  comNotas = false,
+  {
+    status = StatusAtribuicao.PENDENTE,
+    comNotas = false,
+  }: { status?: StatusAtribuicao; comNotas?: boolean } = {},
 ) => ({
   id,
   projeto_id,
   avaliador_id,
   consultor_id,
+  status,
   _count: { notas: comNotas ? 1 : 0 },
   planos_avaliacao: [],
 });
+
+const sugestao = { existente: false, atribuicao_id: null, status: null, tem_notas: false };
+const ACEITO_COM_NOTAS = { status: StatusAtribuicao.ACEITO, comNotas: true };
+const RECUSADO = { status: StatusAtribuicao.RECUSADO };
 
 describe('DistribuicaoService', () => {
   let service: TestableDistribuicaoService;
@@ -370,8 +378,8 @@ describe('DistribuicaoService', () => {
       expect(result.status).toBe('Optimal');
       expect(result.atribuicoes).toEqual(
         expect.arrayContaining([
-          { projeto_id: 10, consultor_id: 2, avaliador_id: 200, score: 160, bloqueada: false },
-          { projeto_id: 20, consultor_id: 1, avaliador_id: 100, score: 160, bloqueada: false },
+          { projeto_id: 10, consultor_id: 2, avaliador_id: 200, score: 160, ...sugestao },
+          { projeto_id: 20, consultor_id: 1, avaliador_id: 100, score: 160, ...sugestao },
         ]),
       );
       expect(result.atribuicoes).toHaveLength(2);
@@ -404,21 +412,61 @@ describe('DistribuicaoService', () => {
       expect(result.pendencias).toHaveLength(1);
     });
 
-    it('keeps assignments with notas and only fills the remaining slots', async () => {
+    it('keeps pending and accepted invitations and only fills the open slots', async () => {
+      prismaMock.projeto_pesquisa.findMany.mockResolvedValue([projetoRow(10, area())]);
+      prismaMock.edital_consultor.findMany.mockResolvedValue([
+        consultorRow(1, 100, area()),
+        consultorRow(2, 200, area()),
+        consultorRow(3, 300, area({ sub_area: 'other' })),
+      ]);
+      prismaMock.projeto_avaliacao.findMany.mockResolvedValue([
+        avaliacaoRow(50, 10, 100, 1, ACEITO_COM_NOTAS),
+        avaliacaoRow(51, 10, 200, 2),
+      ]);
+
+      const result = await service.preview(1, { ...params, avaliadoresPorProjeto: 3 });
+
+      expect(result.atribuicoes).toEqual([
+        {
+          projeto_id: 10,
+          consultor_id: 1,
+          avaliador_id: 100,
+          score: 160,
+          existente: true,
+          atribuicao_id: 50,
+          status: StatusAtribuicao.ACEITO,
+          tem_notas: true,
+        },
+        {
+          projeto_id: 10,
+          consultor_id: 2,
+          avaliador_id: 200,
+          score: 160,
+          existente: true,
+          atribuicao_id: 51,
+          status: StatusAtribuicao.PENDENTE,
+          tem_notas: false,
+        },
+        { projeto_id: 10, consultor_id: 3, avaliador_id: 300, score: 60, ...sugestao },
+      ]);
+      expect(result.pendencias).toEqual([]);
+    });
+
+    it('frees the slot of a declined invitation without suggesting the same consultor', async () => {
       prismaMock.projeto_pesquisa.findMany.mockResolvedValue([projetoRow(10, area())]);
       prismaMock.edital_consultor.findMany.mockResolvedValue([
         consultorRow(1, 100, area()),
         consultorRow(2, 200, area({ sub_area: 'other' })),
       ]);
-      prismaMock.projeto_avaliacao.findMany.mockResolvedValue([avaliacaoRow(50, 10, 100, 1, true)]);
+      prismaMock.projeto_avaliacao.findMany.mockResolvedValue([
+        avaliacaoRow(50, 10, 100, 1, RECUSADO),
+      ]);
 
-      const result = await service.preview(1, { ...params, avaliadoresPorProjeto: 2 });
+      const result = await service.preview(1, params);
 
       expect(result.atribuicoes).toEqual([
-        { projeto_id: 10, consultor_id: 1, avaliador_id: 100, score: 160, bloqueada: true },
-        { projeto_id: 10, consultor_id: 2, avaliador_id: 200, score: 60, bloqueada: false },
+        { projeto_id: 10, consultor_id: 2, avaliador_id: 200, score: 60, ...sugestao },
       ]);
-      expect(result.pendencias).toEqual([]);
     });
 
     it('does not call the solver when there are no consultores', async () => {
@@ -477,11 +525,23 @@ describe('DistribuicaoService', () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it('syncs atribuicoes: creates new, removes dropped, keeps unchanged and locked ones', async () => {
+    it('rejects assigning a consultor that declined the projeto', async () => {
+      prismaMock.projeto_avaliacao.findMany.mockResolvedValue([
+        avaliacaoRow(50, 10, 100, 1, RECUSADO),
+      ]);
+
+      const promise = service.confirm(1, { atribuicoes: [{ projeto_id: 10, consultor_id: 1 }] });
+      await expect(promise).rejects.toMatchObject({
+        response: { message: [expect.stringContaining('recusou o convite')] },
+      });
+    });
+
+    it('syncs atribuicoes: creates new, removes dropped, keeps unchanged, graded and declined ones', async () => {
       prismaMock.projeto_avaliacao.findMany.mockResolvedValue([
         avaliacaoRow(50, 10, 100, 1), // mantida (enviada de novo)
         avaliacaoRow(51, 10, 200, 2), // removida (não enviada)
-        avaliacaoRow(52, 20, 200, null, true), // bloqueada (tem notas), antiga sem consultor_id
+        avaliacaoRow(52, 20, 200, null, ACEITO_COM_NOTAS), // tem notas, antiga sem consultor_id
+        avaliacaoRow(53, 10, 300, 3, RECUSADO), // histórico, nunca removida
       ]);
       txMock.plano_trabalho.findMany.mockResolvedValue([
         { id: 7, pesquisa_id: 20 },
@@ -521,8 +581,10 @@ describe('DistribuicaoService', () => {
       );
     });
 
-    it('never removes locked atribuicoes even when the list is empty', async () => {
-      prismaMock.projeto_avaliacao.findMany.mockResolvedValue([avaliacaoRow(52, 20, 200, 2, true)]);
+    it('never removes graded atribuicoes even when the list is empty', async () => {
+      prismaMock.projeto_avaliacao.findMany.mockResolvedValue([
+        avaliacaoRow(52, 20, 200, 2, ACEITO_COM_NOTAS),
+      ]);
 
       const result = await service.confirm(1, { atribuicoes: [] });
 
@@ -547,10 +609,12 @@ describe('DistribuicaoService', () => {
         consultorRow(2, 200, area()),
         consultorRow(3, 300, area()),
         consultorRow(4, 400, area()), // membro do projeto 10
+        consultorRow(5, 500, area()), // recusou o projeto 10
       ]);
       prismaMock.projeto_avaliacao.findMany.mockResolvedValue([
         avaliacaoRow(50, 20, 200, 2),
         avaliacaoRow(51, 10, 300, 3),
+        avaliacaoRow(52, 10, 500, 5, RECUSADO),
       ]);
 
       const result = await service.candidatos(1, 10);
@@ -560,6 +624,116 @@ describe('DistribuicaoService', () => {
         { consultor_id: 3, nome: 'Consultor 3', score: 160, carga: 1, atribuido: true },
         { consultor_id: 1, nome: 'Consultor 1', score: 60, carga: 0, atribuido: false },
       ]);
+    });
+  });
+
+  // --- panorama ---
+  describe('panorama', () => {
+    it('maps projetos and atribuicoes of the edital', async () => {
+      prismaMock.projeto_pesquisa.findMany.mockResolvedValue([
+        {
+          id: 10,
+          codigo: 'P-10',
+          titulo: 'Projeto',
+          situacao: SituacaoProjeto.SUBMETIDO,
+          area_conhecimento: area(),
+          unidade_academica: { sigla: 'CI' },
+          projetoMembros: [{ user: { nome: 'Coord' } }],
+        },
+      ]);
+      const criado = new Date('2026-10-01');
+      prismaMock.projeto_avaliacao.findMany.mockResolvedValue([
+        {
+          ...avaliacaoRow(50, 10, 100, 1, RECUSADO),
+          avaliador: { nome: 'Consultor 1' },
+          motivo_recusa: 'Sem tempo',
+          criado_em: criado,
+          respondido_em: criado,
+        },
+      ]);
+
+      const result = await service.panorama(1);
+
+      expect(result).toEqual({
+        projetos: [
+          {
+            id: 10,
+            codigo: 'P-10',
+            titulo: 'Projeto',
+            situacao: SituacaoProjeto.SUBMETIDO,
+            coordenador: 'Coord',
+            unidade: 'CI',
+            area_conhecimento: area(),
+          },
+        ],
+        atribuicoes: [
+          {
+            id: 50,
+            projeto_id: 10,
+            consultor_id: 1,
+            avaliador_id: 100,
+            avaliador_nome: 'Consultor 1',
+            status: StatusAtribuicao.RECUSADO,
+            motivo_recusa: 'Sem tempo',
+            tem_notas: false,
+            criado_em: criado,
+            respondido_em: criado,
+          },
+        ],
+      });
+    });
+  });
+
+  // --- responder ---
+  describe('responder', () => {
+    it('lets the invited avaliador accept a pending invitation', async () => {
+      prismaMock.projeto_avaliacao.findUnique.mockResolvedValue({
+        avaliador_id: 100,
+        status: StatusAtribuicao.PENDENTE,
+      });
+
+      await service.responder(50, 100, true);
+
+      const [[{ data }]] = prismaMock.projeto_avaliacao.update.mock.calls as [
+        [{ data: { status: StatusAtribuicao; motivo_recusa: string | null } }],
+      ];
+      expect(data).toMatchObject({ status: StatusAtribuicao.ACEITO, motivo_recusa: null });
+    });
+
+    it('stores the reason when declining', async () => {
+      prismaMock.projeto_avaliacao.findUnique.mockResolvedValue({
+        avaliador_id: 100,
+        status: StatusAtribuicao.PENDENTE,
+      });
+
+      await service.responder(50, 100, false, 'Sem disponibilidade');
+
+      const [[{ data }]] = prismaMock.projeto_avaliacao.update.mock.calls as [
+        [{ data: { status: StatusAtribuicao; motivo_recusa: string | null } }],
+      ];
+      expect(data).toMatchObject({
+        status: StatusAtribuicao.RECUSADO,
+        motivo_recusa: 'Sem disponibilidade',
+      });
+    });
+
+    it('forbids other users from answering', async () => {
+      prismaMock.projeto_avaliacao.findUnique.mockResolvedValue({
+        avaliador_id: 100,
+        status: StatusAtribuicao.PENDENTE,
+      });
+      await expect(service.responder(50, 999, true)).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('rejects answering twice', async () => {
+      prismaMock.projeto_avaliacao.findUnique.mockResolvedValue({
+        avaliador_id: 100,
+        status: StatusAtribuicao.ACEITO,
+      });
+      await expect(service.responder(50, 100, false, 'x')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(prismaMock.projeto_avaliacao.update).not.toHaveBeenCalled();
     });
   });
 });

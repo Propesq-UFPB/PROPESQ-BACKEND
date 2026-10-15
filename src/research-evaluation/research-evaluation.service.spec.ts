@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ResearchEvaluationService } from './research-evaluation.service';
+import { StatusAtribuicao } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 const mockPrismaService = {
@@ -139,6 +140,42 @@ describe('ResearchEvaluationService', () => {
           10,
         ),
       ).rejects.toThrow(/excede a nota máxima permitida/);
+    });
+
+    it('deve lançar BadRequestException quando o convite tiver sido recusado', async () => {
+      prisma.plano_avaliacao.findUnique.mockResolvedValue({
+        id: 1,
+        projeto_avaliacao: { id: 5, avaliador_id: 10, status: StatusAtribuicao.RECUSADO },
+        notas: [],
+      });
+
+      await expect(service.submitPlanoEvaluation(1, { notas: [] }, 10)).rejects.toThrow('recusado');
+      expect(prisma.plano_avaliacao.update).not.toHaveBeenCalled();
+    });
+
+    it('deve aceitar o convite pendente ao registrar a avaliação', async () => {
+      prisma.plano_avaliacao.findUnique.mockResolvedValue({
+        id: 1,
+        projeto_avaliacao: { id: 5, avaliador_id: 10, status: StatusAtribuicao.PENDENTE },
+        notas: [],
+      });
+      prisma.criterio_avaliacao.findMany.mockResolvedValue(activeCriterias);
+
+      await service.submitPlanoEvaluation(
+        1,
+        {
+          notas: [
+            { criterio_avaliacao_id: 1, nota: 9 },
+            { criterio_avaliacao_id: 2, nota: 4 },
+          ],
+        },
+        10,
+      );
+
+      expect(prisma.projeto_avaliacao.update).toHaveBeenCalledWith({
+        where: { id: 5 },
+        data: { status: StatusAtribuicao.ACEITO, respondido_em: expect.any(Date) as Date },
+      });
     });
 
     it('deve registrar as notas do plano com sucesso', async () => {

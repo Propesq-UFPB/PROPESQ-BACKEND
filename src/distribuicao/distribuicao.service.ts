@@ -1,13 +1,26 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import highsLoader, { Highs } from 'highs';
-import { area_conhecimento, Prisma, SituacaoProjeto } from '@prisma/client';
+import {
+  area_conhecimento,
+  Prisma,
+  SituacaoProjeto,
+  StatusAtribuicao,
+  TipoMembroProjeto,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { DistribuicaoParamsDto } from './dto/distribute.dto';
 import { AtribuicaoDto, ConfirmDistribuicaoDto } from './dto/confirm-distribuicao.dto';
 import {
   AtribuicaoPreviewDto,
+  AtribuicaoRespostaDto,
   CandidatoDto,
   DistribuicaoConfirmResultDto,
+  DistribuicaoPanoramaDto,
   DistribuicaoPreviewDto,
 } from './dto/distribuicao-response.dto';
 
@@ -67,7 +80,21 @@ interface AtribuicaoExistente {
   projeto_id: number;
   avaliador_id: number;
   consultor_id: number | null;
-  bloqueada: boolean;
+  status: StatusAtribuicao;
+  tem_notas: boolean;
+}
+
+// Recusadas ficam como histórico: não ocupam vaga e não são removidas
+const ativa = (a: AtribuicaoExistente) => a.status !== StatusAtribuicao.RECUSADO;
+const chave = (projetoId: number, usuarioId: number) => `${projetoId}:${usuarioId}`;
+
+const temNotasSelect = {
+  _count: { select: { notas: true } },
+  planos_avaliacao: { select: { _count: { select: { notas: true } } } },
+} satisfies Prisma.projeto_avaliacaoSelect;
+
+function temNotas(a: Prisma.projeto_avaliacaoGetPayload<{ select: typeof temNotasSelect }>) {
+  return a._count.notas > 0 || a.planos_avaliacao.some(pa => pa._count.notas > 0);
 }
 
 interface ContextoDistribuicao {
@@ -257,8 +284,8 @@ export class DistribuicaoService {
           projeto_id: true,
           avaliador_id: true,
           consultor_id: true,
-          _count: { select: { notas: true } },
-          planos_avaliacao: { select: { _count: { select: { notas: true } } } },
+          status: true,
+          ...temNotasSelect,
         },
       }),
     ]);
@@ -285,14 +312,16 @@ export class DistribuicaoService {
         projeto_id: a.projeto_id,
         avaliador_id: a.avaliador_id,
         consultor_id: a.consultor_id,
-        bloqueada: a._count.notas > 0 || a.planos_avaliacao.some(pa => pa._count.notas > 0),
+        status: a.status,
+        tem_notas: temNotas(a),
       })),
     };
   }
 
   /**
    * Calcula uma proposta de distribuição sem gravar nada.
-   * Atribuições com notas lançadas são mantidas e só as vagas restantes são preenchidas.
+   * Convites pendentes e aceitos são mantidos e só as vagas abertas (inclusive as liberadas
+   * por recusas) são preenchidas. Quem recusou um projeto não é sugerido de novo para ele.
    */
   async preview(editalId: number, params: DistribuicaoParamsDto): Promise<DistribuicaoPreviewDto> {
     if (params.minimoProjetosPorAvaliador > params.maximoProjetosPorAvaliador) {
@@ -307,36 +336,39 @@ export class DistribuicaoService {
     const projetoIdx = new Map(projetos.map((p, j) => [p.id, j]));
 
     const benefitMatrix = this.calcScoreMatrix(projetos, consultores);
-    const bloqueadasPorProjeto = new Array<number>(projetos.length).fill(0);
-    const bloqueadasPorConsultor = new Array<number>(consultores.length).fill(0);
+    const mantidasPorProjeto = new Array<number>(projetos.length).fill(0);
+    const mantidasPorConsultor = new Array<number>(consultores.length).fill(0);
     const atribuicoes: AtribuicaoPreviewDto[] = [];
 
-    for (const e of existentes.filter(e => e.bloqueada)) {
+    for (const e of existentes) {
       const j = projetoIdx.get(e.projeto_id)!;
       const i = consultorIdxPorUsuario.get(e.avaliador_id);
-      bloqueadasPorProjeto[j]++;
+      const score = i !== undefined ? (benefitMatrix[i][j] ?? 0) : 0;
 
-      let score = 0;
-      if (i !== undefined) {
-        bloqueadasPorConsultor[i]++;
-        score = benefitMatrix[i][j] ?? 0;
-        benefitMatrix[i][j] = null; // já atribuído, não pode ser escolhido de novo
-      }
+      // Já atribuído ou recusado: o par não pode ser escolhido de novo
+      if (i !== undefined) benefitMatrix[i][j] = null;
+      if (!ativa(e)) continue;
+
+      mantidasPorProjeto[j]++;
+      if (i !== undefined) mantidasPorConsultor[i]++;
 
       atribuicoes.push({
         projeto_id: e.projeto_id,
         consultor_id: e.consultor_id ?? (i !== undefined ? consultores[i].id : null),
         avaliador_id: e.avaliador_id,
         score,
-        bloqueada: true,
+        existente: true,
+        atribuicao_id: e.id,
+        status: e.status,
+        tem_notas: e.tem_notas,
       });
     }
 
-    const Dj = bloqueadasPorProjeto.map(qtd => Math.max(0, params.avaliadoresPorProjeto - qtd));
-    const Lmax = bloqueadasPorConsultor.map(qtd =>
+    const Dj = mantidasPorProjeto.map(qtd => Math.max(0, params.avaliadoresPorProjeto - qtd));
+    const Lmax = mantidasPorConsultor.map(qtd =>
       Math.max(0, params.maximoProjetosPorAvaliador - qtd),
     );
-    const Lmin = bloqueadasPorConsultor.map(qtd =>
+    const Lmin = mantidasPorConsultor.map(qtd =>
       Math.max(0, params.minimoProjetosPorAvaliador - qtd),
     );
 
@@ -372,7 +404,10 @@ export class DistribuicaoService {
           consultor_id: consultor.id,
           avaliador_id: consultor.usuario_id,
           score: benefitMatrix[i][j] ?? 0,
-          bloqueada: false,
+          existente: false,
+          atribuicao_id: null,
+          status: null,
+          tem_notas: false,
         });
       }
     }
@@ -402,21 +437,23 @@ export class DistribuicaoService {
 
   /**
    * Grava o conjunto final de atribuições do edital (possivelmente ajustado manualmente).
-   * Atribuições com notas são sempre preservadas; as demais são sincronizadas com o conjunto enviado.
+   * Novas atribuições nascem como convites pendentes. Atribuições ativas sem notas que não
+   * forem enviadas são removidas; as com notas e as recusadas (histórico) são preservadas.
    */
   async confirm(
     editalId: number,
     dto: ConfirmDistribuicaoDto,
   ): Promise<DistribuicaoConfirmResultDto> {
     const { projetos, consultores, existentes } = await this.loadContexto(editalId);
-    const desejadas = this.validarAtribuicoes(dto.atribuicoes, projetos, consultores);
+    const recusas = new Set(
+      existentes.filter(e => !ativa(e)).map(e => chave(e.projeto_id, e.avaliador_id)),
+    );
+    const desejadas = this.validarAtribuicoes(dto.atribuicoes, projetos, consultores, recusas);
 
     // Chave por (projeto, usuário): cada usuário tem no máximo um consultor
-    const chave = (projetoId: number, usuarioId: number) => `${projetoId}:${usuarioId}`;
     const consultorPorId = new Map(consultores.map(c => [c.id, c]));
-    const existentesPorChave = new Map(
-      existentes.map(e => [chave(e.projeto_id, e.avaliador_id), e]),
-    );
+    const ativas = existentes.filter(ativa);
+    const ativasPorChave = new Map(ativas.map(e => [chave(e.projeto_id, e.avaliador_id), e]));
 
     const desejadasPorChave = new Map(
       desejadas.map(d => {
@@ -428,13 +465,13 @@ export class DistribuicaoService {
       }),
     );
 
-    const remover = existentes.filter(
-      e => !e.bloqueada && !desejadasPorChave.has(chave(e.projeto_id, e.avaliador_id)),
+    const remover = ativas.filter(
+      e => !e.tem_notas && !desejadasPorChave.has(chave(e.projeto_id, e.avaliador_id)),
     );
     const criar = [...desejadasPorChave.entries()]
-      .filter(([k]) => !existentesPorChave.has(k))
+      .filter(([k]) => !ativasPorChave.has(k))
       .map(([, d]) => d);
-    const mantidas = existentes.filter(e => !remover.includes(e));
+    const mantidas = ativas.filter(e => !remover.includes(e));
     const semConsultorId = mantidas.filter(e => e.consultor_id === null);
 
     await this.prisma.$transaction(async prisma => {
@@ -475,6 +512,7 @@ export class DistribuicaoService {
     atribuicoes: AtribuicaoDto[],
     projetos: ProjetoDistribuicao[],
     consultores: ConsultorDistribuicao[],
+    recusas: Set<string>,
   ): AtribuicaoDto[] {
     const projetoPorId = new Map(projetos.map(p => [p.id, p]));
     const consultorPorId = new Map(consultores.map(c => [c.id, c]));
@@ -497,6 +535,10 @@ export class DistribuicaoService {
         erros.push(
           `Consultor ${consultor_id} tem conflito de interesse com o projeto ${projeto_id}.`,
         );
+        continue;
+      }
+      if (recusas.has(chave(projeto_id, consultor.usuario_id))) {
+        erros.push(`Consultor ${consultor_id} recusou o convite para o projeto ${projeto_id}.`);
         continue;
       }
 
@@ -559,15 +601,17 @@ export class DistribuicaoService {
       );
     }
 
+    const ativas = existentes.filter(ativa);
     const cargaPorUsuario = new Map<number, number>();
-    for (const e of existentes) {
+    for (const e of ativas) {
       cargaPorUsuario.set(e.avaliador_id, (cargaPorUsuario.get(e.avaliador_id) ?? 0) + 1);
     }
-    const atribuidos = new Set(
-      existentes.filter(e => e.projeto_id === projetoId).map(e => e.avaliador_id),
-    );
+    const doProjeto = existentes.filter(e => e.projeto_id === projetoId);
+    const atribuidos = new Set(doProjeto.filter(ativa).map(e => e.avaliador_id));
+    const recusaram = new Set(doProjeto.filter(e => !ativa(e)).map(e => e.avaliador_id));
 
     return consultores
+      .filter(c => !recusaram.has(c.usuario_id))
       .map(c => ({ consultor: c, score: this.calcScore(projeto, c) }))
       .filter((r): r is { consultor: ConsultorDistribuicao; score: number } => r.score !== null)
       .map(({ consultor, score }) => ({
@@ -578,5 +622,113 @@ export class DistribuicaoService {
         atribuido: atribuidos.has(consultor.usuario_id),
       }))
       .sort((a, b) => b.score - a.score || a.carga - b.carga);
+  }
+
+  /** Projetos aptos à distribuição e atribuições do edital, para a tela de distribuição. */
+  async panorama(editalId: number): Promise<DistribuicaoPanoramaDto> {
+    const edital = await this.prisma.edital.findUnique({
+      where: { id: editalId },
+      select: { id: true },
+    });
+    if (!edital) {
+      throw new NotFoundException(`Edital Id ${editalId} não encontrado`);
+    }
+
+    const filtroProjetos = { edital_id: editalId, situacao: { in: SITUACOES_DISTRIBUIVEIS } };
+
+    const [projetos, atribuicoes] = await Promise.all([
+      this.prisma.projeto_pesquisa.findMany({
+        where: filtroProjetos,
+        select: {
+          id: true,
+          codigo: true,
+          titulo: true,
+          situacao: true,
+          area_conhecimento: true,
+          unidade_academica: { select: { sigla: true } },
+          projetoMembros: {
+            where: { funcao: TipoMembroProjeto.COORDENADOR },
+            select: { user: { select: { nome: true } } },
+            take: 1,
+          },
+        },
+        orderBy: { id: 'asc' },
+      }),
+      this.prisma.projeto_avaliacao.findMany({
+        where: { projeto_pesquisa: filtroProjetos },
+        select: {
+          id: true,
+          projeto_id: true,
+          consultor_id: true,
+          avaliador_id: true,
+          avaliador: { select: { nome: true } },
+          status: true,
+          motivo_recusa: true,
+          criado_em: true,
+          respondido_em: true,
+          ...temNotasSelect,
+        },
+        orderBy: { id: 'asc' },
+      }),
+    ]);
+
+    return {
+      projetos: projetos.map(p => ({
+        id: p.id,
+        codigo: p.codigo,
+        titulo: p.titulo,
+        situacao: p.situacao,
+        coordenador: p.projetoMembros[0]?.user.nome ?? null,
+        unidade: p.unidade_academica?.sigla ?? null,
+        area_conhecimento: p.area_conhecimento,
+      })),
+      atribuicoes: atribuicoes.map(a => ({
+        id: a.id,
+        projeto_id: a.projeto_id,
+        consultor_id: a.consultor_id,
+        avaliador_id: a.avaliador_id,
+        avaliador_nome: a.avaliador.nome,
+        status: a.status,
+        motivo_recusa: a.motivo_recusa,
+        tem_notas: temNotas(a),
+        criado_em: a.criado_em,
+        respondido_em: a.respondido_em,
+      })),
+    };
+  }
+
+  /** Resposta do próprio avaliador ao convite de avaliação. */
+  async responder(
+    atribuicaoId: number,
+    usuarioId: number,
+    aceitar: boolean,
+    motivo?: string,
+  ): Promise<AtribuicaoRespostaDto> {
+    const atribuicao = await this.prisma.projeto_avaliacao.findUnique({
+      where: { id: atribuicaoId },
+      select: { avaliador_id: true, status: true },
+    });
+
+    if (!atribuicao) {
+      throw new NotFoundException('Atribuição de avaliação não encontrada');
+    }
+    if (atribuicao.avaliador_id !== usuarioId) {
+      throw new ForbiddenException('Apenas o avaliador convidado pode responder a este convite');
+    }
+    if (atribuicao.status !== StatusAtribuicao.PENDENTE) {
+      throw new BadRequestException(
+        `Este convite já foi ${atribuicao.status === StatusAtribuicao.ACEITO ? 'aceito' : 'recusado'}`,
+      );
+    }
+
+    return this.prisma.projeto_avaliacao.update({
+      where: { id: atribuicaoId },
+      data: {
+        status: aceitar ? StatusAtribuicao.ACEITO : StatusAtribuicao.RECUSADO,
+        motivo_recusa: aceitar ? null : motivo,
+        respondido_em: new Date(),
+      },
+      select: { id: true, status: true, motivo_recusa: true, respondido_em: true },
+    });
   }
 }

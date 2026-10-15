@@ -18,6 +18,7 @@ import { ConfirmDistribuicaoDto } from './dto/confirm-distribuicao.dto';
 import {
   CandidatoDto,
   DistribuicaoConfirmResultDto,
+  DistribuicaoPanoramaDto,
   DistribuicaoPreviewDto,
 } from './dto/distribuicao-response.dto';
 
@@ -27,6 +28,18 @@ import {
 export class DistribuicaoController {
   constructor(private readonly distribuicaoService: DistribuicaoService) {}
 
+  @Get(':editalId')
+  @UseGuards(RolesGuard)
+  @Roles('GESTOR')
+  @ApiOperation({
+    summary: 'Panorama da distribuição do edital: projetos aptos e atribuições (convites)',
+  })
+  @ApiParam({ name: 'editalId', type: Number })
+  @ApiOkResponse({ type: DistribuicaoPanoramaDto })
+  panorama(@Param('editalId', ParseIntPipe) editalId: number): Promise<DistribuicaoPanoramaDto> {
+    return this.distribuicaoService.panorama(editalId);
+  }
+
   @Post(':editalId/preview')
   @HttpCode(HttpStatus.OK)
   @UseGuards(RolesGuard)
@@ -34,7 +47,7 @@ export class DistribuicaoController {
   @ApiOperation({
     summary: 'Calcula uma prévia da distribuição dos projetos do edital entre os consultores',
     description:
-      'Não grava nada. Atribuições com notas lançadas são mantidas e apenas as vagas restantes são preenchidas.',
+      'Não grava nada. Convites pendentes e aceitos são mantidos e apenas as vagas abertas (inclusive as liberadas por recusas) são preenchidas.',
   })
   @ApiParam({ name: 'editalId', type: Number })
   @ApiOkResponse({ type: DistribuicaoPreviewDto })
@@ -52,7 +65,7 @@ export class DistribuicaoController {
   @ApiOperation({
     summary: 'Grava o conjunto final de atribuições do edital',
     description:
-      'Sincroniza as atribuições do edital com a lista enviada. Atribuições com notas lançadas são sempre preservadas.',
+      'Sincroniza as atribuições do edital com a lista enviada. Novas atribuições viram convites pendentes; as com notas e as recusadas são sempre preservadas.',
   })
   @ApiParam({ name: 'editalId', type: Number })
   @ApiOkResponse({ type: DistribuicaoConfirmResultDto })

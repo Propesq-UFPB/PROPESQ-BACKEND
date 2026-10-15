@@ -1,4 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { SituacaoProjeto, StatusAtribuicao } from '@prisma/client';
+import { AreaConhecimentoDto } from '../../consultor/dto/consultor-response.dto';
 
 export class AtribuicaoPreviewDto {
   @ApiProperty()
@@ -17,10 +19,17 @@ export class AtribuicaoPreviewDto {
   @ApiProperty({ description: 'Afinidade de área entre consultor e projeto' })
   score: number;
 
-  @ApiProperty({
-    description: 'Atribuição já existente com notas lançadas (não pode ser removida)',
-  })
-  bloqueada: boolean;
+  @ApiProperty({ description: 'Convite já existente (pendente ou aceito), mantido pela prévia' })
+  existente: boolean;
+
+  @ApiProperty({ type: Number, nullable: true })
+  atribuicao_id: number | null;
+
+  @ApiProperty({ enum: StatusAtribuicao, nullable: true, description: 'Nulo para sugestões novas' })
+  status: StatusAtribuicao | null;
+
+  @ApiProperty({ description: 'Possui notas lançadas (não pode ser removida)' })
+  tem_notas: boolean;
 }
 
 export class PendenciaDto {
@@ -79,4 +88,81 @@ export class CandidatoDto {
 
   @ApiProperty({ description: 'Consultor já atribuído a este projeto' })
   atribuido: boolean;
+}
+
+export class ProjetoPanoramaDto {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty()
+  codigo: string;
+
+  @ApiProperty()
+  titulo: string;
+
+  @ApiProperty({ enum: SituacaoProjeto })
+  situacao: SituacaoProjeto;
+
+  @ApiProperty({ type: String, nullable: true })
+  coordenador: string | null;
+
+  @ApiProperty({ type: String, nullable: true, description: 'Sigla da unidade acadêmica' })
+  unidade: string | null;
+
+  @ApiProperty({ type: AreaConhecimentoDto, nullable: true })
+  area_conhecimento: AreaConhecimentoDto | null;
+}
+
+export class AtribuicaoPanoramaDto {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty()
+  projeto_id: number;
+
+  @ApiProperty({ type: Number, nullable: true })
+  consultor_id: number | null;
+
+  @ApiProperty()
+  avaliador_id: number;
+
+  @ApiProperty()
+  avaliador_nome: string;
+
+  @ApiProperty({ enum: StatusAtribuicao })
+  status: StatusAtribuicao;
+
+  @ApiProperty({ type: String, nullable: true })
+  motivo_recusa: string | null;
+
+  @ApiProperty()
+  tem_notas: boolean;
+
+  @ApiProperty({ description: 'Data do envio do convite' })
+  criado_em: Date;
+
+  @ApiProperty({ type: Date, nullable: true })
+  respondido_em: Date | null;
+}
+
+export class DistribuicaoPanoramaDto {
+  @ApiProperty({ type: [ProjetoPanoramaDto] })
+  projetos: ProjetoPanoramaDto[];
+
+  @ApiProperty({ type: [AtribuicaoPanoramaDto] })
+  atribuicoes: AtribuicaoPanoramaDto[];
+}
+
+export class AtribuicaoRespostaDto {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty({ enum: StatusAtribuicao })
+  status: StatusAtribuicao;
+
+  @ApiProperty({ type: String, nullable: true })
+  motivo_recusa: string | null;
+
+  @ApiProperty({ type: Date, nullable: true })
+  respondido_em: Date | null;
 }

@@ -458,13 +458,16 @@ model historico_avaliacao {
 }
 
 model projeto_avaliacao {
-  id            Int      @id @default(autoincrement())
+  id            Int              @id @default(autoincrement())
   avaliador_id  Int
   consultor_id  Int?
   projeto_id    Int
-  descricao     String?  @db.Text
-  criado_em     DateTime @default(now()) @db.Timestamp(6)
-  atualizado_em DateTime @default(now()) @updatedAt @db.Timestamp(6)
+  status        StatusAtribuicao @default(PENDENTE)
+  motivo_recusa String?          @db.Text
+  respondido_em DateTime?        @db.Timestamp(6)
+  descricao     String?          @db.Text
+  criado_em     DateTime         @default(now()) @db.Timestamp(6)
+  atualizado_em DateTime         @default(now()) @updatedAt @db.Timestamp(6)
 
   avaliador        usuario           @relation("avaliador_projeto_avaliacao", fields: [avaliador_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   consultor        consultor?        @relation(fields: [consultor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -857,6 +860,12 @@ enum StatusTermoCompromisso {
   AGUARDANDO_ACEITE
   ACEITO_PLATAFORMA
   PENDENTE_CORRECAO
+}
+
+enum StatusAtribuicao {
+  PENDENTE
+  ACEITO
+  RECUSADO
 }
 
 enum TipoMembroProjeto {

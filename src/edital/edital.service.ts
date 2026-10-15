@@ -88,11 +88,6 @@ export class EditalService {
         edital_para_voluntarios: createEditalDto.edital_para_voluntarios,
         apenas_colab_vol_cadastra_plano: createEditalDto.apenas_colab_vol_cadastra_plano,
         prof_subst_cadastra_proj: createEditalDto.prof_subst_cadastra_proj,
-        categoria: {
-          connect: {
-            id: createEditalDto.categoria_id,
-          },
-        },
         edital_cota_distribuicao: {
           createMany: {
             data: createEditalDto.edital_cota_distribuicao ?? [],
@@ -265,12 +260,6 @@ export class EditalService {
         edital_para_voluntarios: true,
         apenas_colab_vol_cadastra_plano: true,
         prof_subst_cadastra_proj: true,
-        categoria: {
-          select: {
-            id: true,
-            denominacao: true,
-          },
-        },
         periodo_submissoes: {
           select: {
             id: true,
@@ -388,7 +377,6 @@ export class EditalService {
       apenas_colab_vol_cadastra_plano: dto.apenas_colab_vol_cadastra_plano,
       prof_subst_cadastra_proj: dto.prof_subst_cadastra_proj,
       ano: dto.ano,
-      categoria: this.connectById(dto.categoria_id),
       cota_bolsa: this.connectById(dto.cota_bolsa_id),
       periodo_execucao_rel: this.periodoUpdate(periodoExecucao),
       periodo_submissoes: this.periodoUpdate(periodoSubmissao),

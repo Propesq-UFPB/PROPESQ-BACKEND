@@ -95,6 +95,7 @@ export class UpdateEditalDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
+  @Min(0)
   limite_solicitacoes_orientador?: number;
 
   @ApiPropertyOptional({ type: Number })
@@ -108,6 +109,7 @@ export class UpdateEditalDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
+  @Min(0)
   limite_planos_orientador?: number;
 
   @ApiPropertyOptional()
@@ -152,12 +154,6 @@ export class UpdateEditalDto {
   @Min(2000)
   ano?: number;
 
-  @ApiPropertyOptional({ type: Number })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  categoria_id?: number;
 
   @ApiPropertyOptional({ type: [CreateEditalCotaDistribuicaoDto] })
   @IsOptional()

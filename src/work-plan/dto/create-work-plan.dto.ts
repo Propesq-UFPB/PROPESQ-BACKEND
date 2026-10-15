@@ -69,19 +69,14 @@ export class CreateWorkPlanDto {
   pesquisa_id!: number;
 
   @ApiProperty({ required: true })
-  @IsNotEmpty({ message: 'A modalidade é obrigatória' })
-  @IsString({ message: 'A modalidade deve ser um texto' })
-  modalidade!: string;
-
-  @ApiProperty({ required: true })
   @IsNotEmpty({ message: 'O status é obrigatório' })
   @IsString({ message: 'O status deve ser um texto' })
   status!: string;
 
   @ApiProperty({ required: true })
   @IsNotEmpty({ message: 'O tipo de bolsa é obrigatório' })
-  @IsString({ message: 'O tipo de bolsa deve ser um texto' })
-  tipo_bolsa!: string;
+  @IsInt({ message: 'O ID da bolsa deve ser um número inteiro' })
+  bolsa_id!: number;
 
   @ApiProperty({ required: true })
   @IsNotEmpty({ message: 'O direcionamento do plano é obrigatório' })

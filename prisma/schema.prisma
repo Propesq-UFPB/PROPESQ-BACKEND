@@ -185,7 +185,7 @@ model edital {
   prof_subst_cadastra_proj        Boolean       @default(false)
   periodo_submissoes_id           Int
   periodo_execucao_id             Int
-  categoria_id                    Int
+  categoria_id                    Int?
   data_cadastro                   DateTime
   anexo                           anexo_edital?
 
@@ -195,7 +195,7 @@ model edital {
   edital_unidade_academica edital_unidade_academica[]
   edital_consultor         edital_consultor[]
   projetos_pesquisa        projeto_pesquisa[]
-  categoria                categoria_edital           @relation(fields: [categoria_id], references: [id])
+  categoria                categoria_edital?          @relation(fields: [categoria_id], references: [id])
   cota_bolsa               cota_bolsa                 @relation(fields: [cota_bolsa_id], references: [id])
 }
 
@@ -300,7 +300,6 @@ model plano_trabalho {
   usuario_id               Int?
   modalidade               String                     @db.VarChar(255)
   status                   String
-  tipo_bolsa               String                     @db.VarChar(255)
   cronograma_id            Int?
   direcionamento_plano     String
   corpo_id                 Int?
@@ -308,6 +307,7 @@ model plano_trabalho {
   status_indicacao         StatusIndicacaoPlano       @default(PENDENTE_INDICACAO)
   vagas                    Int                        @default(1)
   carga_horaria            Int?
+  bolsa_id                 Int?
   prazo_indicacao          DateTime?                  @db.Date
   prazo_substituicao       DateTime?                  @db.Date
   tipo_indicacao           TipoIndicacao?
@@ -320,6 +320,7 @@ model plano_trabalho {
   interesses               interesse_plano_trabalho[]
   dados_bancarios          dados_bancarios_indicacao?
   planos_avaliacao         plano_avaliacao[]
+  bolsa                    bolsa?                     @relation(fields: [bolsa_id], references: [id])
 }
 
 model interesse_plano_trabalho {
@@ -356,7 +357,7 @@ model projeto_pesquisa {
   tipo              TipoProjeto
   titulo            String
   title             String
-  categoria_id      Int
+  categoria_id      Int?
   situacao          SituacaoProjeto @map("situação")
   email             String
   data_inicio       DateTime?       @db.Timestamp(6)
@@ -390,7 +391,7 @@ model projeto_pesquisa {
   palavra_chave         palavra_chave[]
   plano_trabalho        plano_trabalho[]
   historico_avaliacao   historico_avaliacao[]
-  categoria             categoria_edital             @relation(fields: [categoria_id], references: [id])
+  categoria             categoria_edital?            @relation(fields: [categoria_id], references: [id])
   projeto_avaliacao     projeto_avaliacao[]
   membros               membro_projeto[]
   relatorios            relatorio[]
@@ -732,6 +733,7 @@ model bolsa {
   valor                       Decimal?                   @db.Decimal(12, 2)
   permite_acumulo             Boolean                    @default(false)
   edital_cota_distribuicao    edital_cota_distribuicao[]
+  planos_trabalho             plano_trabalho[]
 }
 
 model categoria_edital {

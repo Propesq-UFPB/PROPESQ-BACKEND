@@ -36,6 +36,9 @@ model area_conhecimento {
   projeto_pesquisa projeto_pesquisa[]
   docentes         docente[]
   grupoPesquisas   grupo_pesquisa[]
+
+  consultores_principal consultor[]
+  consultores_adicional consultor_area_adicional[]
 }
 
 model atividade_projeto_pesquisa {
@@ -190,6 +193,7 @@ model edital {
   periodo_execucao_rel     periodo_edital             @relation("periodo_execucao", fields: [periodo_execucao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   edital_cota_distribuicao edital_cota_distribuicao[]
   edital_unidade_academica edital_unidade_academica[]
+  edital_consultor         edital_consultor[]
   projetos_pesquisa        projeto_pesquisa[]
   categoria                categoria_edital           @relation(fields: [categoria_id], references: [id])
   cota_bolsa               cota_bolsa                 @relation(fields: [cota_bolsa_id], references: [id])
@@ -212,6 +216,18 @@ model edital_unidade_academica {
   unidade    unidade_academica @relation(fields: [unidade_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([edital_id, unidade_id])
+}
+
+model edital_consultor {
+  id           Int       @id @default(autoincrement())
+  edital_id    Int
+  consultor_id Int
+  criado_em    DateTime  @default(now()) @db.Timestamp(6)
+  edital       edital    @relation(fields: [edital_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  consultor    consultor @relation(fields: [consultor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([edital_id, consultor_id])
+  @@index([consultor_id])
 }
 
 model edital_cota_distribuicao {
@@ -444,27 +460,59 @@ model historico_avaliacao {
 model projeto_avaliacao {
   id            Int      @id @default(autoincrement())
   avaliador_id  Int
+  consultor_id  Int?
   projeto_id    Int
   descricao     String?  @db.Text
   criado_em     DateTime @default(now()) @db.Timestamp(6)
   atualizado_em DateTime @default(now()) @updatedAt @db.Timestamp(6)
 
   avaliador        usuario           @relation("avaliador_projeto_avaliacao", fields: [avaliador_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  consultor        consultor?        @relation(fields: [consultor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   projeto_pesquisa projeto_pesquisa  @relation(fields: [projeto_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   notas            avaliacao_nota[]
   planos_avaliacao plano_avaliacao[]
 
   @@index([avaliador_id])
+  @@index([consultor_id])
   @@index([projeto_id])
 }
 
+model consultor {
+  id                Int      @id @default(autoincrement())
+  usuario_id        Int      @unique
+  is_propesq        Boolean  @default(false)
+  is_voluntario     Boolean  @default(false)
+  is_cnpq           Boolean  @default(false)
+  ativo             Boolean  @default(true)
+  area_principal_id Int
+  criado_em         DateTime @default(now()) @db.Timestamp(6)
+  atualizado_em     DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
+  usuario           usuario                    @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  area_principal    area_conhecimento          @relation(fields: [area_principal_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  areas_adicionais  consultor_area_adicional[]
+  editais           edital_consultor[]
+  projeto_avaliacao projeto_avaliacao[]
+}
+
+model consultor_area_adicional {
+  id                   Int               @id @default(autoincrement())
+  consultor_id         Int
+  area_conhecimento_id Int
+  consultor            consultor         @relation(fields: [consultor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  area_conhecimento    area_conhecimento @relation(fields: [area_conhecimento_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([consultor_id, area_conhecimento_id])
+  @@index([area_conhecimento_id])
+}
+
 model plano_avaliacao {
-  id                    Int      @id @default(autoincrement())
-  projeto_avaliacao_id  Int
-  plano_trabalho_id     Int
-  descricao             String?  @db.Text
-  criado_em             DateTime @default(now()) @db.Timestamp(6)
-  atualizado_em         DateTime @default(now()) @updatedAt @db.Timestamp(6)
+  id                   Int      @id @default(autoincrement())
+  projeto_avaliacao_id Int
+  plano_trabalho_id    Int
+  descricao            String?  @db.Text
+  criado_em            DateTime @default(now()) @db.Timestamp(6)
+  atualizado_em        DateTime @default(now()) @updatedAt @db.Timestamp(6)
 
   projeto_avaliacao projeto_avaliacao @relation(fields: [projeto_avaliacao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   plano_trabalho    plano_trabalho    @relation(fields: [plano_trabalho_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -495,9 +543,9 @@ model avaliacao_nota {
   criterio_avaliacao_id Int
   nota                  Float?
 
-  avaliacao          projeto_avaliacao?  @relation(fields: [avaliacao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  plano_avaliacao    plano_avaliacao?    @relation(fields: [plano_avaliacao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  criterio_avaliacao criterio_avaliacao  @relation(fields: [criterio_avaliacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  avaliacao          projeto_avaliacao? @relation(fields: [avaliacao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  plano_avaliacao    plano_avaliacao?   @relation(fields: [plano_avaliacao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  criterio_avaliacao criterio_avaliacao @relation(fields: [criterio_avaliacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([avaliacao_id, criterio_avaliacao_id])
   @@unique([plano_avaliacao_id, criterio_avaliacao_id])
@@ -559,6 +607,7 @@ model usuario {
   certificados        certificado[]
   dados_bancarios     dados_bancarios_indicacao[]
   projetoMembros      projeto_membro[]
+  consultor           consultor?
 }
 
 model cota_bolsa {

@@ -28,14 +28,16 @@ model anexo_projeto_pesquisa {
 }
 
 model area_conhecimento {
-  id               Int                @id @default(autoincrement())
-  grande_area      String
-  area             String
-  sub_area         String
-  especialidade    String
-  projeto_pesquisa projeto_pesquisa[]
-  docentes         docente[]
-  grupoPesquisas   grupo_pesquisa[]
+  id                     Int                                     @id @default(autoincrement())
+  grande_area            String
+  area                   String
+  sub_area               String
+  especialidade          String
+  projeto_pesquisa       projeto_pesquisa[]
+  docentes               docente[]
+  grupoPesquisas         grupo_pesquisa[]
+  avaliadores            avaliador[]
+  avaliadores_adicionais avaliador_area_conhecimento_adicional[]
 }
 
 model atividade_projeto_pesquisa {
@@ -160,6 +162,31 @@ model docente {
   usuario              usuario            @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   area_conhecimento    area_conhecimento? @relation(fields: [area_conhecimento_id], references: [id])
   area_conhecimento_id Int?
+}
+
+model avaliador {
+  id                             Int      @id @default(autoincrement())
+  usuario_id                     Int      @unique
+  area_conhecimento_principal_id Int
+  ativo                          Boolean  @default(true)
+  is_propesq                     Boolean  @default(false)
+  is_voluntario                  Boolean  @default(false)
+  atualizado_em                  DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
+  usuario          usuario                                 @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  area_principal   area_conhecimento                       @relation(fields: [area_conhecimento_principal_id], references: [id])
+  areas_adicionais avaliador_area_conhecimento_adicional[]
+}
+
+model avaliador_area_conhecimento_adicional {
+  id                   Int @id @default(autoincrement())
+  avaliador_id         Int
+  area_conhecimento_id Int
+
+  avaliador         avaliador         @relation(fields: [avaliador_id], references: [id], onDelete: Cascade)
+  area_conhecimento area_conhecimento @relation(fields: [area_conhecimento_id], references: [id])
+
+  @@unique([avaliador_id, area_conhecimento_id])
 }
 
 model edital {
@@ -560,6 +587,7 @@ model usuario {
   certificados        certificado[]
   dados_bancarios     dados_bancarios_indicacao[]
   projetoMembros      projeto_membro[]
+  avaliador           avaliador?
 }
 
 model cota_bolsa {

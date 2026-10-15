@@ -15,6 +15,7 @@ import { CategoryModule } from './category/category.module';
 import { EvaluationCriteriaModule } from './evaluation-criteria/evaluation-criteria.module';
 import { ResearchEvaluationModule } from './research-evaluation/research-evaluation.module';
 import { DistribuicaoModule } from './distribuicao/distribuicao.module';
+import { ConsultorModule } from './consultor/consultor.module';
 import { FundingAgencyModule } from './funding-agency/funding-agency.module';
 import { UserTypeModule } from './user-type/user-type.module';
 import { ProjectRolesModule } from './project-roles/project-roles.module';
@@ -46,6 +47,7 @@ import { DocentesModule } from './docentes/docentes.module';
     EvaluationCriteriaModule,
     ResearchEvaluationModule,
     DistribuicaoModule,
+    ConsultorModule,
     FundingAgencyModule,
     ProjectRolesModule,
     UserTypeModule,

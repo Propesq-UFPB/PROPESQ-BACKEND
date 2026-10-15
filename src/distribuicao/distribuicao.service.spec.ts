@@ -1,49 +1,119 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { DistribuicaoService } from './distribuicao.service';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import highsLoader from 'highs';
+import { area_conhecimento, SituacaoProjeto } from '@prisma/client';
+import {
+  ConsultorDistribuicao,
+  DistribuicaoService,
+  ProjetoDistribuicao,
+} from './distribuicao.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { area_conhecimento } from '@prisma/client';
 import { DistribuicaoParamsDto } from './dto/distribute.dto';
 
-const prismaMock = {
-  projeto_pesquisa: {
-    findMany: jest.fn(),
-  },
-  docente: {
-    findMany: jest.fn(),
-  },
+const txMock = {
   projeto_avaliacao: {
-    findFirst: jest.fn(),
     deleteMany: jest.fn(),
-    createMany: jest.fn(),
+    update: jest.fn(),
+    create: jest.fn(),
   },
+  plano_trabalho: { findMany: jest.fn() },
+  projeto_pesquisa: { updateMany: jest.fn() },
+};
+
+const prismaMock = {
+  edital: { findUnique: jest.fn() },
+  projeto_pesquisa: { findMany: jest.fn() },
+  edital_consultor: { findMany: jest.fn() },
+  projeto_avaliacao: { findMany: jest.fn() },
   $transaction: jest.fn(),
 };
 
 class TestableDistribuicaoService extends DistribuicaoService {
-  public calcScoreMatrix(
-    projetos: Array<{ area_conhecimento: area_conhecimento | null; avaliador_id: number | null }>,
-    docentes: Array<{ area_conhecimento: area_conhecimento | null; usuario_id: number }>,
-  ) {
-    return super['calcScoreMatrix'](projetos, docentes);
+  public calcScoreMatrix(projetos: ProjetoDistribuicao[], consultores: ConsultorDistribuicao[]) {
+    return super.calcScoreMatrix(projetos, consultores);
   }
 
-  public buildLpProblem(
-    benefitMatrix: (number | null)[][],
-    n: number,
-    m: number,
-    params: { alpha: number; beta: number; Lmin: number; Lmax: number; Dj: number },
-  ) {
-    return super['buildLpProblem'](benefitMatrix, n, m, params);
+  public buildLpProblem(...args: Parameters<DistribuicaoService['buildLpProblem']>) {
+    return super.buildLpProblem(...args);
   }
 
-  public parseSolution(
-    solution: { Columns: Record<string, { Primal: number }> },
-    projetosPesquisa: Array<{ id: number }>,
-    docentes: Array<{ usuario_id: number }>,
-  ) {
-    return super['parseSolution'](solution, projetosPesquisa, docentes);
+  public parseSolution(solution: { Columns: Record<string, object> }) {
+    return super.parseSolution(solution);
   }
 }
+
+const area = (overrides: Partial<area_conhecimento> = {}): area_conhecimento => ({
+  id: 1,
+  grande_area: 'Ciências Exatas',
+  area: 'Computação',
+  sub_area: 'IA',
+  especialidade: 'ML',
+  ...overrides,
+});
+
+const outraArea = area({
+  id: 2,
+  grande_area: 'Ciências Biológicas',
+  area: 'Genética',
+  sub_area: 'Genômica',
+  especialidade: 'X',
+});
+
+const projeto = (overrides: Partial<ProjetoDistribuicao> = {}): ProjetoDistribuicao => ({
+  id: 1,
+  avaliador_id: null,
+  area_conhecimento: area(),
+  membro_usuario_ids: [],
+  ...overrides,
+});
+
+const consultor = (overrides: Partial<ConsultorDistribuicao> = {}): ConsultorDistribuicao => ({
+  id: 1,
+  usuario_id: 100,
+  nome: 'Consultor',
+  area_principal: area(),
+  areas_adicionais: [],
+  ...overrides,
+});
+
+// Formato retornado pelo prisma em loadContexto
+const projetoRow = (id: number, a: area_conhecimento | null, membros: number[] = []) => ({
+  id,
+  avaliador_id: null,
+  area_conhecimento: a,
+  projetoMembros: membros.map(user_id => ({ user_id })),
+  membros: [],
+});
+
+const consultorRow = (
+  id: number,
+  usuario_id: number,
+  principal: area_conhecimento,
+  adicionais: area_conhecimento[] = [],
+) => ({
+  consultor: {
+    id,
+    usuario_id,
+    usuario: { nome: `Consultor ${id}` },
+    area_principal: principal,
+    areas_adicionais: adicionais.map(area_conhecimento => ({ area_conhecimento })),
+  },
+});
+
+const avaliacaoRow = (
+  id: number,
+  projeto_id: number,
+  avaliador_id: number,
+  consultor_id: number | null,
+  comNotas = false,
+) => ({
+  id,
+  projeto_id,
+  avaliador_id,
+  consultor_id,
+  _count: { notas: comNotas ? 1 : 0 },
+  planos_avaliacao: [],
+});
 
 describe('DistribuicaoService', () => {
   let service: TestableDistribuicaoService;
@@ -57,269 +127,422 @@ describe('DistribuicaoService', () => {
     }).compile();
 
     service = module.get<TestableDistribuicaoService>(DistribuicaoService);
+
+    prismaMock.edital.findUnique.mockResolvedValue({ id: 1 });
+    prismaMock.projeto_pesquisa.findMany.mockResolvedValue([]);
+    prismaMock.edital_consultor.findMany.mockResolvedValue([]);
+    prismaMock.projeto_avaliacao.findMany.mockResolvedValue([]);
+    prismaMock.$transaction.mockImplementation((fn: (tx: typeof txMock) => unknown) => fn(txMock));
+    txMock.plano_trabalho.findMany.mockResolvedValue([]);
   });
 
   afterEach(() => jest.clearAllMocks());
 
   // --- calcScoreMatrix ---
   describe('calcScoreMatrix', () => {
-    const area = (overrides: Partial<area_conhecimento> = {}): area_conhecimento => ({
-      id: 1,
-      grande_area: 'Ciências Exatas',
-      area: 'Computação',
-      sub_area: 'IA',
-      especialidade: 'ML',
-      ...overrides,
-    });
-
-    it('returns null for self-assignment (avaliador_id === usuario_id)', () => {
-      const projetos = [{ area_conhecimento: area(), avaliador_id: 1 }];
-      const docentes = [{ area_conhecimento: area(), usuario_id: 1 }];
-      const matrix = service.calcScoreMatrix(projetos, docentes);
-      expect(matrix[0][0]).toBeNull();
-    });
-
-    it('returns 0 when projeto has no area_conhecimento', () => {
-      const projetos = [{ area_conhecimento: null, avaliador_id: null }];
-      const docentes = [{ area_conhecimento: area(), usuario_id: 1 }];
-      const matrix = service.calcScoreMatrix(projetos, docentes);
-      expect(matrix[0][0]).toBe(0);
-    });
-
-    it('returns 0 when docente has no area_conhecimento', () => {
-      const projetos = [{ area_conhecimento: area(), avaliador_id: null }];
-      const docentes = [{ area_conhecimento: null, usuario_id: 1 }];
-      const matrix = service.calcScoreMatrix(projetos, docentes);
-      expect(matrix[0][0]).toBe(0);
-    });
-
-    it('scores full match correctly', () => {
-      const projetos = [{ area_conhecimento: area(), avaliador_id: null }];
-      const docentes = [{ area_conhecimento: area(), usuario_id: 1 }];
-      const matrix = service.calcScoreMatrix(projetos, docentes);
+    it('scores full match on the main area', () => {
+      const matrix = service.calcScoreMatrix([projeto()], [consultor()]);
       expect(matrix[0][0]).toBe(160); // 10 + 50 + 100 (especialidade desativada)
     });
 
-    it('scores partial matches correctly', () => {
-      const projetos = [{ area_conhecimento: area(), avaliador_id: null }];
-      const docentes = [
-        { area_conhecimento: area({ especialidade: 'other' }), usuario_id: 1 }, // 10+50+100 = 160
-        { area_conhecimento: area({ sub_area: 'other', especialidade: 'other' }), usuario_id: 2 }, // 10+50 = 60
-        {
-          area_conhecimento: area({ area: 'other', sub_area: 'other', especialidade: 'other' }),
-          usuario_id: 3,
-        }, // 10
-      ];
-      const matrix = service.calcScoreMatrix(projetos, docentes);
-      expect(matrix[0][0]).toBe(160);
-      expect(matrix[1][0]).toBe(60);
-      expect(matrix[2][0]).toBe(10);
+    it('scores partial matches on the main area', () => {
+      const matrix = service.calcScoreMatrix(
+        [projeto()],
+        [
+          consultor({ area_principal: area({ sub_area: 'other' }) }),
+          consultor({ area_principal: area({ area: 'other', sub_area: 'other' }) }),
+          consultor({ area_principal: outraArea }),
+        ],
+      );
+      expect(matrix.map(row => row[0])).toEqual([60, 10, 0]);
     });
 
-    it('handles multiple projetos and docentes', () => {
-      const projetos = [
-        { area_conhecimento: area(), avaliador_id: null },
-        { area_conhecimento: null, avaliador_id: 2 },
-      ];
-      const docentes = [
-        { area_conhecimento: area(), usuario_id: 1 },
-        { area_conhecimento: null, usuario_id: 2 },
-      ];
-      const matrix = service.calcScoreMatrix(projetos, docentes);
-      expect(matrix).toHaveLength(2); // m docentes
-      expect(matrix[0]).toHaveLength(2); // n projetos
-      expect(matrix[0][0]).toBe(160);
-      expect(matrix[1][1]).toBeNull(); // avaliador_id 2 === usuario_id 2
+    it('weights additional areas by half', () => {
+      const matrix = service.calcScoreMatrix(
+        [projeto()],
+        [consultor({ area_principal: outraArea, areas_adicionais: [area()] })],
+      );
+      expect(matrix[0][0]).toBe(80);
+    });
+
+    it('uses the best between main and weighted additional areas', () => {
+      const matrix = service.calcScoreMatrix(
+        [projeto()],
+        [
+          // principal 60 vs adicional 0.5 * 160 = 80
+          consultor({ area_principal: area({ sub_area: 'other' }), areas_adicionais: [area()] }),
+          // principal 160 vs adicional 0.5 * 160 = 80
+          consultor({ area_principal: area(), areas_adicionais: [area()] }),
+          // principal 0 vs melhor adicional 0.5 * 60 = 30
+          consultor({
+            area_principal: outraArea,
+            areas_adicionais: [
+              area({ area: 'other', sub_area: 'other' }),
+              area({ sub_area: 'other' }),
+            ],
+          }),
+        ],
+      );
+      expect(matrix.map(row => row[0])).toEqual([80, 160, 30]);
+    });
+
+    it('returns 0 when projeto has no area_conhecimento', () => {
+      const matrix = service.calcScoreMatrix([projeto({ area_conhecimento: null })], [consultor()]);
+      expect(matrix[0][0]).toBe(0);
+    });
+
+    it('returns null when consultor is a member of the projeto', () => {
+      const matrix = service.calcScoreMatrix(
+        [projeto({ membro_usuario_ids: [100] })],
+        [consultor({ usuario_id: 100 })],
+      );
+      expect(matrix[0][0]).toBeNull();
+    });
+
+    it('returns null when consultor is the projeto avaliador_id', () => {
+      const matrix = service.calcScoreMatrix(
+        [projeto({ avaliador_id: 100 })],
+        [consultor({ usuario_id: 100 })],
+      );
+      expect(matrix[0][0]).toBeNull();
+    });
+
+    it('builds an m x n matrix (consultores x projetos)', () => {
+      const matrix = service.calcScoreMatrix(
+        [projeto({ id: 1 }), projeto({ id: 2 }), projeto({ id: 3 })],
+        [consultor({ id: 1 }), consultor({ id: 2 })],
+      );
+      expect(matrix).toHaveLength(2);
+      expect(matrix[0]).toHaveLength(3);
     });
   });
 
   // --- buildLpProblem ---
   describe('buildLpProblem', () => {
-    const params = { alpha: 10, beta: 10, Lmin: 1, Lmax: 2, Dj: 1 };
+    const params = { alpha: 10, beta: 10, Lmin: [1, 1], Lmax: [2, 2], Dj: [1, 1] };
 
-    it('contains objective function', () => {
-      const matrix = [
-        [360, 0],
-        [0, 200],
-      ];
-      const lp = service.buildLpProblem(matrix, 2, 2, params);
-      expect(lp).toContain('max:');
+    it('generates a CPLEX LP model', () => {
+      const lp = service.buildLpProblem(
+        [
+          [160, 0],
+          [0, 60],
+        ],
+        2,
+        2,
+        params,
+      );
+      expect(lp).toMatch(/^Maximize\n obj: 160 x_0_0 \+ 60 x_1_1 - 10 y_0/);
+      expect(lp).toContain('Subject To');
+      expect(lp).toContain('Binary');
+      expect(lp.endsWith('End')).toBe(true);
     });
 
-    it('declares binary variables', () => {
-      const matrix = [
-        [360, 0],
-        [0, 200],
-      ];
-      const lp = service.buildLpProblem(matrix, 2, 2, params);
-      expect(lp).toContain('bin');
-    });
-
-    it('includes y and z slack variables in objective', () => {
-      const matrix = [
-        [100, 0],
-        [0, 100],
-      ];
-      const lp = service.buildLpProblem(matrix, 2, 2, params);
-      expect(lp).toContain('y_0');
-      expect(lp).toContain('y_1');
-      expect(lp).toContain('z_0');
-      expect(lp).toContain('z_1');
-    });
-
-    it('excludes null pairs from binary variables', () => {
-      const matrix = [
-        [null, 100],
-        [200, null],
-      ];
-      const lp = service.buildLpProblem(matrix, 2, 2, params);
+    it('excludes ineligible (null) pairs', () => {
+      const lp = service.buildLpProblem(
+        [
+          [null, 100],
+          [200, null],
+        ],
+        2,
+        2,
+        params,
+      );
       expect(lp).not.toContain('x_0_0');
       expect(lp).not.toContain('x_1_1');
       expect(lp).toContain('x_0_1');
       expect(lp).toContain('x_1_0');
     });
 
-    it('includes non-negativity bounds for y and z', () => {
-      const matrix = [[100]];
-      const lp = service.buildLpProblem(matrix, 1, 1, params);
-      expect(lp).toContain('y_0 >= 0');
-      expect(lp).toContain('z_0 >= 0');
+    it('uses per-project demand and per-consultor load bounds', () => {
+      const lp = service.buildLpProblem([[100, 100]], 2, 1, {
+        alpha: 10,
+        beta: 10,
+        Lmin: [1],
+        Lmax: [3],
+        Dj: [2, 0],
+      });
+      expect(lp).toContain('c1_0: x_0_0 + y_0 = 2');
+      expect(lp).toContain('c1_1: x_0_1 + y_1 = 0');
+      expect(lp).toContain('c2min_0: x_0_0 + x_0_1 + z_0 >= 1');
+      expect(lp).toContain('c2max_0: x_0_0 + x_0_1 <= 3');
     });
 
-    it('respects d_j in C1 constraint', () => {
-      const matrix = [[100]];
-      const lp = service.buildLpProblem(matrix, 1, 1, { ...params, Dj: 2 });
-      expect(lp).toContain('= 2');
-    });
-  });
-
-  // --- hasDistribuicao ---
-  describe('hasDistribuicao', () => {
-    it('returns true when a projeto_avaliacao exists', async () => {
-      prismaMock.projeto_avaliacao.findFirst.mockResolvedValue({ id: 1 });
-      expect(await service.hasDistribuicao(1)).toBe(true);
-    });
-
-    it('returns false when none exists', async () => {
-      prismaMock.projeto_avaliacao.findFirst.mockResolvedValue(null);
-      expect(await service.hasDistribuicao(1)).toBe(false);
+    it('is accepted and solved by HiGHS', async () => {
+      const highs = await highsLoader();
+      const lp = service.buildLpProblem(
+        [
+          [160, 10],
+          [10, 160],
+        ],
+        2,
+        2,
+        { alpha: 10, beta: 10, Lmin: [0, 0], Lmax: [1, 1], Dj: [1, 1] },
+      );
+      const solution = highs.solve(lp);
+      expect(solution.Status).toBe('Optimal');
+      expect(service.parseSolution(solution)).toEqual(
+        expect.arrayContaining([
+          { i: 0, j: 0 },
+          { i: 1, j: 1 },
+        ]),
+      );
     });
   });
 
   // --- parseSolution ---
   describe('parseSolution', () => {
-    it('maps x variables to projeto/docente pairs', () => {
-      const solution = {
+    it('returns only x variables set to 1', () => {
+      const result = service.parseSolution({
         Columns: {
           x_0_0: { Primal: 1 },
-          x_1_1: { Primal: 1 },
-        },
-      };
-      const projetos = [{ id: 10 }, { id: 20 }];
-      const docentes = [{ usuario_id: 100 }, { usuario_id: 200 }];
-      const result = service.parseSolution(solution, projetos, docentes);
-      expect(result).toEqual(
-        expect.arrayContaining([
-          { projeto_id: 10, avaliador_ids: [100] },
-          { projeto_id: 20, avaliador_ids: [200] },
-        ]),
-      );
-    });
-
-    it('groups multiple docentes for the same project', () => {
-      const solution = {
-        Columns: {
-          x_0_0: { Primal: 1 },
-          x_1_0: { Primal: 1 },
-        },
-      };
-      const projetos = [{ id: 10 }];
-      const docentes = [{ usuario_id: 100 }, { usuario_id: 200 }];
-      const result = service.parseSolution(solution, projetos, docentes);
-      expect(result).toEqual([{ projeto_id: 10, avaliador_ids: [100, 200] }]);
-    });
-
-    it('ignores variables with Primal !== 1', () => {
-      const solution = {
-        Columns: {
-          x_0_0: { Primal: 0 },
-          x_1_0: { Primal: 0.4 },
-        },
-      };
-      const projetos = [{ id: 10 }];
-      const docentes = [{ usuario_id: 100 }, { usuario_id: 200 }];
-      const result = service.parseSolution(solution, projetos, docentes);
-      expect(result).toEqual([]);
-    });
-
-    it('ignores y and z variables', () => {
-      const solution = {
-        Columns: {
+          x_1_0: { Primal: 0 },
+          x_2_3: { Primal: 0.9999 },
           y_0: { Primal: 1 },
           z_0: { Primal: 1 },
         },
-      };
-      const result = service.parseSolution(solution, [], []);
-      expect(result).toEqual([]);
+      });
+      expect(result).toEqual([
+        { i: 0, j: 0 },
+        { i: 2, j: 3 },
+      ]);
     });
   });
 
-  // --- distribute ---
-  describe('distribute', () => {
+  // --- preview ---
+  describe('preview', () => {
     const params: DistribuicaoParamsDto = {
-      minimoProjetosPorAvaliador: 1,
-      maximoProjetosPorAvaliador: 3,
-      avaliadoresPorProjeto: 2,
+      minimoProjetosPorAvaliador: 0,
+      maximoProjetosPorAvaliador: 2,
+      avaliadoresPorProjeto: 1,
     };
 
-    const solverMock = {
-      solve: jest.fn().mockReturnValue({
-        Status: 'Optimal',
-        ObjectiveValue: 360,
-        Columns: {
-          x_0_0: { Primal: 1 },
-          x_1_1: { Primal: 1 },
-          y_0: { Primal: 0 },
-          z_0: { Primal: 0 },
-        },
-        Rows: [],
-      }),
-    };
+    it('throws NotFound when the edital does not exist', async () => {
+      prismaMock.edital.findUnique.mockResolvedValue(null);
+      await expect(service.preview(1, params)).rejects.toBeInstanceOf(NotFoundException);
+    });
 
-    beforeEach(() => {
-      jest.spyOn(service as any, 'initHighsModule').mockResolvedValue(solverMock);
+    it('rejects minimo greater than maximo', async () => {
+      await expect(
+        service.preview(1, { ...params, minimoProjetosPorAvaliador: 3 }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('only loads projetos in distributable situations', async () => {
+      await service.preview(1, params);
+      const [[{ where }]] = prismaMock.projeto_pesquisa.findMany.mock.calls as [
+        [{ where: { edital_id: number; situacao: { in: SituacaoProjeto[] } } }],
+      ];
+      expect(where.edital_id).toBe(1);
+      expect(where.situacao.in).toContain(SituacaoProjeto.SUBMETIDO);
+      expect(where.situacao.in).not.toContain(SituacaoProjeto.EXCLUIDO);
+      expect(where.situacao.in).not.toContain(SituacaoProjeto.CADASTRO_EM_ANDAMENTO);
+    });
+
+    it('assigns each projeto to the consultor with the best affinity', async () => {
       prismaMock.projeto_pesquisa.findMany.mockResolvedValue([
-        { id: 1, area_conhecimento: null, avaliador_id: null, edital_id: 1 },
-        { id: 2, area_conhecimento: null, avaliador_id: null, edital_id: 1 },
+        projetoRow(10, area()),
+        projetoRow(20, outraArea),
       ]);
-      prismaMock.docente.findMany.mockResolvedValue([
-        { id: 1, usuario_id: 10, area_conhecimento: null },
-        { id: 2, usuario_id: 20, area_conhecimento: null },
+      prismaMock.edital_consultor.findMany.mockResolvedValue([
+        consultorRow(1, 100, outraArea),
+        consultorRow(2, 200, area()),
       ]);
-      prismaMock.$transaction.mockResolvedValue(undefined);
+
+      const result = await service.preview(1, params);
+
+      expect(result.status).toBe('Optimal');
+      expect(result.atribuicoes).toEqual(
+        expect.arrayContaining([
+          { projeto_id: 10, consultor_id: 2, avaliador_id: 200, score: 160, bloqueada: false },
+          { projeto_id: 20, consultor_id: 1, avaliador_id: 100, score: 160, bloqueada: false },
+        ]),
+      );
+      expect(result.atribuicoes).toHaveLength(2);
+      expect(result.pendencias).toEqual([]);
+      expect(prismaMock.$transaction).not.toHaveBeenCalled();
     });
 
-    it('calls solver and saves solution', async () => {
-      await service.distribute(1, params);
-      expect(solverMock.solve).toHaveBeenCalledTimes(1);
-      expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
+    it('never assigns a consultor to a projeto with conflict and reports pendencias', async () => {
+      prismaMock.projeto_pesquisa.findMany.mockResolvedValue([projetoRow(10, area(), [100])]);
+      prismaMock.edital_consultor.findMany.mockResolvedValue([consultorRow(1, 100, area())]);
+
+      const result = await service.preview(1, params);
+
+      expect(result.atribuicoes).toEqual([]);
+      expect(result.pendencias).toEqual([{ projeto_id: 10, faltando: 1 }]);
     });
 
-    it('passes the editalId to findMany', async () => {
-      await service.distribute(1, params);
-      expect(prismaMock.projeto_pesquisa.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { edital_id: 1 } }),
+    it('respects the maximum load per consultor', async () => {
+      prismaMock.projeto_pesquisa.findMany.mockResolvedValue([
+        projetoRow(10, area()),
+        projetoRow(20, area()),
+        projetoRow(30, area()),
+      ]);
+      prismaMock.edital_consultor.findMany.mockResolvedValue([consultorRow(1, 100, area())]);
+
+      const result = await service.preview(1, params);
+
+      expect(result.atribuicoes).toHaveLength(2);
+      expect(result.carga).toEqual([{ consultor_id: 1, total: 2 }]);
+      expect(result.pendencias).toHaveLength(1);
+    });
+
+    it('keeps assignments with notas and only fills the remaining slots', async () => {
+      prismaMock.projeto_pesquisa.findMany.mockResolvedValue([projetoRow(10, area())]);
+      prismaMock.edital_consultor.findMany.mockResolvedValue([
+        consultorRow(1, 100, area()),
+        consultorRow(2, 200, area({ sub_area: 'other' })),
+      ]);
+      prismaMock.projeto_avaliacao.findMany.mockResolvedValue([avaliacaoRow(50, 10, 100, 1, true)]);
+
+      const result = await service.preview(1, { ...params, avaliadoresPorProjeto: 2 });
+
+      expect(result.atribuicoes).toEqual([
+        { projeto_id: 10, consultor_id: 1, avaliador_id: 100, score: 160, bloqueada: true },
+        { projeto_id: 10, consultor_id: 2, avaliador_id: 200, score: 60, bloqueada: false },
+      ]);
+      expect(result.pendencias).toEqual([]);
+    });
+
+    it('does not call the solver when there are no consultores', async () => {
+      prismaMock.projeto_pesquisa.findMany.mockResolvedValue([projetoRow(10, area())]);
+      const initSpy = jest.spyOn(service as any, 'initHighsModule');
+
+      const result = await service.preview(1, params);
+
+      expect(initSpy).not.toHaveBeenCalled();
+      expect(result.status).toBe('Empty');
+      expect(result.pendencias).toEqual([{ projeto_id: 10, faltando: 1 }]);
+    });
+
+    it('throws when the solver returns a status without solution', async () => {
+      prismaMock.projeto_pesquisa.findMany.mockResolvedValue([projetoRow(10, area())]);
+      prismaMock.edital_consultor.findMany.mockResolvedValue([consultorRow(1, 100, area())]);
+      jest.spyOn(service as any, 'initHighsModule').mockResolvedValue({
+        solve: () => ({ Status: 'Infeasible', Columns: {}, Rows: [], ObjectiveValue: 0 }),
+      });
+
+      await expect(service.preview(1, params)).rejects.toThrow('Infeasible');
+    });
+  });
+
+  // --- confirm ---
+  describe('confirm', () => {
+    beforeEach(() => {
+      prismaMock.projeto_pesquisa.findMany.mockResolvedValue([
+        projetoRow(10, area()),
+        projetoRow(20, area(), [300]),
+      ]);
+      prismaMock.edital_consultor.findMany.mockResolvedValue([
+        consultorRow(1, 100, area()),
+        consultorRow(2, 200, area()),
+        consultorRow(3, 300, area()),
+      ]);
+    });
+
+    it.each([
+      [{ projeto_id: 99, consultor_id: 1 }, 'não pertence ao edital'],
+      [{ projeto_id: 10, consultor_id: 99 }, 'não está vinculado ao edital'],
+      [{ projeto_id: 20, consultor_id: 3 }, 'conflito de interesse'],
+    ])('rejects invalid atribuicao %o', async (atribuicao, mensagem) => {
+      const promise = service.confirm(1, { atribuicoes: [atribuicao] });
+      await expect(promise).rejects.toBeInstanceOf(BadRequestException);
+      await expect(promise).rejects.toMatchObject({
+        response: { message: [expect.stringContaining(mensagem)] },
+      });
+      expect(prismaMock.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('rejects duplicated atribuicoes', async () => {
+      const atribuicao = { projeto_id: 10, consultor_id: 1 };
+      await expect(
+        service.confirm(1, { atribuicoes: [atribuicao, atribuicao] }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('syncs atribuicoes: creates new, removes dropped, keeps unchanged and locked ones', async () => {
+      prismaMock.projeto_avaliacao.findMany.mockResolvedValue([
+        avaliacaoRow(50, 10, 100, 1), // mantida (enviada de novo)
+        avaliacaoRow(51, 10, 200, 2), // removida (não enviada)
+        avaliacaoRow(52, 20, 200, null, true), // bloqueada (tem notas), antiga sem consultor_id
+      ]);
+      txMock.plano_trabalho.findMany.mockResolvedValue([
+        { id: 7, pesquisa_id: 20 },
+        { id: 8, pesquisa_id: 20 },
+      ]);
+
+      const result = await service.confirm(1, {
+        atribuicoes: [
+          { projeto_id: 10, consultor_id: 1 },
+          { projeto_id: 20, consultor_id: 1 },
+        ],
+      });
+
+      expect(result).toEqual({ criadas: 1, removidas: 1, mantidas: 2 });
+      expect(txMock.projeto_avaliacao.deleteMany).toHaveBeenCalledWith({
+        where: { id: { in: [51] } },
+      });
+      expect(txMock.projeto_avaliacao.update).toHaveBeenCalledWith({
+        where: { id: 52 },
+        data: { consultor_id: 2 },
+      });
+      expect(txMock.projeto_avaliacao.create).toHaveBeenCalledTimes(1);
+      expect(txMock.projeto_avaliacao.create).toHaveBeenCalledWith({
+        data: {
+          projeto_id: 20,
+          avaliador_id: 100,
+          consultor_id: 1,
+          planos_avaliacao: { create: [{ plano_trabalho_id: 7 }, { plano_trabalho_id: 8 }] },
+        },
+      });
+      const [[updateArgs]] = txMock.projeto_pesquisa.updateMany.mock.calls as [
+        [{ where: { id: { in: number[] } }; data: { situacao: SituacaoProjeto } }],
+      ];
+      expect(updateArgs.where.id.in.sort()).toEqual([10, 20]);
+      expect(updateArgs.data.situacao).toBe(
+        SituacaoProjeto.DISTRIBUIDO_PARA_AVALIACAO_AUTOMATICAMENTE,
       );
     });
 
-    it('throws if solver returns non-optimal status', async () => {
-      solverMock.solve.mockReturnValueOnce({
-        Status: 'Infeasible',
-        Columns: {},
-        Rows: [],
-        ObjectiveValue: 0,
-      });
-      await expect(service.distribute(1, params)).rejects.toThrow();
+    it('never removes locked atribuicoes even when the list is empty', async () => {
+      prismaMock.projeto_avaliacao.findMany.mockResolvedValue([avaliacaoRow(52, 20, 200, 2, true)]);
+
+      const result = await service.confirm(1, { atribuicoes: [] });
+
+      expect(result).toEqual({ criadas: 0, removidas: 0, mantidas: 1 });
+      expect(txMock.projeto_avaliacao.deleteMany).not.toHaveBeenCalled();
+    });
+  });
+
+  // --- candidatos ---
+  describe('candidatos', () => {
+    it('throws NotFound when the projeto is not distributable in the edital', async () => {
+      await expect(service.candidatos(1, 10)).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('lists consultores without conflict ordered by score and load', async () => {
+      prismaMock.projeto_pesquisa.findMany.mockResolvedValue([
+        projetoRow(10, area(), [400]),
+        projetoRow(20, area()),
+      ]);
+      prismaMock.edital_consultor.findMany.mockResolvedValue([
+        consultorRow(1, 100, area({ sub_area: 'other' })),
+        consultorRow(2, 200, area()),
+        consultorRow(3, 300, area()),
+        consultorRow(4, 400, area()), // membro do projeto 10
+      ]);
+      prismaMock.projeto_avaliacao.findMany.mockResolvedValue([
+        avaliacaoRow(50, 20, 200, 2),
+        avaliacaoRow(51, 10, 300, 3),
+      ]);
+
+      const result = await service.candidatos(1, 10);
+
+      expect(result).toEqual([
+        { consultor_id: 2, nome: 'Consultor 2', score: 160, carga: 1, atribuido: false },
+        { consultor_id: 3, nome: 'Consultor 3', score: 160, carga: 1, atribuido: true },
+        { consultor_id: 1, nome: 'Consultor 1', score: 60, carga: 0, atribuido: false },
+      ]);
     });
   });
 });

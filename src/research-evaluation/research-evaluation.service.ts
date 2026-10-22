@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma, StatusAtribuicao } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SubmitEvaluationDto } from './dto/submit-evaluation.dto';
 import { SubmitPlanoEvaluationDto } from './dto/submit-plano-evaluation.dto';
@@ -30,6 +31,8 @@ export class ResearchEvaluationService {
       if (plano_avaliacao.projeto_avaliacao.avaliador_id !== userId) {
         throw new ForbiddenException('O usuário não possui permissão para realizar essa avaliação');
       }
+
+      await this.aceitarSePendente(prisma, plano_avaliacao.projeto_avaliacao);
 
       if (plano_avaliacao.notas.length > 0) {
         throw new BadRequestException('Este plano já foi avaliado');
@@ -106,6 +109,8 @@ export class ResearchEvaluationService {
         throw new ForbiddenException('O usuário não possui permissão para realizar essa avaliação');
       }
 
+      await this.aceitarSePendente(prisma, research_evaluation);
+
       if (research_evaluation.notas.length > 0) {
         throw new BadRequestException('Esta avaliação já foi enviada');
       }
@@ -181,5 +186,23 @@ export class ResearchEvaluationService {
         },
       });
     });
+  }
+
+  /** Convites recusados não podem ser avaliados; avaliar um convite pendente equivale a aceitá-lo. */
+  private async aceitarSePendente(
+    prisma: Prisma.TransactionClient,
+    atribuicao: { id: number; status: StatusAtribuicao },
+  ): Promise<void> {
+    if (atribuicao.status === StatusAtribuicao.RECUSADO) {
+      throw new BadRequestException(
+        'Este convite de avaliação foi recusado e não pode ser avaliado',
+      );
+    }
+    if (atribuicao.status === StatusAtribuicao.PENDENTE) {
+      await prisma.projeto_avaliacao.update({
+        where: { id: atribuicao.id },
+        data: { status: StatusAtribuicao.ACEITO, respondido_em: new Date() },
+      });
+    }
   }
 }

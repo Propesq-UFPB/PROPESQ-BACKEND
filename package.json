@@ -77,7 +77,10 @@
     "hono": "^4.10.7",
     "valibot": "^1.2.0",
     "multer": "^2.3.0",
-    "deepmerge-ts": "^8.0.1"
+    "deepmerge-ts": "^8.0.1",
+    "@nestjs/swagger": {
+      "js-yaml": "5.4.1"
+    }
   },
   "jest": {
     "moduleFileExtensions": [
@@ -107,8 +110,9 @@
     "prisma@6.19.3": true,
     "@prisma/client@6.19.3": true,
     "@prisma/engines@6.19.3": true,
-    "unrs-resolver@1.11.1": true,
     "@nestjs/core": false,
-    "@scarf/scarf": false
+    "@scarf/scarf": false,
+    "@parcel/watcher@2.6.0": true,
+    "unrs-resolver@1.12.2": true
   }
 }

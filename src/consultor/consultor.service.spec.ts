@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 
 const txMock = {
   consultor_area_adicional: { deleteMany: jest.fn() },
-  consultor: { update: jest.fn() },
+  consultor: { update: jest.fn(), upsert: jest.fn() },
 };
 
 const prismaMock = {
@@ -48,6 +48,7 @@ const consultorRow = (overrides: Record<string, unknown> = {}) => ({
   is_voluntario: false,
   is_cnpq: false,
   ativo: true,
+  areas_atualizadas_em: new Date('2026-10-15'),
   criado_em: new Date('2026-10-15'),
   atualizado_em: new Date('2026-10-15'),
   usuario: { id: 10, nome: 'Maria', email: 'maria@exemplo.com' },
@@ -100,6 +101,7 @@ describe('ConsultorService', () => {
         usuario_id: 10,
         area_principal_id: 100,
         ativo: true,
+        areas_atualizadas_em: expect.any(Date),
         areas_adicionais: { create: [{ area_conhecimento_id: 101 }] },
       });
       expect(result).toMatchObject({
@@ -201,8 +203,16 @@ describe('ConsultorService', () => {
       });
       const [[{ data }]] = txMock.consultor.update.mock.calls as [[{ data: object }]];
       expect(data).toMatchObject({
+        areas_atualizadas_em: expect.any(Date),
         areas_adicionais: { create: [{ area_conhecimento_id: 102 }] },
       });
+    });
+
+    it('keeps areas_atualizadas_em when only flags change', async () => {
+      await service.update(1, { ativo: false });
+
+      const [[{ data }]] = txMock.consultor.update.mock.calls as [[{ data: object }]];
+      expect(data).not.toHaveProperty('areas_atualizadas_em');
     });
 
     it('drops the new main area from the additional ones', async () => {
@@ -216,6 +226,71 @@ describe('ConsultorService', () => {
     it('throws NotFound for unknown consultor', async () => {
       prismaMock.consultor.findUnique.mockResolvedValue(null);
       await expect(service.update(1, { ativo: false })).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('findMinhasAreas', () => {
+    it('reports whether the areas were updated this year', async () => {
+      prismaMock.consultor.findUnique.mockResolvedValue(
+        consultorRow({ areas_atualizadas_em: new Date() }),
+      );
+
+      const result = await service.findMinhasAreas(10);
+
+      expect(result).toMatchObject({
+        consultor_id: 1,
+        area_principal: { id: 100 },
+        areas_adicionais: [{ id: 101 }],
+        atualizado_no_ano: true,
+      });
+    });
+
+    it('suggests the docente area when the user is not a consultor', async () => {
+      prismaMock.usuario.findUnique.mockResolvedValue({
+        docente: [{ area_conhecimento: area(200) }],
+      });
+
+      const result = await service.findMinhasAreas(10);
+
+      expect(result).toMatchObject({
+        consultor_id: null,
+        area_principal: null,
+        areas_adicionais: [],
+        areas_atualizadas_em: null,
+        atualizado_no_ano: false,
+        area_sugerida: { id: 200 },
+      });
+    });
+  });
+
+  describe('updateMinhasAreas', () => {
+    it('upserts the consultor replacing the additional areas', async () => {
+      await service.updateMinhasAreas(10, {
+        area_principal_id: 100,
+        areas_adicionais_ids: [101, 100],
+      });
+
+      expect(txMock.consultor_area_adicional.deleteMany).toHaveBeenCalledWith({
+        where: { consultor: { usuario_id: 10 } },
+      });
+      const data = {
+        area_principal_id: 100,
+        areas_atualizadas_em: expect.any(Date),
+        areas_adicionais: { create: [{ area_conhecimento_id: 101 }] },
+      };
+      expect(txMock.consultor.upsert).toHaveBeenCalledWith({
+        where: { usuario_id: 10 },
+        create: { usuario_id: 10, ...data },
+        update: data,
+      });
+    });
+
+    it('rejects ineligible users', async () => {
+      prismaMock.usuario.findUnique.mockResolvedValue({ funcao: { nome: 'ALUNO' }, docente: [] });
+      await expect(
+        service.updateMinhasAreas(10, { area_principal_id: 100, areas_adicionais_ids: [] }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(txMock.consultor.upsert).not.toHaveBeenCalled();
     });
   });
 

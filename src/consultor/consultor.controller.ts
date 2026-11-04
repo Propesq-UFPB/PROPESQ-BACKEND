@@ -11,6 +11,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -25,10 +26,17 @@ import {
 import { ConsultorService } from './consultor.service';
 import { CreateConsultorDto } from './dto/create-consultor.dto';
 import { UpdateConsultorDto } from './dto/update-consultor.dto';
-import { ConsultorResponseDto, UsuarioElegivelDto } from './dto/consultor-response.dto';
+import { UpdateMinhasAreasDto } from './dto/update-minhas-areas.dto';
+import {
+  ConsultorResponseDto,
+  MinhasAreasResponseDto,
+  UsuarioElegivelDto,
+} from './dto/consultor-response.dto';
 import { Paginated, PaginatedResult } from '../common/dto/paginated.dto';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 
 @ApiBearerAuth('bearer')
 @ApiTags('Consultores')
@@ -81,6 +89,31 @@ export class ConsultorController {
     @Query('search') search?: string,
   ): Promise<UsuarioElegivelDto[]> {
     return this.consultorService.findUsuariosElegiveis(search, limit);
+  }
+
+  @ApiOperation({ summary: 'Obtém as áreas de avaliação do usuário logado' })
+  @ApiResponse({ status: HttpStatus.OK, type: MinhasAreasResponseDto })
+  @Get('me')
+  @UseGuards(RolesGuard)
+  @Roles('GESTOR', 'COORDENADOR')
+  findMinhasAreas(@CurrentUser() user: CurrentUserPayload): Promise<MinhasAreasResponseDto> {
+    return this.consultorService.findMinhasAreas(user.userId);
+  }
+
+  @ApiOperation({
+    summary: 'Atualiza as áreas de avaliação do usuário logado',
+    description: 'Cria o cadastro de consultor caso o usuário ainda não possua.',
+  })
+  @ApiResponse({ status: HttpStatus.OK, type: MinhasAreasResponseDto })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Área inexistente.' })
+  @Put('me')
+  @UseGuards(RolesGuard)
+  @Roles('GESTOR', 'COORDENADOR')
+  updateMinhasAreas(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: UpdateMinhasAreasDto,
+  ): Promise<MinhasAreasResponseDto> {
+    return this.consultorService.updateMinhasAreas(user.userId, dto);
   }
 
   @ApiOperation({ summary: 'Obtém um consultor pelo ID' })

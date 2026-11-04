@@ -482,15 +482,16 @@ model projeto_avaliacao {
 }
 
 model consultor {
-  id                Int      @id @default(autoincrement())
-  usuario_id        Int      @unique
-  is_propesq        Boolean  @default(false)
-  is_voluntario     Boolean  @default(false)
-  is_cnpq           Boolean  @default(false)
-  ativo             Boolean  @default(true)
-  area_principal_id Int
-  criado_em         DateTime @default(now()) @db.Timestamp(6)
-  atualizado_em     DateTime @default(now()) @updatedAt @db.Timestamp(6)
+  id                   Int       @id @default(autoincrement())
+  usuario_id           Int       @unique
+  is_propesq           Boolean   @default(false)
+  is_voluntario        Boolean   @default(false)
+  is_cnpq              Boolean   @default(false)
+  ativo                Boolean   @default(true)
+  area_principal_id    Int
+  areas_atualizadas_em DateTime? @db.Timestamp(6)
+  criado_em            DateTime  @default(now()) @db.Timestamp(6)
+  atualizado_em        DateTime  @default(now()) @updatedAt @db.Timestamp(6)
 
   usuario           usuario                    @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   area_principal    area_conhecimento          @relation(fields: [area_principal_id], references: [id], onDelete: Restrict, onUpdate: NoAction)

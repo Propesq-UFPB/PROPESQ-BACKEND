@@ -75,8 +75,15 @@ export class ResearchController {
     status: HttpStatus.NOT_FOUND,
     description: 'Unidade acadêmica não encontrada.',
   })
-  create(@Body() createResearchDto: CreateResearchDto): Promise<projeto_pesquisa> {
-    return this.researchService.create(createResearchDto);
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Coordenador sem áreas de conhecimento atualizadas no ano corrente.',
+  })
+  create(
+    @Body() createResearchDto: CreateResearchDto,
+    @CurrentUser() currentUser: CurrentUserPayload,
+  ): Promise<projeto_pesquisa> {
+    return this.researchService.create(createResearchDto, currentUser);
   }
 
   @Get('sustainable-development-goals/lookup')
@@ -226,7 +233,8 @@ export class ResearchController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Atualiza registro de um projeto de pesquisa',
-    description: 'Gestores podem alterar qualquer projeto; coordenadores precisam de vínculo autorizado com o projeto.',
+    description:
+      'Gestores podem alterar qualquer projeto; coordenadores precisam de vínculo autorizado com o projeto.',
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,

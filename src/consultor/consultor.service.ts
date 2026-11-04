@@ -9,7 +9,13 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PaginatedResult } from '../common/dto/paginated.dto';
 import { CreateConsultorDto } from './dto/create-consultor.dto';
 import { UpdateConsultorDto } from './dto/update-consultor.dto';
-import { ConsultorResponseDto, UsuarioElegivelDto } from './dto/consultor-response.dto';
+import { UpdateMinhasAreasDto } from './dto/update-minhas-areas.dto';
+import {
+  ConsultorResponseDto,
+  MinhasAreasResponseDto,
+  UsuarioElegivelDto,
+} from './dto/consultor-response.dto';
+import { areasAtualizadasNoAno } from './areas-atualizacao';
 import { EditalConsultorResponseDto } from './dto/edital-consultor.dto';
 
 // Funções de usuário que não podem ser consultores
@@ -71,6 +77,7 @@ export class ConsultorService {
         is_voluntario: dto.is_voluntario ?? false,
         is_cnpq: dto.is_cnpq ?? false,
         ativo: dto.ativo ?? true,
+        areas_atualizadas_em: new Date(),
         areas_adicionais: {
           create: adicionais.map(area_conhecimento_id => ({ area_conhecimento_id })),
         },
@@ -150,6 +157,9 @@ export class ConsultorService {
           is_voluntario: dto.is_voluntario,
           is_cnpq: dto.is_cnpq,
           ativo: dto.ativo,
+          ...((dto.area_principal_id !== undefined || adicionais !== undefined) && {
+            areas_atualizadas_em: new Date(),
+          }),
           ...(adicionais !== undefined && {
             areas_adicionais: {
               create: adicionais.map(area_conhecimento_id => ({ area_conhecimento_id })),
@@ -161,6 +171,61 @@ export class ConsultorService {
     });
 
     return this.toResponseDto(updated);
+  }
+
+  /** Áreas de avaliação do próprio usuário, com a área do docente como sugestão. */
+  async findMinhasAreas(usuarioId: number): Promise<MinhasAreasResponseDto> {
+    const [consultor, usuario] = await Promise.all([
+      this.prisma.consultor.findUnique({
+        where: { usuario_id: usuarioId },
+        include: consultorInclude,
+      }),
+      this.prisma.usuario.findUnique({ where: { id: usuarioId }, select: docenteAreaSelect }),
+    ]);
+
+    return {
+      consultor_id: consultor?.id ?? null,
+      area_principal: consultor?.area_principal ?? null,
+      areas_adicionais: consultor?.areas_adicionais.map(a => a.area_conhecimento) ?? [],
+      areas_atualizadas_em: consultor?.areas_atualizadas_em ?? null,
+      atualizado_no_ano: areasAtualizadasNoAno(consultor?.areas_atualizadas_em),
+      area_sugerida: usuario?.docente[0]?.area_conhecimento ?? null,
+    };
+  }
+
+  /**
+   * O próprio docente atualiza suas áreas. Se ainda não for consultor, o cadastro
+   * é criado já ativo para entrar na distribuição.
+   */
+  async updateMinhasAreas(
+    usuarioId: number,
+    dto: UpdateMinhasAreasDto,
+  ): Promise<MinhasAreasResponseDto> {
+    await this.assertUsuarioElegivel(usuarioId);
+
+    const adicionais = this.normalizarAdicionais(dto.area_principal_id, dto.areas_adicionais_ids);
+    await this.assertAreasExistem([dto.area_principal_id, ...adicionais]);
+
+    const data = {
+      area_principal_id: dto.area_principal_id,
+      areas_atualizadas_em: new Date(),
+      areas_adicionais: {
+        create: adicionais.map(area_conhecimento_id => ({ area_conhecimento_id })),
+      },
+    };
+
+    await this.prisma.$transaction(async prisma => {
+      await prisma.consultor_area_adicional.deleteMany({
+        where: { consultor: { usuario_id: usuarioId } },
+      });
+      await prisma.consultor.upsert({
+        where: { usuario_id: usuarioId },
+        create: { usuario_id: usuarioId, ...data },
+        update: data,
+      });
+    });
+
+    return this.findMinhasAreas(usuarioId);
   }
 
   /**
@@ -427,6 +492,7 @@ export class ConsultorService {
       is_voluntario: consultor.is_voluntario,
       is_cnpq: consultor.is_cnpq,
       ativo: consultor.ativo,
+      areas_atualizadas_em: consultor.areas_atualizadas_em,
       criado_em: consultor.criado_em,
       atualizado_em: consultor.atualizado_em,
     };

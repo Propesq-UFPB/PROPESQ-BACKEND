@@ -59,6 +59,13 @@ export class ConsultorResponseDto {
   @ApiProperty({ example: true })
   ativo!: boolean;
 
+  @ApiProperty({
+    example: '2026-10-15T12:00:00.000Z',
+    nullable: true,
+    description: 'Última atualização das áreas de conhecimento.',
+  })
+  areas_atualizadas_em!: Date | null;
+
   @ApiProperty({ example: '2026-10-15T12:00:00.000Z' })
   criado_em!: Date;
 
@@ -77,4 +84,35 @@ export class UsuarioElegivelDto extends ConsultorUsuarioDto {
       'Área de conhecimento cadastrada no docente, usada como sugestão de área principal.',
   })
   area_conhecimento!: AreaConhecimentoDto | null;
+}
+
+export class MinhasAreasResponseDto {
+  @ApiProperty({
+    example: 1,
+    nullable: true,
+    description: 'Nulo se o usuário ainda não é consultor.',
+  })
+  consultor_id!: number | null;
+
+  @ApiProperty({ type: AreaConhecimentoDto, nullable: true })
+  area_principal!: AreaConhecimentoDto | null;
+
+  @ApiProperty({ type: [AreaConhecimentoDto] })
+  areas_adicionais!: AreaConhecimentoDto[];
+
+  @ApiProperty({ example: '2026-10-15T12:00:00.000Z', nullable: true })
+  areas_atualizadas_em!: Date | null;
+
+  @ApiProperty({
+    example: true,
+    description: 'Indica se as áreas foram atualizadas no ano corrente.',
+  })
+  atualizado_no_ano!: boolean;
+
+  @ApiProperty({
+    type: AreaConhecimentoDto,
+    nullable: true,
+    description: 'Área cadastrada no docente, sugerida quando ainda não há área principal.',
+  })
+  area_sugerida!: AreaConhecimentoDto | null;
 }

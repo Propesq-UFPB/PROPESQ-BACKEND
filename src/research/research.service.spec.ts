@@ -21,6 +21,7 @@ const editor = { userId: 10, email: 'coord@teste.com', nome: 'Coord', funcao: 'C
 const mockMembership = {
   buildAllowedPesquisaIds: jest.fn().mockResolvedValue(null),
   assertCanAccessPesquisa: jest.fn().mockResolvedValue(undefined),
+  isCoordenador: (user: { funcao?: string }) => user.funcao?.toUpperCase() === 'COORDENADOR',
 };
 
 const categoriaPadrao = {
@@ -88,6 +89,9 @@ const mockPrismaService = {
   },
   usuario: {
     findMany: jest.fn(),
+  },
+  consultor: {
+    findUnique: jest.fn(),
   },
 };
 
@@ -287,6 +291,52 @@ describe('ResearchService', () => {
 
       await expect(service.create(createDto)).rejects.toThrow('Edital com id 4 não encontrado');
       expect(prisma.projeto_pesquisa.create).not.toHaveBeenCalled();
+    });
+
+    describe('áreas de avaliação do coordenador', () => {
+      const coordenador = { userId: 7, email: 'c@example.com', nome: 'C', funcao: 'COORDENADOR' };
+
+      beforeEach(() => {
+        prisma.edital.findUnique.mockResolvedValue({ id: 4, categoria_id: 1 });
+        prisma.unidade_academica.findUnique.mockResolvedValue({ id: 3 });
+        prisma.area_conhecimento.findUnique.mockResolvedValue({ id: 1 });
+        prisma.palavra_chave.findMany.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+        prisma.objetivo_desenvolvimento_sustentavel.findMany.mockResolvedValue([{ id: 10 }]);
+        prisma.categoria_edital.findUnique.mockResolvedValue({ id: 1 });
+        prisma.usuario.findMany.mockResolvedValue([{ id: 7 }]);
+        prisma.projeto_pesquisa.create.mockResolvedValue({ id: 1 });
+      });
+
+      it('bloqueia coordenador com áreas atualizadas em ano anterior', async () => {
+        const anoPassado = new Date(new Date().getFullYear() - 1, 5, 1);
+        prisma.consultor.findUnique.mockResolvedValue({ areas_atualizadas_em: anoPassado });
+
+        await expect(service.create(createDto, coordenador)).rejects.toThrow(
+          'Atualize suas áreas de conhecimento CNPq',
+        );
+        expect(prisma.projeto_pesquisa.create).not.toHaveBeenCalled();
+      });
+
+      it('bloqueia coordenador que ainda não é consultor', async () => {
+        prisma.consultor.findUnique.mockResolvedValue(null);
+
+        await expect(service.create(createDto, coordenador)).rejects.toThrow(BadRequestException);
+      });
+
+      it('permite coordenador com áreas atualizadas no ano', async () => {
+        prisma.consultor.findUnique.mockResolvedValue({ areas_atualizadas_em: new Date() });
+
+        await service.create(createDto, coordenador);
+
+        expect(prisma.projeto_pesquisa.create).toHaveBeenCalled();
+      });
+
+      it('não verifica as áreas quando o gestor submete', async () => {
+        await service.create(createDto, { ...coordenador, funcao: 'GESTOR' });
+
+        expect(prisma.consultor.findUnique).not.toHaveBeenCalled();
+        expect(prisma.projeto_pesquisa.create).toHaveBeenCalled();
+      });
     });
 
     it('deve lançar erro quando um usuário membro não existir', async () => {

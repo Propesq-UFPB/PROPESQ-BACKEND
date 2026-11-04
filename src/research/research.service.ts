@@ -32,6 +32,7 @@ import {
   TipoMembroProjetoMapper,
   TipoSexoMapper,
 } from '../common/mapper/membro-projeto.mapper';
+import { areasAtualizadasNoAno } from '../consultor/areas-atualizacao';
 
 type UploadedResearchFile = {
   buffer?: Buffer;
@@ -46,7 +47,14 @@ export class ResearchService {
     private membership: ProjectMembershipScopeService,
   ) {}
 
-  async create(createResearchDto: CreateResearchDto): Promise<any> {
+  async create(
+    createResearchDto: CreateResearchDto,
+    currentUser?: CurrentUserPayload,
+  ): Promise<any> {
+    if (currentUser && this.membership.isCoordenador(currentUser)) {
+      await this.assertAreasAvaliacaoAtualizadas(currentUser.userId);
+    }
+
     await this.assertEditalExists(createResearchDto.edital_id);
     await this.assertAcademicUnitExists(createResearchDto.unidade_id);
     await this.assertKnowledgeAreaExists(createResearchDto.area_conhecimento_id);
@@ -625,7 +633,7 @@ export class ResearchService {
       tipo: TipoProjetoMapper[research.tipo],
       titulo: research.titulo,
       title: research.title,
-      categoria: research.categoria?.denominacao ?? "",
+      categoria: research.categoria?.denominacao ?? '',
       codigo: research.codigo,
       email: research.email,
       situacao: SituacaoProjetoMapper[research.situacao],
@@ -903,9 +911,20 @@ export class ResearchService {
     }
   }
 
-  private async assertEditalExists(
-    editalId: number,
-  ): Promise<{ id: number }> {
+  private async assertAreasAvaliacaoAtualizadas(usuarioId: number): Promise<void> {
+    const consultor = await this.prisma.consultor.findUnique({
+      where: { usuario_id: usuarioId },
+      select: { areas_atualizadas_em: true },
+    });
+
+    if (!areasAtualizadasNoAno(consultor?.areas_atualizadas_em)) {
+      throw new BadRequestException(
+        `Atualize suas áreas de conhecimento CNPq de ${new Date().getFullYear()} antes de submeter um projeto.`,
+      );
+    }
+  }
+
+  private async assertEditalExists(editalId: number): Promise<{ id: number }> {
     const edital = await this.prisma.edital.findUnique({
       where: { id: editalId },
       select: { id: true },

@@ -93,6 +93,9 @@ const mockPrismaService = {
   avaliador: {
     findUnique: jest.fn(),
   },
+  edital_avaliador: {
+    createMany: jest.fn(),
+  },
 };
 
 describe('ResearchService', () => {
@@ -139,6 +142,10 @@ describe('ResearchService', () => {
 
     service = module.get<ResearchService>(ResearchService);
     prisma = module.get(PrismaService);
+    // Por padrão a transação interativa roda com o próprio mock
+    prisma.$transaction.mockImplementation((callback: (tx: unknown) => unknown) =>
+      Promise.resolve(callback(prisma)),
+    );
   });
 
   afterEach(() => {
@@ -324,18 +331,32 @@ describe('ResearchService', () => {
       });
 
       it('permite coordenador com áreas atualizadas no ano', async () => {
-        prisma.avaliador.findUnique.mockResolvedValue({ areas_atualizadas_em: new Date() });
+        prisma.avaliador.findUnique.mockResolvedValue({ id: 3, areas_atualizadas_em: new Date() });
 
         await service.create(createDto, coordenador);
 
         expect(prisma.projeto_pesquisa.create).toHaveBeenCalled();
       });
 
-      it('não verifica as áreas quando o gestor submete', async () => {
+      // Só o vínculo é criado: `ativo` do avaliador não é tocado (desativado continua desativado)
+      it('vincula o coordenador como avaliador do edital ao submeter', async () => {
+        prisma.avaliador.findUnique.mockResolvedValue({ id: 3, areas_atualizadas_em: new Date() });
+
+        const result: unknown = await service.create(createDto, coordenador);
+
+        expect(prisma.edital_avaliador.createMany).toHaveBeenCalledWith({
+          data: [{ edital_id: createDto.edital_id, avaliador_id: 3 }],
+          skipDuplicates: true,
+        });
+        expect(result).toEqual({ id: 1 });
+      });
+
+      it('não verifica as áreas nem vincula quando o gestor submete', async () => {
         await service.create(createDto, { ...coordenador, funcao: 'GESTOR' });
 
         expect(prisma.avaliador.findUnique).not.toHaveBeenCalled();
         expect(prisma.projeto_pesquisa.create).toHaveBeenCalled();
+        expect(prisma.edital_avaliador.createMany).not.toHaveBeenCalled();
       });
     });
 

@@ -51,9 +51,12 @@ export class ResearchService {
     createResearchDto: CreateResearchDto,
     currentUser?: CurrentUserPayload,
   ): Promise<any> {
-    if (currentUser && this.membership.isCoordenador(currentUser)) {
-      await this.assertAreasAvaliacaoAtualizadas(currentUser.userId);
-    }
+    // O coordenador que submete precisa ter as áreas de avaliação do ano atualizadas
+    // e, ao submeter, passa a ser avaliador do edital
+    const avaliadorId =
+      currentUser && this.membership.isCoordenador(currentUser)
+        ? await this.assertAreasAvaliacaoAtualizadas(currentUser.userId)
+        : null;
 
     await this.assertEditalExists(createResearchDto.edital_id);
     await this.assertAcademicUnitExists(createResearchDto.unidade_id);
@@ -118,106 +121,119 @@ export class ResearchService {
 
     this.assertProjectDates(createResearchDto.data_inicio, createResearchDto.data_fim);
 
-    return this.prisma.projeto_pesquisa.create({
-      data: {
-        tipo: createResearchDto.tipo,
-        codigo: 'DEFAULT_CODE',
-        data_cadastro: new Date(),
-        titulo: createResearchDto.titulo,
-        title: createResearchDto.title,
-        ...(categoriaId != null && {
-          categoria: { connect: { id: categoriaId } },
-        }),
-        email: createResearchDto.email,
-        situacao: SituacaoProjeto.SUBMETIDO,
-        data_inicio: createResearchDto.data_inicio
-          ? new Date(createResearchDto.data_inicio)
-          : undefined,
-        data_fim: createResearchDto.data_fim ? new Date(createResearchDto.data_fim) : undefined,
-        vigencia: new Date(createResearchDto.vigencia),
-        edital_rel: { connect: { id: createResearchDto.edital_id } },
-        area_conhecimento: { connect: { id: createResearchDto.area_conhecimento_id } },
-        linha_pesquisa: createResearchDto.linha_pesquisa.trim(),
-        grupo_pesquisa:
-          createResearchDto.vinculado_grupo_pesquisa && createResearchDto.grupo_pesquisa_id
-            ? { connect: { id: createResearchDto.grupo_pesquisa_id } }
+    return this.prisma.$transaction(async tx => {
+      const projeto = await tx.projeto_pesquisa.create({
+        data: {
+          tipo: createResearchDto.tipo,
+          codigo: 'DEFAULT_CODE',
+          data_cadastro: new Date(),
+          titulo: createResearchDto.titulo,
+          title: createResearchDto.title,
+          ...(categoriaId != null && {
+            categoria: { connect: { id: categoriaId } },
+          }),
+          email: createResearchDto.email,
+          situacao: SituacaoProjeto.SUBMETIDO,
+          data_inicio: createResearchDto.data_inicio
+            ? new Date(createResearchDto.data_inicio)
             : undefined,
-        comite_etica: createResearchDto.possui_comite_etica
-          ? createResearchDto.comite_etica?.trim()
-          : null,
-        numero_protocolo: createResearchDto.possui_comite_etica
-          ? createResearchDto.numero_protocolo?.trim()
-          : null,
-        ...(Array.isArray(createResearchDto.palavras_chave_ids) && {
-          palavra_chave: {
-            connect: createResearchDto.palavras_chave_ids.map((id: number) => ({ id })),
-          },
-        }),
-        ...(!hasKeywordIds && {
-          palavra_chave: {
-            create: [
-              ...palavrasChave.map(palavra_chave => ({ palavra_chave, lingua: Idioma.PT })),
-              ...keyWords.map(palavra_chave => ({ palavra_chave, lingua: Idioma.EN })),
-            ],
-          },
-        }),
-        ...(Array.isArray(createResearchDto.pesquisa_objetivo_ids) && {
-          objetivos: {
-            create: createResearchDto.pesquisa_objetivo_ids.map((objetivo_id: number) => {
-              return {
-                objetivo: {
-                  connect: { id: objetivo_id },
-                },
-              };
-            }),
-          },
-        }),
-        atividades: {
-          create: createResearchDto.atividades.map(atividade => ({
-            descricao: atividade.descricao,
-            meses: {
-              create: atividade.meses.map(mes => ({ data: new Date(mes.data) })),
+          data_fim: createResearchDto.data_fim ? new Date(createResearchDto.data_fim) : undefined,
+          vigencia: new Date(createResearchDto.vigencia),
+          edital_rel: { connect: { id: createResearchDto.edital_id } },
+          area_conhecimento: { connect: { id: createResearchDto.area_conhecimento_id } },
+          linha_pesquisa: createResearchDto.linha_pesquisa.trim(),
+          grupo_pesquisa:
+            createResearchDto.vinculado_grupo_pesquisa && createResearchDto.grupo_pesquisa_id
+              ? { connect: { id: createResearchDto.grupo_pesquisa_id } }
+              : undefined,
+          comite_etica: createResearchDto.possui_comite_etica
+            ? createResearchDto.comite_etica?.trim()
+            : null,
+          numero_protocolo: createResearchDto.possui_comite_etica
+            ? createResearchDto.numero_protocolo?.trim()
+            : null,
+          ...(Array.isArray(createResearchDto.palavras_chave_ids) && {
+            palavra_chave: {
+              connect: createResearchDto.palavras_chave_ids.map((id: number) => ({ id })),
             },
-          })),
-        },
-        corpo_projeto: {
-          create: createResearchDto.corpo_projeto,
-        },
-        unidade_academica: {
-          connect: { id: createResearchDto.unidade_id },
-        },
-        ...(Array.isArray(createResearchDto.membros) && {
-          projetoMembros: {
-            create: createResearchDto.membros.map(membro => ({
-              user_id: membro.user_id,
-              funcao: membro.funcao,
-              ch_dedicadas: membro.ch_dedicadas,
+          }),
+          ...(!hasKeywordIds && {
+            palavra_chave: {
+              create: [
+                ...palavrasChave.map(palavra_chave => ({ palavra_chave, lingua: Idioma.PT })),
+                ...keyWords.map(palavra_chave => ({ palavra_chave, lingua: Idioma.EN })),
+              ],
+            },
+          }),
+          ...(Array.isArray(createResearchDto.pesquisa_objetivo_ids) && {
+            objetivos: {
+              create: createResearchDto.pesquisa_objetivo_ids.map((objetivo_id: number) => {
+                return {
+                  objetivo: {
+                    connect: { id: objetivo_id },
+                  },
+                };
+              }),
+            },
+          }),
+          atividades: {
+            create: createResearchDto.atividades.map(atividade => ({
+              descricao: atividade.descricao,
+              meses: {
+                create: atividade.meses.map(mes => ({ data: new Date(mes.data) })),
+              },
             })),
           },
-        }),
-        ...(Array.isArray(createResearchDto.membros_externos) && {
-          projetoMembroExternos: {
-            create: createResearchDto.membros_externos.map(membro => ({
-              funcao: membro.funcao,
-              ch_dedicada: membro.ch_dedicada,
-              cpf: membro.cpf,
-              nome: membro.nome,
-              email: membro.email,
-              sexo: membro.sexo,
-              formacao: membro.formacao,
-              tipo: membro.tipo,
-            })),
+          corpo_projeto: {
+            create: createResearchDto.corpo_projeto,
           },
-        }),
-      },
-      include: {
-        categoria: true,
-        corpo_projeto: true,
-        palavra_chave: true,
-        atividades: { include: { meses: true } },
-        projetoMembros: true,
-        projetoMembroExternos: true,
-      },
+          unidade_academica: {
+            connect: { id: createResearchDto.unidade_id },
+          },
+          ...(Array.isArray(createResearchDto.membros) && {
+            projetoMembros: {
+              create: createResearchDto.membros.map(membro => ({
+                user_id: membro.user_id,
+                funcao: membro.funcao,
+                ch_dedicadas: membro.ch_dedicadas,
+              })),
+            },
+          }),
+          ...(Array.isArray(createResearchDto.membros_externos) && {
+            projetoMembroExternos: {
+              create: createResearchDto.membros_externos.map(membro => ({
+                funcao: membro.funcao,
+                ch_dedicada: membro.ch_dedicada,
+                cpf: membro.cpf,
+                nome: membro.nome,
+                email: membro.email,
+                sexo: membro.sexo,
+                formacao: membro.formacao,
+                tipo: membro.tipo,
+              })),
+            },
+          }),
+        },
+        include: {
+          categoria: true,
+          corpo_projeto: true,
+          palavra_chave: true,
+          atividades: { include: { meses: true } },
+          projetoMembros: true,
+          projetoMembroExternos: true,
+        },
+      });
+
+      if (avaliadorId !== null) {
+        // Não mexe em `ativo`: avaliador desativado pelo gestor é vinculado, mas segue fora da
+        // distribuição até ser reativado
+        await tx.edital_avaliador.createMany({
+          data: [{ edital_id: createResearchDto.edital_id, avaliador_id: avaliadorId }],
+          skipDuplicates: true,
+        });
+      }
+
+      return projeto;
     });
   }
 
@@ -911,17 +927,20 @@ export class ResearchService {
     }
   }
 
-  private async assertAreasAvaliacaoAtualizadas(usuarioId: number): Promise<void> {
+  /** Garante as áreas de avaliação do ano e devolve o id do cadastro de avaliador. */
+  private async assertAreasAvaliacaoAtualizadas(usuarioId: number): Promise<number> {
     const avaliador = await this.prisma.avaliador.findUnique({
       where: { usuario_id: usuarioId },
-      select: { areas_atualizadas_em: true },
+      select: { id: true, areas_atualizadas_em: true },
     });
 
-    if (!areasAtualizadasNoAno(avaliador?.areas_atualizadas_em)) {
+    if (!avaliador || !areasAtualizadasNoAno(avaliador.areas_atualizadas_em)) {
       throw new BadRequestException(
         `Atualize suas áreas de conhecimento CNPq de ${new Date().getFullYear()} antes de submeter um projeto.`,
       );
     }
+
+    return avaliador.id;
   }
 
   private async assertEditalExists(editalId: number): Promise<{ id: number }> {

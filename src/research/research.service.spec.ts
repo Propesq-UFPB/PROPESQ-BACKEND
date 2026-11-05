@@ -90,7 +90,7 @@ const mockPrismaService = {
   usuario: {
     findMany: jest.fn(),
   },
-  consultor: {
+  avaliador: {
     findUnique: jest.fn(),
   },
 };
@@ -309,7 +309,7 @@ describe('ResearchService', () => {
 
       it('bloqueia coordenador com áreas atualizadas em ano anterior', async () => {
         const anoPassado = new Date(new Date().getFullYear() - 1, 5, 1);
-        prisma.consultor.findUnique.mockResolvedValue({ areas_atualizadas_em: anoPassado });
+        prisma.avaliador.findUnique.mockResolvedValue({ areas_atualizadas_em: anoPassado });
 
         await expect(service.create(createDto, coordenador)).rejects.toThrow(
           'Atualize suas áreas de conhecimento CNPq',
@@ -317,14 +317,14 @@ describe('ResearchService', () => {
         expect(prisma.projeto_pesquisa.create).not.toHaveBeenCalled();
       });
 
-      it('bloqueia coordenador que ainda não é consultor', async () => {
-        prisma.consultor.findUnique.mockResolvedValue(null);
+      it('bloqueia coordenador que ainda não é avaliador', async () => {
+        prisma.avaliador.findUnique.mockResolvedValue(null);
 
         await expect(service.create(createDto, coordenador)).rejects.toThrow(BadRequestException);
       });
 
       it('permite coordenador com áreas atualizadas no ano', async () => {
-        prisma.consultor.findUnique.mockResolvedValue({ areas_atualizadas_em: new Date() });
+        prisma.avaliador.findUnique.mockResolvedValue({ areas_atualizadas_em: new Date() });
 
         await service.create(createDto, coordenador);
 
@@ -334,7 +334,7 @@ describe('ResearchService', () => {
       it('não verifica as áreas quando o gestor submete', async () => {
         await service.create(createDto, { ...coordenador, funcao: 'GESTOR' });
 
-        expect(prisma.consultor.findUnique).not.toHaveBeenCalled();
+        expect(prisma.avaliador.findUnique).not.toHaveBeenCalled();
         expect(prisma.projeto_pesquisa.create).toHaveBeenCalled();
       });
     });

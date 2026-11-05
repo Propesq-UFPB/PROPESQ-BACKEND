@@ -50,18 +50,18 @@ export class DistribuicaoController {
     return this.distribuicaoService.atribuicoesDoProjeto(projetoId);
   }
 
-  @Get('consultores/:consultorId/atribuicoes')
+  @Get('avaliadores/:avaliadorId/atribuicoes')
   @UseGuards(RolesGuard)
   @Roles('GESTOR')
-  @ApiOperation({ summary: 'Lista os convites de avaliação de um consultor' })
-  @ApiParam({ name: 'consultorId', type: Number })
+  @ApiOperation({ summary: 'Lista os convites de avaliação de um avaliador' })
+  @ApiParam({ name: 'avaliadorId', type: Number })
   @ApiQuery({ name: 'edital_id', required: false, type: Number })
   @ApiOkResponse({ type: [AtribuicaoAvaliadorDto] })
-  atribuicoesDoConsultor(
-    @Param('consultorId', ParseIntPipe) consultorId: number,
+  atribuicoesDoAvaliador(
+    @Param('avaliadorId', ParseIntPipe) avaliadorId: number,
     @Query('edital_id', new ParseIntPipe({ optional: true })) editalId?: number,
   ): Promise<AtribuicaoAvaliadorDto[]> {
-    return this.distribuicaoService.atribuicoesDoConsultor(consultorId, editalId);
+    return this.distribuicaoService.atribuicoesDoAvaliador(avaliadorId, editalId);
   }
 
   @Get(':editalId')
@@ -81,7 +81,7 @@ export class DistribuicaoController {
   @UseGuards(RolesGuard)
   @Roles('GESTOR')
   @ApiOperation({
-    summary: 'Calcula uma prévia da distribuição dos projetos do edital entre os consultores',
+    summary: 'Calcula uma prévia da distribuição dos projetos do edital entre os avaliadores',
     description:
       'Não grava nada. Convites pendentes e aceitos são mantidos e apenas as vagas abertas (inclusive as liberadas por recusas) são preenchidas.',
   })
@@ -115,7 +115,7 @@ export class DistribuicaoController {
   @Get(':editalId/candidatos/:projetoId')
   @UseGuards(RolesGuard)
   @Roles('GESTOR')
-  @ApiOperation({ summary: 'Lista consultores do edital aptos a avaliar o projeto, por afinidade' })
+  @ApiOperation({ summary: 'Lista avaliadores do edital aptos a avaliar o projeto, por afinidade' })
   @ApiParam({ name: 'editalId', type: Number })
   @ApiParam({ name: 'projetoId', type: Number })
   @ApiOkResponse({ type: [CandidatoDto] })

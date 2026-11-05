@@ -7,9 +7,9 @@ export class AtribuicaoDto {
   @IsInt({ message: 'O projeto_id deve ser um número inteiro.' })
   projeto_id: number;
 
-  @ApiProperty()
-  @IsInt({ message: 'O consultor_id deve ser um número inteiro.' })
-  consultor_id: number;
+  @ApiProperty({ description: 'Id do cadastro de avaliador (GET /editais/:editalId/avaliadores)' })
+  @IsInt({ message: 'O avaliador_cadastro_id deve ser um número inteiro.' })
+  avaliador_cadastro_id: number;
 }
 
 export class ConfirmDistribuicaoDto {

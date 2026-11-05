@@ -25,7 +25,7 @@ export class AtribuicaoController {
   @ApiOperation({ summary: 'Lista os convites de avaliação recebidos pelo usuário autenticado' })
   @ApiOkResponse({ type: [AtribuicaoAvaliadorDto] })
   minhas(@CurrentUser() user: CurrentUserPayload): Promise<AtribuicaoAvaliadorDto[]> {
-    return this.distribuicaoService.atribuicoesDoAvaliador(user.userId);
+    return this.distribuicaoService.atribuicoesDoUsuario(user.userId);
   }
 
   @Post(':id/aceite')

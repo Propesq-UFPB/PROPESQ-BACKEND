@@ -23,7 +23,7 @@ export class AreaConhecimentoDto {
   especialidade!: string;
 }
 
-export class ConsultorUsuarioDto {
+export class AvaliadorUsuarioDto {
   @ApiProperty({ example: 12 })
   id!: number;
 
@@ -34,12 +34,12 @@ export class ConsultorUsuarioDto {
   email!: string;
 }
 
-export class ConsultorResponseDto {
+export class AvaliadorResponseDto {
   @ApiProperty({ example: 1 })
   id!: number;
 
-  @ApiProperty({ type: ConsultorUsuarioDto })
-  usuario!: ConsultorUsuarioDto;
+  @ApiProperty({ type: AvaliadorUsuarioDto })
+  usuario!: AvaliadorUsuarioDto;
 
   @ApiProperty({ type: AreaConhecimentoDto })
   area_principal!: AreaConhecimentoDto;
@@ -73,7 +73,7 @@ export class ConsultorResponseDto {
   atualizado_em!: Date;
 }
 
-export class UsuarioElegivelDto extends ConsultorUsuarioDto {
+export class UsuarioElegivelDto extends AvaliadorUsuarioDto {
   @ApiProperty({ example: 'COORDENADOR', description: 'Função do usuário no sistema.' })
   funcao!: string;
 
@@ -90,9 +90,9 @@ export class MinhasAreasResponseDto {
   @ApiProperty({
     example: 1,
     nullable: true,
-    description: 'Nulo se o usuário ainda não é consultor.',
+    description: 'Nulo se o usuário ainda não é avaliador.',
   })
-  consultor_id!: number | null;
+  avaliador_cadastro_id!: number | null;
 
   @ApiProperty({ type: AreaConhecimentoDto, nullable: true })
   area_principal!: AreaConhecimentoDto | null;

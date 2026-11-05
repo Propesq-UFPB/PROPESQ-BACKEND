@@ -1,15 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
-import { ConsultorService } from './consultor.service';
+import { Prisma } from '@prisma/client';
+import { AvaliadoresService } from './avaliadores.service';
+import { ListAvaliadoresQueryDto } from './dto/list-avaliadores-query.dto';
 import { PrismaService } from '../prisma/prisma.service';
 
 const txMock = {
-  consultor_area_adicional: { deleteMany: jest.fn() },
-  consultor: { update: jest.fn(), upsert: jest.fn() },
+  avaliador_area_adicional: { deleteMany: jest.fn() },
+  avaliador: { update: jest.fn(), upsert: jest.fn() },
 };
 
 const prismaMock = {
-  consultor: {
+  avaliador: {
     findUnique: jest.fn(),
     findMany: jest.fn(),
     count: jest.fn(),
@@ -20,7 +22,7 @@ const prismaMock = {
   usuario: { findUnique: jest.fn(), findMany: jest.fn() },
   area_conhecimento: { findMany: jest.fn() },
   edital: { findUnique: jest.fn() },
-  edital_consultor: {
+  edital_avaliador: {
     findMany: jest.fn(),
     findUnique: jest.fn(),
     create: jest.fn(),
@@ -40,7 +42,7 @@ const area = (id: number) => ({
   especialidade: '',
 });
 
-const consultorRow = (overrides: Record<string, unknown> = {}) => ({
+const avaliadorRow = (overrides: Record<string, unknown> = {}) => ({
   id: 1,
   usuario_id: 10,
   area_principal_id: 100,
@@ -57,21 +59,21 @@ const consultorRow = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-describe('ConsultorService', () => {
-  let service: ConsultorService;
+describe('AvaliadoresService', () => {
+  let service: AvaliadoresService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [ConsultorService, { provide: PrismaService, useValue: prismaMock }],
+      providers: [AvaliadoresService, { provide: PrismaService, useValue: prismaMock }],
     }).compile();
 
-    service = module.get(ConsultorService);
+    service = module.get(AvaliadoresService);
 
     prismaMock.usuario.findUnique.mockResolvedValue({
       funcao: { nome: 'COORDENADOR' },
       docente: [],
     });
-    prismaMock.consultor.findUnique.mockResolvedValue(null);
+    prismaMock.avaliador.findUnique.mockResolvedValue(null);
     prismaMock.area_conhecimento.findMany.mockImplementation(
       ({ where }: { where: { id: { in: number[] } } }) =>
         Promise.resolve(where.id.in.map(id => ({ id }))),
@@ -91,12 +93,12 @@ describe('ConsultorService', () => {
   describe('create', () => {
     const dto = { usuario_id: 10, area_principal_id: 100, areas_adicionais_ids: [101, 100, 101] };
 
-    it('creates the consultor deduplicating additional areas and removing the main one', async () => {
-      prismaMock.consultor.create.mockResolvedValue(consultorRow());
+    it('creates the avaliador deduplicating additional areas and removing the main one', async () => {
+      prismaMock.avaliador.create.mockResolvedValue(avaliadorRow());
 
       const result = await service.create(dto);
 
-      const [[{ data }]] = prismaMock.consultor.create.mock.calls as [[{ data: object }]];
+      const [[{ data }]] = prismaMock.avaliador.create.mock.calls as [[{ data: object }]];
       expect(data).toMatchObject({
         usuario_id: 10,
         area_principal_id: 100,
@@ -112,16 +114,27 @@ describe('ConsultorService', () => {
       });
     });
 
+    it('turns a concurrent duplicate (P2002) into ConflictException', async () => {
+      prismaMock.avaliador.create.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+          code: 'P2002',
+          clientVersion: 'test',
+        }),
+      );
+
+      await expect(service.create(dto)).rejects.toBeInstanceOf(ConflictException);
+    });
+
     it('uses the docente knowledge area when area_principal_id is omitted', async () => {
       prismaMock.usuario.findUnique.mockResolvedValue({
         funcao: { nome: 'COORDENADOR' },
         docente: [{ area_conhecimento: area(200) }],
       });
-      prismaMock.consultor.create.mockResolvedValue(consultorRow());
+      prismaMock.avaliador.create.mockResolvedValue(avaliadorRow());
 
       await service.create({ usuario_id: 10 });
 
-      const [[{ data }]] = prismaMock.consultor.create.mock.calls as [[{ data: object }]];
+      const [[{ data }]] = prismaMock.avaliador.create.mock.calls as [[{ data: object }]];
       expect(data).toMatchObject({ area_principal_id: 200 });
     });
 
@@ -130,17 +143,17 @@ describe('ConsultorService', () => {
         funcao: { nome: 'COORDENADOR' },
         docente: [{ area_conhecimento: area(200) }],
       });
-      prismaMock.consultor.create.mockResolvedValue(consultorRow());
+      prismaMock.avaliador.create.mockResolvedValue(avaliadorRow());
 
       await service.create({ usuario_id: 10, area_principal_id: 100 });
 
-      const [[{ data }]] = prismaMock.consultor.create.mock.calls as [[{ data: object }]];
+      const [[{ data }]] = prismaMock.avaliador.create.mock.calls as [[{ data: object }]];
       expect(data).toMatchObject({ area_principal_id: 100 });
     });
 
     it('requires an area when the user has no docente area', async () => {
       await expect(service.create({ usuario_id: 10 })).rejects.toThrow('Informe a área principal');
-      expect(prismaMock.consultor.create).not.toHaveBeenCalled();
+      expect(prismaMock.avaliador.create).not.toHaveBeenCalled();
     });
 
     it('rejects users with an ineligible role', async () => {
@@ -153,27 +166,36 @@ describe('ConsultorService', () => {
       await expect(service.create(dto)).rejects.toBeInstanceOf(NotFoundException);
     });
 
-    it('rejects users that are already consultores', async () => {
-      prismaMock.consultor.findUnique.mockResolvedValue({ id: 5 });
+    it('rejects users that are already avaliadores', async () => {
+      prismaMock.avaliador.findUnique.mockResolvedValue({ id: 5 });
       await expect(service.create(dto)).rejects.toBeInstanceOf(ConflictException);
     });
 
     it('rejects unknown knowledge areas', async () => {
       prismaMock.area_conhecimento.findMany.mockResolvedValue([{ id: 100 }]);
       await expect(service.create(dto)).rejects.toThrow('101');
-      expect(prismaMock.consultor.create).not.toHaveBeenCalled();
+      expect(prismaMock.avaliador.create).not.toHaveBeenCalled();
     });
   });
 
   describe('findAll', () => {
     it('filters by ativo and search on usuario nome/email', async () => {
-      prismaMock.consultor.count.mockResolvedValue(1);
-      prismaMock.consultor.findMany.mockResolvedValue([consultorRow()]);
+      prismaMock.avaliador.count.mockResolvedValue(1);
+      prismaMock.avaliador.findMany.mockResolvedValue([avaliadorRow()]);
 
-      const result = await service.findAll(10, 0, true, ' maria ');
+      const result = await service.findAll({
+        limit: 10,
+        offset: 0,
+        ativo: true,
+        search: ' maria ',
+      });
 
       const where = {
         ativo: true,
+        is_propesq: undefined,
+        is_voluntario: undefined,
+        is_cnpq: undefined,
+        area_principal_id: undefined,
         usuario: {
           OR: [
             { nome: { contains: 'maria', mode: 'insensitive' } },
@@ -181,27 +203,64 @@ describe('ConsultorService', () => {
           ],
         },
       };
-      expect(prismaMock.consultor.count).toHaveBeenCalledWith({ where });
-      expect(prismaMock.consultor.findMany).toHaveBeenCalledWith(
+      expect(prismaMock.avaliador.count).toHaveBeenCalledWith({ where });
+      expect(prismaMock.avaliador.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ where, take: 10, skip: 0 }),
       );
       expect(result).toMatchObject({ total: 1, limit: 10, offset: 0, results: [{ id: 1 }] });
+    });
+
+    it('translates flag and area filters, using the same where for the count', async () => {
+      prismaMock.avaliador.count.mockResolvedValue(0);
+      prismaMock.avaliador.findMany.mockResolvedValue([]);
+
+      await service.findAll({
+        limit: 5,
+        offset: 10,
+        is_propesq: true,
+        is_voluntario: false,
+        is_cnpq: true,
+        area_principal_id: 100,
+        area_adicional_id: 101,
+      });
+
+      const where = {
+        ativo: undefined,
+        is_propesq: true,
+        is_voluntario: false,
+        is_cnpq: true,
+        area_principal_id: 100,
+        areas_adicionais: { some: { area_conhecimento_id: 101 } },
+      };
+      expect(prismaMock.avaliador.count).toHaveBeenCalledWith({ where });
+      expect(prismaMock.avaliador.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where, take: 5, skip: 10 }),
+      );
+    });
+
+    it('defaults to limit 10 and offset 0', async () => {
+      prismaMock.avaliador.count.mockResolvedValue(0);
+      prismaMock.avaliador.findMany.mockResolvedValue([]);
+
+      const result = await service.findAll({} as ListAvaliadoresQueryDto);
+
+      expect(result).toMatchObject({ limit: 10, offset: 0 });
     });
   });
 
   describe('update', () => {
     beforeEach(() => {
-      prismaMock.consultor.findUnique.mockResolvedValue(consultorRow());
-      txMock.consultor.update.mockResolvedValue(consultorRow());
+      prismaMock.avaliador.findUnique.mockResolvedValue(avaliadorRow());
+      txMock.avaliador.update.mockResolvedValue(avaliadorRow());
     });
 
     it('replaces additional areas when provided', async () => {
       await service.update(1, { areas_adicionais_ids: [102, 100] });
 
-      expect(txMock.consultor_area_adicional.deleteMany).toHaveBeenCalledWith({
-        where: { consultor_id: 1 },
+      expect(txMock.avaliador_area_adicional.deleteMany).toHaveBeenCalledWith({
+        where: { avaliador_id: 1 },
       });
-      const [[{ data }]] = txMock.consultor.update.mock.calls as [[{ data: object }]];
+      const [[{ data }]] = txMock.avaliador.update.mock.calls as [[{ data: object }]];
       expect(data).toMatchObject({
         areas_atualizadas_em: expect.any(Date),
         areas_adicionais: { create: [{ area_conhecimento_id: 102 }] },
@@ -211,41 +270,41 @@ describe('ConsultorService', () => {
     it('keeps areas_atualizadas_em when only flags change', async () => {
       await service.update(1, { ativo: false });
 
-      const [[{ data }]] = txMock.consultor.update.mock.calls as [[{ data: object }]];
+      const [[{ data }]] = txMock.avaliador.update.mock.calls as [[{ data: object }]];
       expect(data).not.toHaveProperty('areas_atualizadas_em');
     });
 
     it('drops the new main area from the additional ones', async () => {
       await service.update(1, { area_principal_id: 101 });
 
-      expect(txMock.consultor_area_adicional.deleteMany).toHaveBeenCalledWith({
-        where: { consultor_id: 1, area_conhecimento_id: 101 },
+      expect(txMock.avaliador_area_adicional.deleteMany).toHaveBeenCalledWith({
+        where: { avaliador_id: 1, area_conhecimento_id: 101 },
       });
     });
 
-    it('throws NotFound for unknown consultor', async () => {
-      prismaMock.consultor.findUnique.mockResolvedValue(null);
+    it('throws NotFound for unknown avaliador', async () => {
+      prismaMock.avaliador.findUnique.mockResolvedValue(null);
       await expect(service.update(1, { ativo: false })).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 
   describe('findMinhasAreas', () => {
     it('reports whether the areas were updated this year', async () => {
-      prismaMock.consultor.findUnique.mockResolvedValue(
-        consultorRow({ areas_atualizadas_em: new Date() }),
+      prismaMock.avaliador.findUnique.mockResolvedValue(
+        avaliadorRow({ areas_atualizadas_em: new Date() }),
       );
 
       const result = await service.findMinhasAreas(10);
 
       expect(result).toMatchObject({
-        consultor_id: 1,
+        avaliador_cadastro_id: 1,
         area_principal: { id: 100 },
         areas_adicionais: [{ id: 101 }],
         atualizado_no_ano: true,
       });
     });
 
-    it('suggests the docente area when the user is not a consultor', async () => {
+    it('suggests the docente area when the user is not a avaliador', async () => {
       prismaMock.usuario.findUnique.mockResolvedValue({
         docente: [{ area_conhecimento: area(200) }],
       });
@@ -253,7 +312,7 @@ describe('ConsultorService', () => {
       const result = await service.findMinhasAreas(10);
 
       expect(result).toMatchObject({
-        consultor_id: null,
+        avaliador_cadastro_id: null,
         area_principal: null,
         areas_adicionais: [],
         areas_atualizadas_em: null,
@@ -264,21 +323,21 @@ describe('ConsultorService', () => {
   });
 
   describe('updateMinhasAreas', () => {
-    it('upserts the consultor replacing the additional areas', async () => {
+    it('upserts the avaliador replacing the additional areas', async () => {
       await service.updateMinhasAreas(10, {
         area_principal_id: 100,
         areas_adicionais_ids: [101, 100],
       });
 
-      expect(txMock.consultor_area_adicional.deleteMany).toHaveBeenCalledWith({
-        where: { consultor: { usuario_id: 10 } },
+      expect(txMock.avaliador_area_adicional.deleteMany).toHaveBeenCalledWith({
+        where: { avaliador: { usuario_id: 10 } },
       });
       const data = {
         area_principal_id: 100,
         areas_atualizadas_em: expect.any(Date),
         areas_adicionais: { create: [{ area_conhecimento_id: 101 }] },
       };
-      expect(txMock.consultor.upsert).toHaveBeenCalledWith({
+      expect(txMock.avaliador.upsert).toHaveBeenCalledWith({
         where: { usuario_id: 10 },
         create: { usuario_id: 10, ...data },
         update: data,
@@ -290,24 +349,28 @@ describe('ConsultorService', () => {
       await expect(
         service.updateMinhasAreas(10, { area_principal_id: 100, areas_adicionais_ids: [] }),
       ).rejects.toBeInstanceOf(BadRequestException);
-      expect(txMock.consultor.upsert).not.toHaveBeenCalled();
+      expect(txMock.avaliador.upsert).not.toHaveBeenCalled();
     });
   });
 
   describe('remove', () => {
-    beforeEach(() => prismaMock.consultor.findUnique.mockResolvedValue(consultorRow()));
+    beforeEach(() => prismaMock.avaliador.findUnique.mockResolvedValue(avaliadorRow()));
 
-    it('deletes consultores without assignments', async () => {
+    it('deletes avaliadores without assignments', async () => {
       prismaMock.projeto_avaliacao.count.mockResolvedValue(0);
       await service.remove(1);
-      expect(prismaMock.consultor.delete).toHaveBeenCalledWith({ where: { id: 1 } });
+      expect(prismaMock.avaliador.delete).toHaveBeenCalledWith({ where: { id: 1 } });
     });
 
-    it('only deactivates consultores with assignments', async () => {
+    it('only deactivates avaliadores with assignments', async () => {
       prismaMock.projeto_avaliacao.count.mockResolvedValue(3);
       await service.remove(1);
-      expect(prismaMock.consultor.delete).not.toHaveBeenCalled();
-      expect(prismaMock.consultor.update).toHaveBeenCalledWith({
+      // Atribuições são contadas pelo usuário do avaliador, não pelo id do cadastro
+      expect(prismaMock.projeto_avaliacao.count).toHaveBeenCalledWith({
+        where: { avaliador_id: 10 },
+      });
+      expect(prismaMock.avaliador.delete).not.toHaveBeenCalled();
+      expect(prismaMock.avaliador.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: { ativo: false },
       });
@@ -315,7 +378,7 @@ describe('ConsultorService', () => {
   });
 
   describe('findUsuariosElegiveis', () => {
-    it('lists non-ALUNO users without consultor, with their docente area', async () => {
+    it('lists non-ALUNO users without avaliador, with their docente area', async () => {
       prismaMock.usuario.findMany.mockResolvedValue([
         {
           id: 10,
@@ -332,7 +395,7 @@ describe('ConsultorService', () => {
       expect(prismaMock.usuario.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
-            consultor: { is: null },
+            avaliador: { is: null },
             funcao: { nome: { notIn: ['ALUNO'], mode: 'insensitive' } },
           },
           take: 20,
@@ -352,9 +415,9 @@ describe('ConsultorService', () => {
   });
 
   describe('edital links', () => {
-    it('lists linked consultores with their load in the edital', async () => {
-      prismaMock.edital_consultor.findMany.mockResolvedValue([
-        { criado_em: new Date('2026-10-01'), consultor: consultorRow() },
+    it('lists linked avaliadores with their load in the edital', async () => {
+      prismaMock.edital_avaliador.findMany.mockResolvedValue([
+        { criado_em: new Date('2026-10-01'), avaliador: avaliadorRow() },
       ]);
       prismaMock.projeto_avaliacao.groupBy.mockResolvedValue([
         { avaliador_id: 10, _count: { _all: 4 } },
@@ -370,38 +433,40 @@ describe('ConsultorService', () => {
       await expect(service.findByEdital(1)).rejects.toBeInstanceOf(NotFoundException);
     });
 
-    it('rejects linking inactive consultores', async () => {
-      prismaMock.consultor.findMany.mockResolvedValue([{ id: 1, ativo: false }]);
+    it('rejects linking inactive avaliadores', async () => {
+      prismaMock.avaliador.findMany.mockResolvedValue([{ id: 1, ativo: false }]);
       await expect(service.addToEdital(1, 1)).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it('rejects linking an already linked consultor', async () => {
-      prismaMock.consultor.findMany.mockResolvedValue([{ id: 1, ativo: true }]);
-      prismaMock.edital_consultor.findUnique.mockResolvedValue({ id: 9 });
+    it('rejects linking an already linked avaliador', async () => {
+      prismaMock.avaliador.findMany.mockResolvedValue([{ id: 1, ativo: true }]);
+      prismaMock.edital_avaliador.findUnique.mockResolvedValue({ id: 9 });
       await expect(service.addToEdital(1, 1)).rejects.toBeInstanceOf(ConflictException);
     });
 
-    it('does not unlink consultores with assignments in the edital', async () => {
-      prismaMock.edital_consultor.findUnique.mockResolvedValue({ id: 9 });
-      prismaMock.projeto_avaliacao.findMany.mockResolvedValue([{ consultor_id: 1 }]);
+    it('does not unlink avaliadores with assignments in the edital', async () => {
+      prismaMock.edital_avaliador.findUnique.mockResolvedValue({ id: 9 });
+      prismaMock.projeto_avaliacao.findMany.mockResolvedValue([
+        { avaliador: { avaliador: { id: 1 } } },
+      ]);
 
       await expect(service.removeFromEdital(1, 1)).rejects.toBeInstanceOf(ConflictException);
-      expect(prismaMock.edital_consultor.delete).not.toHaveBeenCalled();
+      expect(prismaMock.edital_avaliador.delete).not.toHaveBeenCalled();
     });
 
     it('replaces the linked set adding and removing the difference', async () => {
-      prismaMock.edital_consultor.findMany
-        .mockResolvedValueOnce([{ consultor_id: 1 }, { consultor_id: 2 }])
+      prismaMock.edital_avaliador.findMany
+        .mockResolvedValueOnce([{ avaliador_id: 1 }, { avaliador_id: 2 }])
         .mockResolvedValueOnce([]);
-      prismaMock.consultor.findMany.mockResolvedValue([{ id: 3, ativo: true }]);
+      prismaMock.avaliador.findMany.mockResolvedValue([{ id: 3, ativo: true }]);
 
-      await service.setEditalConsultores(1, [2, 3]);
+      await service.setEditalAvaliadores(1, [2, 3]);
 
-      expect(prismaMock.edital_consultor.deleteMany).toHaveBeenCalledWith({
-        where: { edital_id: 1, consultor_id: { in: [1] } },
+      expect(prismaMock.edital_avaliador.deleteMany).toHaveBeenCalledWith({
+        where: { edital_id: 1, avaliador_id: { in: [1] } },
       });
-      expect(prismaMock.edital_consultor.createMany).toHaveBeenCalledWith({
-        data: [{ edital_id: 1, consultor_id: 3 }],
+      expect(prismaMock.edital_avaliador.createMany).toHaveBeenCalledWith({
+        data: [{ edital_id: 1, avaliador_id: 3 }],
       });
     });
   });

@@ -26,10 +26,10 @@ import {
   DistribuicaoPreviewDto,
 } from './dto/distribuicao-response.dto';
 
-// Peso aplicado ao score das áreas adicionais do consultor em relação à área principal
+// Peso aplicado ao score das áreas adicionais do avaliador em relação à área principal
 export const PESO_AREA_ADICIONAL = 0.5;
 
-// Projetos que podem receber consultores: submetidos/validados ou já em distribuição
+// Projetos que podem receber avaliadores: submetidos/validados ou já em distribuição
 export const SITUACOES_DISTRIBUIVEIS: SituacaoProjeto[] = [
   SituacaoProjeto.SUBMETIDO,
   SituacaoProjeto.AGUARDANDO_VALIDACAO,
@@ -69,7 +69,7 @@ export interface ProjetoDistribuicao {
   membro_usuario_ids: number[];
 }
 
-export interface ConsultorDistribuicao {
+export interface AvaliadorDistribuicao {
   id: number;
   usuario_id: number;
   nome: string;
@@ -81,7 +81,7 @@ interface AtribuicaoExistente {
   id: number;
   projeto_id: number;
   avaliador_id: number;
-  consultor_id: number | null;
+  avaliador_cadastro_id: number | null;
   status: StatusAtribuicao;
   tem_notas: boolean;
 }
@@ -101,7 +101,7 @@ function temNotas(a: Prisma.projeto_avaliacaoGetPayload<{ select: typeof temNota
 
 interface ContextoDistribuicao {
   projetos: ProjetoDistribuicao[];
-  consultores: ConsultorDistribuicao[];
+  avaliadores: AvaliadorDistribuicao[];
   existentes: AtribuicaoExistente[];
 }
 
@@ -138,41 +138,41 @@ export class DistribuicaoService {
     return score;
   }
 
-  protected temConflito(projeto: ProjetoDistribuicao, consultor: ConsultorDistribuicao): boolean {
+  protected temConflito(projeto: ProjetoDistribuicao, avaliador: AvaliadorDistribuicao): boolean {
     return (
-      projeto.avaliador_id === consultor.usuario_id ||
-      projeto.membro_usuario_ids.includes(consultor.usuario_id)
+      projeto.avaliador_id === avaliador.usuario_id ||
+      projeto.membro_usuario_ids.includes(avaliador.usuario_id)
     );
   }
 
   protected calcScore(
     projeto: ProjetoDistribuicao,
-    consultor: ConsultorDistribuicao,
+    avaliador: AvaliadorDistribuicao,
   ): number | null {
-    if (this.temConflito(projeto, consultor)) return null;
+    if (this.temConflito(projeto, avaliador)) return null;
 
     const pa = projeto.area_conhecimento;
     if (!pa) return 0;
 
-    const principal = this.scoreArea(pa, consultor.area_principal);
-    const adicional = Math.max(0, ...consultor.areas_adicionais.map(a => this.scoreArea(pa, a)));
+    const principal = this.scoreArea(pa, avaliador.area_principal);
+    const adicional = Math.max(0, ...avaliador.areas_adicionais.map(a => this.scoreArea(pa, a)));
 
     return Math.round(Math.max(principal, PESO_AREA_ADICIONAL * adicional));
   }
 
   protected calcScoreMatrix(
     projetos: ProjetoDistribuicao[],
-    consultores: ConsultorDistribuicao[],
+    avaliadores: AvaliadorDistribuicao[],
   ): Array<Array<number | null>> {
-    return consultores.map(consultor =>
-      projetos.map(projeto => this.calcScore(projeto, consultor)),
+    return avaliadores.map(avaliador =>
+      projetos.map(projeto => this.calcScore(projeto, avaliador)),
     );
   }
 
   /**
    * Monta o problema no formato CPLEX LP (o único aceito pelo HiGHS).
-   * x_i_j: consultor i avalia projeto j; y_j: déficit de consultores no projeto j;
-   * z_i: quanto falta para o consultor i atingir a carga mínima.
+   * x_i_j: avaliador i avalia projeto j; y_j: déficit de avaliadores no projeto j;
+   * z_i: quanto falta para o avaliador i atingir a carga mínima.
    */
   protected buildLpProblem(
     benefitMatrix: (number | null)[][],
@@ -200,7 +200,7 @@ export class DistribuicaoService {
       constraints.push(`c1_${j}: ${terms.join(' + ')} = ${Dj[j]}`);
     }
 
-    // C2: sum_j(x_ij) + z_i >= Lmin_i  e  sum_j(x_ij) <= Lmax_i  para cada consultor i
+    // C2: sum_j(x_ij) + z_i >= Lmin_i  e  sum_j(x_ij) <= Lmax_i  para cada avaliador i
     for (let i = 0; i < m; i++) {
       const terms: string[] = [];
       for (let j = 0; j < n; j++) if (eligible(i, j)) terms.push(`x_${i}_${j}`);
@@ -225,7 +225,7 @@ export class DistribuicaoService {
     ].join('\n');
   }
 
-  /** Retorna os pares (consultor i, projeto j) com x_i_j = 1 na solução. */
+  /** Retorna os pares (avaliador i, projeto j) com x_i_j = 1 na solução. */
   protected parseSolution(solution: {
     Columns: Record<string, object>;
   }): Array<{ i: number; j: number }> {
@@ -262,10 +262,10 @@ export class DistribuicaoService {
         },
         orderBy: { id: 'asc' },
       }),
-      this.prisma.edital_consultor.findMany({
-        where: { edital_id: editalId, consultor: { ativo: true } },
+      this.prisma.edital_avaliador.findMany({
+        where: { edital_id: editalId, avaliador: { ativo: true } },
         select: {
-          consultor: {
+          avaliador: {
             select: {
               id: true,
               usuario_id: true,
@@ -275,7 +275,7 @@ export class DistribuicaoService {
             },
           },
         },
-        orderBy: { consultor_id: 'asc' },
+        orderBy: { avaliador_id: 'asc' },
       }),
       this.prisma.projeto_avaliacao.findMany({
         where: {
@@ -285,7 +285,7 @@ export class DistribuicaoService {
           id: true,
           projeto_id: true,
           avaliador_id: true,
-          consultor_id: true,
+          avaliador: { select: { avaliador: { select: { id: true } } } },
           status: true,
           ...temNotasSelect,
         },
@@ -302,7 +302,7 @@ export class DistribuicaoService {
           ...p.membros.map(m => m.usuario_id),
         ],
       })),
-      consultores: vinculos.map(({ consultor: c }) => ({
+      avaliadores: vinculos.map(({ avaliador: c }) => ({
         id: c.id,
         usuario_id: c.usuario_id,
         nome: c.usuario.nome,
@@ -313,7 +313,7 @@ export class DistribuicaoService {
         id: a.id,
         projeto_id: a.projeto_id,
         avaliador_id: a.avaliador_id,
-        consultor_id: a.consultor_id,
+        avaliador_cadastro_id: a.avaliador.avaliador?.id ?? null,
         status: a.status,
         tem_notas: temNotas(a),
       })),
@@ -328,23 +328,23 @@ export class DistribuicaoService {
   async preview(editalId: number, params: DistribuicaoParamsDto): Promise<DistribuicaoPreviewDto> {
     if (params.minimoProjetosPorAvaliador > params.maximoProjetosPorAvaliador) {
       throw new BadRequestException(
-        'O mínimo de projetos por consultor não pode ser maior que o máximo.',
+        'O mínimo de projetos por avaliador não pode ser maior que o máximo.',
       );
     }
 
-    const { projetos, consultores, existentes } = await this.loadContexto(editalId);
+    const { projetos, avaliadores, existentes } = await this.loadContexto(editalId);
 
-    const consultorIdxPorUsuario = new Map(consultores.map((c, i) => [c.usuario_id, i]));
+    const avaliadorIdxPorUsuario = new Map(avaliadores.map((c, i) => [c.usuario_id, i]));
     const projetoIdx = new Map(projetos.map((p, j) => [p.id, j]));
 
-    const benefitMatrix = this.calcScoreMatrix(projetos, consultores);
+    const benefitMatrix = this.calcScoreMatrix(projetos, avaliadores);
     const mantidasPorProjeto = new Array<number>(projetos.length).fill(0);
-    const mantidasPorConsultor = new Array<number>(consultores.length).fill(0);
+    const mantidasPorAvaliador = new Array<number>(avaliadores.length).fill(0);
     const atribuicoes: AtribuicaoPreviewDto[] = [];
 
     for (const e of existentes) {
       const j = projetoIdx.get(e.projeto_id)!;
-      const i = consultorIdxPorUsuario.get(e.avaliador_id);
+      const i = avaliadorIdxPorUsuario.get(e.avaliador_id);
       const score = i !== undefined ? (benefitMatrix[i][j] ?? 0) : 0;
 
       // Já atribuído ou recusado: o par não pode ser escolhido de novo
@@ -352,11 +352,12 @@ export class DistribuicaoService {
       if (!ativa(e)) continue;
 
       mantidasPorProjeto[j]++;
-      if (i !== undefined) mantidasPorConsultor[i]++;
+      if (i !== undefined) mantidasPorAvaliador[i]++;
 
       atribuicoes.push({
         projeto_id: e.projeto_id,
-        consultor_id: e.consultor_id ?? (i !== undefined ? consultores[i].id : null),
+        avaliador_cadastro_id:
+          e.avaliador_cadastro_id ?? (i !== undefined ? avaliadores[i].id : null),
         avaliador_id: e.avaliador_id,
         score,
         existente: true,
@@ -367,18 +368,18 @@ export class DistribuicaoService {
     }
 
     const Dj = mantidasPorProjeto.map(qtd => Math.max(0, params.avaliadoresPorProjeto - qtd));
-    const Lmax = mantidasPorConsultor.map(qtd =>
+    const Lmax = mantidasPorAvaliador.map(qtd =>
       Math.max(0, params.maximoProjetosPorAvaliador - qtd),
     );
-    const Lmin = mantidasPorConsultor.map(qtd =>
+    const Lmin = mantidasPorAvaliador.map(qtd =>
       Math.max(0, params.minimoProjetosPorAvaliador - qtd),
     );
 
     let status = 'Empty';
 
-    if (projetos.length > 0 && consultores.length > 0) {
+    if (projetos.length > 0 && avaliadores.length > 0) {
       const highs = await this.initHighsModule();
-      const lpProblem = this.buildLpProblem(benefitMatrix, projetos.length, consultores.length, {
+      const lpProblem = this.buildLpProblem(benefitMatrix, projetos.length, avaliadores.length, {
         alpha: 10,
         beta: 10,
         Lmin,
@@ -400,11 +401,11 @@ export class DistribuicaoService {
       }
 
       for (const { i, j } of this.parseSolution(solution)) {
-        const consultor = consultores[i];
+        const avaliador = avaliadores[i];
         atribuicoes.push({
           projeto_id: projetos[j].id,
-          consultor_id: consultor.id,
-          avaliador_id: consultor.usuario_id,
+          avaliador_cadastro_id: avaliador.id,
+          avaliador_id: avaliador.usuario_id,
           score: benefitMatrix[i][j] ?? 0,
           existente: false,
           atribuicao_id: null,
@@ -430,8 +431,8 @@ export class DistribuicaoService {
           faltando: Math.max(0, params.avaliadoresPorProjeto - (porProjeto.get(p.id) ?? 0)),
         }))
         .filter(p => p.faltando > 0),
-      carga: consultores.map(c => ({
-        consultor_id: c.id,
+      carga: avaliadores.map(c => ({
+        avaliador_cadastro_id: c.id,
         total: porUsuario.get(c.usuario_id) ?? 0,
       })),
     };
@@ -446,23 +447,23 @@ export class DistribuicaoService {
     editalId: number,
     dto: ConfirmDistribuicaoDto,
   ): Promise<DistribuicaoConfirmResultDto> {
-    const { projetos, consultores, existentes } = await this.loadContexto(editalId);
+    const { projetos, avaliadores, existentes } = await this.loadContexto(editalId);
     const recusas = new Set(
       existentes.filter(e => !ativa(e)).map(e => chave(e.projeto_id, e.avaliador_id)),
     );
-    const desejadas = this.validarAtribuicoes(dto.atribuicoes, projetos, consultores, recusas);
+    const desejadas = this.validarAtribuicoes(dto.atribuicoes, projetos, avaliadores, recusas);
 
-    // Chave por (projeto, usuário): cada usuário tem no máximo um consultor
-    const consultorPorId = new Map(consultores.map(c => [c.id, c]));
+    // Chave por (projeto, usuário): cada usuário tem no máximo um avaliador
+    const avaliadorPorId = new Map(avaliadores.map(c => [c.id, c]));
     const ativas = existentes.filter(ativa);
     const ativasPorChave = new Map(ativas.map(e => [chave(e.projeto_id, e.avaliador_id), e]));
 
     const desejadasPorChave = new Map(
       desejadas.map(d => {
-        const consultor = consultorPorId.get(d.consultor_id)!;
+        const avaliador = avaliadorPorId.get(d.avaliador_cadastro_id)!;
         return [
-          chave(d.projeto_id, consultor.usuario_id),
-          { ...d, usuario_id: consultor.usuario_id },
+          chave(d.projeto_id, avaliador.usuario_id),
+          { ...d, usuario_id: avaliador.usuario_id },
         ];
       }),
     );
@@ -474,24 +475,12 @@ export class DistribuicaoService {
       .filter(([k]) => !ativasPorChave.has(k))
       .map(([, d]) => d);
     const mantidas = ativas.filter(e => !remover.includes(e));
-    const semConsultorId = mantidas.filter(e => e.consultor_id === null);
 
     await this.prisma.$transaction(async prisma => {
       if (remover.length) {
         await prisma.projeto_avaliacao.deleteMany({
           where: { id: { in: remover.map(e => e.id) } },
         });
-      }
-
-      // Atribuições antigas (anteriores aos consultores) ganham o vínculo com o consultor
-      for (const e of semConsultorId) {
-        const consultor = consultores.find(c => c.usuario_id === e.avaliador_id);
-        if (consultor) {
-          await prisma.projeto_avaliacao.update({
-            where: { id: e.id },
-            data: { consultor_id: consultor.id },
-          });
-        }
       }
 
       await this.criarAtribuicoes(prisma, criar);
@@ -513,40 +502,46 @@ export class DistribuicaoService {
   private validarAtribuicoes(
     atribuicoes: AtribuicaoDto[],
     projetos: ProjetoDistribuicao[],
-    consultores: ConsultorDistribuicao[],
+    avaliadores: AvaliadorDistribuicao[],
     recusas: Set<string>,
   ): AtribuicaoDto[] {
     const projetoPorId = new Map(projetos.map(p => [p.id, p]));
-    const consultorPorId = new Map(consultores.map(c => [c.id, c]));
+    const avaliadorPorId = new Map(avaliadores.map(c => [c.id, c]));
     const vistas = new Set<string>();
     const erros: string[] = [];
 
-    for (const { projeto_id, consultor_id } of atribuicoes) {
+    for (const { projeto_id, avaliador_cadastro_id } of atribuicoes) {
       const projeto = projetoPorId.get(projeto_id);
-      const consultor = consultorPorId.get(consultor_id);
+      const avaliador = avaliadorPorId.get(avaliador_cadastro_id);
 
       if (!projeto) {
         erros.push(`Projeto ${projeto_id} não pertence ao edital ou não está apto à distribuição.`);
         continue;
       }
-      if (!consultor) {
-        erros.push(`Consultor ${consultor_id} não está vinculado ao edital ou está inativo.`);
-        continue;
-      }
-      if (this.temConflito(projeto, consultor)) {
+      if (!avaliador) {
         erros.push(
-          `Consultor ${consultor_id} tem conflito de interesse com o projeto ${projeto_id}.`,
+          `Avaliador ${avaliador_cadastro_id} não está vinculado ao edital ou está inativo.`,
         );
         continue;
       }
-      if (recusas.has(chave(projeto_id, consultor.usuario_id))) {
-        erros.push(`Consultor ${consultor_id} recusou o convite para o projeto ${projeto_id}.`);
+      if (this.temConflito(projeto, avaliador)) {
+        erros.push(
+          `Avaliador ${avaliador_cadastro_id} tem conflito de interesse com o projeto ${projeto_id}.`,
+        );
+        continue;
+      }
+      if (recusas.has(chave(projeto_id, avaliador.usuario_id))) {
+        erros.push(
+          `Avaliador ${avaliador_cadastro_id} recusou o convite para o projeto ${projeto_id}.`,
+        );
         continue;
       }
 
-      const k = `${projeto_id}:${consultor_id}`;
+      const k = `${projeto_id}:${avaliador_cadastro_id}`;
       if (vistas.has(k)) {
-        erros.push(`Atribuição duplicada: projeto ${projeto_id}, consultor ${consultor_id}.`);
+        erros.push(
+          `Atribuição duplicada: projeto ${projeto_id}, avaliador ${avaliador_cadastro_id}.`,
+        );
       }
       vistas.add(k);
     }
@@ -560,7 +555,7 @@ export class DistribuicaoService {
 
   private async criarAtribuicoes(
     prisma: Prisma.TransactionClient,
-    atribuicoes: Array<{ projeto_id: number; consultor_id: number; usuario_id: number }>,
+    atribuicoes: Array<{ projeto_id: number; usuario_id: number }>,
   ): Promise<void> {
     if (!atribuicoes.length) return;
 
@@ -576,12 +571,11 @@ export class DistribuicaoService {
       planosPorProjeto.set(pesquisa_id, ids);
     }
 
-    for (const { projeto_id, consultor_id, usuario_id } of atribuicoes) {
+    for (const { projeto_id, usuario_id } of atribuicoes) {
       await prisma.projeto_avaliacao.create({
         data: {
           projeto_id,
           avaliador_id: usuario_id,
-          consultor_id,
           planos_avaliacao: {
             create: (planosPorProjeto.get(projeto_id) ?? []).map(plano_trabalho_id => ({
               plano_trabalho_id,
@@ -592,9 +586,9 @@ export class DistribuicaoService {
     }
   }
 
-  /** Consultores do edital aptos a avaliar o projeto, para ajuste manual da distribuição. */
+  /** Avaliadores do edital aptos a avaliar o projeto, para ajuste manual da distribuição. */
   async candidatos(editalId: number, projetoId: number): Promise<CandidatoDto[]> {
-    const { projetos, consultores, existentes } = await this.loadContexto(editalId);
+    const { projetos, avaliadores, existentes } = await this.loadContexto(editalId);
 
     const projeto = projetos.find(p => p.id === projetoId);
     if (!projeto) {
@@ -612,16 +606,16 @@ export class DistribuicaoService {
     const atribuidos = new Set(doProjeto.filter(ativa).map(e => e.avaliador_id));
     const recusaram = new Set(doProjeto.filter(e => !ativa(e)).map(e => e.avaliador_id));
 
-    return consultores
+    return avaliadores
       .filter(c => !recusaram.has(c.usuario_id))
-      .map(c => ({ consultor: c, score: this.calcScore(projeto, c) }))
-      .filter((r): r is { consultor: ConsultorDistribuicao; score: number } => r.score !== null)
-      .map(({ consultor, score }) => ({
-        consultor_id: consultor.id,
-        nome: consultor.nome,
+      .map(c => ({ avaliador: c, score: this.calcScore(projeto, c) }))
+      .filter((r): r is { avaliador: AvaliadorDistribuicao; score: number } => r.score !== null)
+      .map(({ avaliador, score }) => ({
+        avaliador_cadastro_id: avaliador.id,
+        nome: avaliador.nome,
         score,
-        carga: cargaPorUsuario.get(consultor.usuario_id) ?? 0,
-        atribuido: atribuidos.has(consultor.usuario_id),
+        carga: cargaPorUsuario.get(avaliador.usuario_id) ?? 0,
+        atribuido: atribuidos.has(avaliador.usuario_id),
       }))
       .sort((a, b) => b.score - a.score || a.carga - b.carga);
   }
@@ -661,9 +655,8 @@ export class DistribuicaoService {
         select: {
           id: true,
           projeto_id: true,
-          consultor_id: true,
           avaliador_id: true,
-          avaliador: { select: { nome: true } },
+          avaliador: { select: { nome: true, avaliador: { select: { id: true } } } },
           status: true,
           motivo_recusa: true,
           criado_em: true,
@@ -687,7 +680,7 @@ export class DistribuicaoService {
       atribuicoes: atribuicoes.map(a => ({
         id: a.id,
         projeto_id: a.projeto_id,
-        consultor_id: a.consultor_id,
+        avaliador_cadastro_id: a.avaliador.avaliador?.id ?? null,
         avaliador_id: a.avaliador_id,
         avaliador_nome: a.avaliador.nome,
         status: a.status,
@@ -700,7 +693,7 @@ export class DistribuicaoService {
   }
 
   /** Convites de avaliação recebidos por um usuário, do mais recente ao mais antigo. */
-  async atribuicoesDoAvaliador(
+  async atribuicoesDoUsuario(
     usuarioId: number,
     editalId?: number,
   ): Promise<AtribuicaoAvaliadorDto[]> {
@@ -746,21 +739,21 @@ export class DistribuicaoService {
     }));
   }
 
-  /** Convites de um consultor (visão do gestor), opcionalmente restritos a um edital. */
-  async atribuicoesDoConsultor(
-    consultorId: number,
+  /** Convites de um avaliador (visão do gestor), opcionalmente restritos a um edital. */
+  async atribuicoesDoAvaliador(
+    avaliadorId: number,
     editalId?: number,
   ): Promise<AtribuicaoAvaliadorDto[]> {
-    const consultor = await this.prisma.consultor.findUnique({
-      where: { id: consultorId },
+    const avaliador = await this.prisma.avaliador.findUnique({
+      where: { id: avaliadorId },
       select: { usuario_id: true },
     });
-    if (!consultor) {
-      throw new NotFoundException(`Consultor Id ${consultorId} não encontrado`);
+    if (!avaliador) {
+      throw new NotFoundException(`Avaliador Id ${avaliadorId} não encontrado`);
     }
 
-    // Pelo usuário, para incluir também atribuições anteriores ao cadastro de consultores
-    return this.atribuicoesDoAvaliador(consultor.usuario_id, editalId);
+    // Pelo usuário, para incluir também atribuições anteriores ao cadastro de avaliadores
+    return this.atribuicoesDoUsuario(avaliador.usuario_id, editalId);
   }
 
   /** Convites de avaliação de um projeto, na ordem de envio. */
@@ -777,9 +770,8 @@ export class DistribuicaoService {
       where: { projeto_id: projetoId },
       select: {
         id: true,
-        consultor_id: true,
         avaliador_id: true,
-        avaliador: { select: { nome: true, email: true } },
+        avaliador: { select: { nome: true, email: true, avaliador: { select: { id: true } } } },
         status: true,
         motivo_recusa: true,
         criado_em: true,
@@ -791,7 +783,7 @@ export class DistribuicaoService {
 
     return rows.map(a => ({
       id: a.id,
-      consultor_id: a.consultor_id,
+      avaliador_cadastro_id: a.avaliador.avaliador?.id ?? null,
       avaliador_id: a.avaliador_id,
       avaliador_nome: a.avaliador.nome,
       avaliador_email: a.avaliador.email,

@@ -479,21 +479,60 @@ model projeto_avaliacao {
 }
 
 model avaliador {
-  id                   Int       @id @default(autoincrement())
-  usuario_id           Int       @unique
-  is_propesq           Boolean   @default(false)
-  is_voluntario        Boolean   @default(false)
-  is_cnpq              Boolean   @default(false)
-  ativo                Boolean   @default(true)
+  id                   Int           @id @default(autoincrement())
+  usuario_id           Int           @unique
+  is_propesq           Boolean       @default(false)
+  is_voluntario        Boolean       @default(false)
+  is_cnpq              Boolean       @default(false)
+  ativo                Boolean       @default(true)
   area_principal_id    Int
-  areas_atualizadas_em DateTime? @db.Timestamp(6)
-  criado_em            DateTime  @default(now()) @db.Timestamp(6)
-  atualizado_em        DateTime  @default(now()) @updatedAt @db.Timestamp(6)
+  areas_atualizadas_em DateTime?     @db.Timestamp(6)
+  tipo                 TipoAvaliador @default(INTERNO)
+  criado_em            DateTime      @default(now()) @db.Timestamp(6)
+  atualizado_em        DateTime      @default(now()) @updatedAt @db.Timestamp(6)
 
   usuario          usuario                    @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   area_principal   area_conhecimento          @relation(fields: [area_principal_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   areas_adicionais avaliador_area_adicional[]
   editais          edital_avaliador[]
+  externo          avaliador_externo?
+  acessos          avaliador_acesso[]
+}
+
+enum TipoAvaliador {
+  INTERNO
+  EXTERNO
+}
+
+/// Dados de quem avalia sem ser usuário do sistema. Nome e e-mail ficam no usuário de sistema
+/// (função AVALIADOR_EXTERNO, sem login) que representa o avaliador nas atribuições.
+model avaliador_externo {
+  avaliador_id Int           @id
+  instituicao  String        @db.VarChar(255)
+  titulacao    TitulacaoMin?
+  cpf          String?       @db.VarChar(11)
+  pais         String?       @db.VarChar(100)
+  telefone     String?       @db.VarChar(30)
+  lattes_url   String?       @db.VarChar(500)
+  orcid        String?       @db.VarChar(19)
+  observacao   String?       @db.Text
+
+  avaliador avaliador @relation(fields: [avaliador_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// Link de acesso de um avaliador externo. Só o hash SHA-256 do token é guardado.
+model avaliador_acesso {
+  id               Int       @id @default(autoincrement())
+  avaliador_id     Int
+  token_hash       String    @unique @db.Char(64)
+  criado_em        DateTime  @default(now()) @db.Timestamp(6)
+  expira_em        DateTime? @db.Timestamp(6)
+  revogado_em      DateTime? @db.Timestamp(6)
+  ultimo_acesso_em DateTime? @db.Timestamp(6)
+
+  avaliador avaliador @relation(fields: [avaliador_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([avaliador_id])
 }
 
 model avaliador_area_adicional {

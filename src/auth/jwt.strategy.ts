@@ -9,6 +9,8 @@ type JwtPayload = {
   nome: string;
   funcao?: string;
   unidade_id?: number;
+  /** Só em sessões de avaliador externo: link (avaliador_acesso) que abriu a sessão. */
+  acesso_id?: number;
 };
 
 @Injectable()
@@ -28,6 +30,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       nome: payload.nome,
       funcao: payload.funcao,
       unidade_id: payload.unidade_id,
+      ...(payload.acesso_id !== undefined && { acesso_id: payload.acesso_id }),
     };
   }
 }

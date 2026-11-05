@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, TransformFnParams, Type } from 'class-transformer';
-import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { TipoAvaliador } from '@prisma/client';
+import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 // Query strings chegam como texto: só 'true'/'false' viram booleano, o resto é rejeitado
 const toBoolean = ({ obj, key }: TransformFnParams): unknown => {
@@ -54,6 +55,14 @@ export class ListAvaliadoresQueryDto {
   @Transform(toBoolean)
   @IsBoolean({ message: 'O filtro is_cnpq deve ser true ou false.' })
   is_cnpq?: boolean;
+
+  @ApiPropertyOptional({
+    enum: TipoAvaliador,
+    description: 'INTERNO (usuário do sistema) ou EXTERNO.',
+  })
+  @IsOptional()
+  @IsEnum(TipoAvaliador, { message: 'O filtro tipo deve ser INTERNO ou EXTERNO.' })
+  tipo?: TipoAvaliador;
 
   @ApiPropertyOptional({ example: 345, description: 'Id da área de conhecimento principal.' })
   @IsOptional()

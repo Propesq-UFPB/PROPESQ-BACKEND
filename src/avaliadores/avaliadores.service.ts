@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, TipoAvaliador } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaginatedResult } from '../common/dto/paginated.dto';
 import { CreateAvaliadorDto } from './dto/create-avaliador.dto';
@@ -18,12 +18,15 @@ import {
 } from './dto/avaliador-response.dto';
 import { areasAtualizadasNoAno } from './areas-atualizacao';
 import { EditalAvaliadorResponseDto } from './dto/edital-avaliador.dto';
+import { FUNCAO_AVALIADOR_EXTERNO } from '../auth/funcoes';
 
-// Funções de usuário que não podem ser avaliadores
-const FUNCOES_INELEGIVEIS = ['ALUNO'];
+// Funções de usuário que não podem ser cadastradas como avaliador interno
+// (o usuário de sistema de um avaliador externo já nasce com o cadastro)
+const FUNCOES_INELEGIVEIS = ['ALUNO', FUNCAO_AVALIADOR_EXTERNO];
 
-const avaliadorInclude = {
+export const avaliadorInclude = {
   usuario: { select: { id: true, nome: true, email: true } },
+  externo: true,
   area_principal: true,
   areas_adicionais: {
     select: { area_conhecimento: true },
@@ -41,7 +44,7 @@ const docenteAreaSelect = {
   },
 } satisfies Prisma.usuarioSelect;
 
-type AvaliadorComRelacoes = Prisma.avaliadorGetPayload<{ include: typeof avaliadorInclude }>;
+export type AvaliadorComRelacoes = Prisma.avaliadorGetPayload<{ include: typeof avaliadorInclude }>;
 
 @Injectable()
 export class AvaliadoresService {
@@ -107,6 +110,7 @@ export class AvaliadoresService {
       is_propesq: query.is_propesq,
       is_voluntario: query.is_voluntario,
       is_cnpq: query.is_cnpq,
+      tipo: query.tipo,
       area_principal_id: query.area_principal_id,
       ...(area_adicional_id !== undefined && {
         areas_adicionais: { some: { area_conhecimento_id: area_adicional_id } },
@@ -259,6 +263,15 @@ export class AvaliadoresService {
       return;
     }
 
+    if (avaliador.tipo === TipoAvaliador.EXTERNO) {
+      // O usuário de sistema só existe para representar o externo: sai junto com o cadastro
+      await this.prisma.$transaction([
+        this.prisma.avaliador.delete({ where: { id } }),
+        this.prisma.usuario.delete({ where: { id: avaliador.usuario_id } }),
+      ]);
+      return;
+    }
+
     await this.prisma.avaliador.delete({ where: { id } });
   }
 
@@ -398,7 +411,8 @@ export class AvaliadoresService {
     return avaliador;
   }
 
-  private normalizarAdicionais(areaPrincipalId: number, adicionais: number[] = []): number[] {
+  /** Remove repetições e a própria área principal da lista de áreas adicionais. */
+  normalizarAdicionais(areaPrincipalId: number, adicionais: number[] = []): number[] {
     return [...new Set(adicionais)].filter(id => id !== areaPrincipalId);
   }
 
@@ -421,7 +435,7 @@ export class AvaliadoresService {
     return usuario.docente[0]?.area_conhecimento?.id ?? null;
   }
 
-  private async assertAreasExistem(ids: number[]): Promise<void> {
+  async assertAreasExistem(ids: number[]): Promise<void> {
     const unicos = [...new Set(ids)];
     if (!unicos.length) return;
 
@@ -503,10 +517,22 @@ export class AvaliadoresService {
     return new Map(grupos.map(g => [g.avaliador_id, g._count._all]));
   }
 
-  private toResponseDto(avaliador: AvaliadorComRelacoes): AvaliadorResponseDto {
+  toResponseDto(avaliador: AvaliadorComRelacoes): AvaliadorResponseDto {
+    const externo = avaliador.externo;
     return {
       id: avaliador.id,
       usuario: avaliador.usuario,
+      tipo: avaliador.tipo,
+      externo: externo && {
+        instituicao: externo.instituicao,
+        titulacao: externo.titulacao,
+        cpf: externo.cpf,
+        pais: externo.pais,
+        telefone: externo.telefone,
+        lattes_url: externo.lattes_url,
+        orcid: externo.orcid,
+        observacao: externo.observacao,
+      },
       area_principal: avaliador.area_principal,
       areas_adicionais: avaliador.areas_adicionais.map(a => a.area_conhecimento),
       is_propesq: avaliador.is_propesq,

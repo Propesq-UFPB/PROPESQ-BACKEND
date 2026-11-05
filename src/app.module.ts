@@ -5,6 +5,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { AvaliadorExternoGuard } from './auth/avaliador-externo.guard';
 import { WorkPlanModule } from './work-plan/work-plan.module';
 import { AcademicUnitModule } from './academic-unit/academic-unit.module';
 import { DepartmentModule } from './department/department.module';
@@ -16,6 +17,7 @@ import { EvaluationCriteriaModule } from './evaluation-criteria/evaluation-crite
 import { ResearchEvaluationModule } from './research-evaluation/research-evaluation.module';
 import { DistribuicaoModule } from './distribuicao/distribuicao.module';
 import { AvaliadoresModule } from './avaliadores/avaliadores.module';
+import { AcessoExternoModule } from './acesso-externo/acesso-externo.module';
 import { FundingAgencyModule } from './funding-agency/funding-agency.module';
 import { UserTypeModule } from './user-type/user-type.module';
 import { ProjectRolesModule } from './project-roles/project-roles.module';
@@ -48,6 +50,7 @@ import { DocentesModule } from './docentes/docentes.module';
     ResearchEvaluationModule,
     DistribuicaoModule,
     AvaliadoresModule,
+    AcessoExternoModule,
     FundingAgencyModule,
     ProjectRolesModule,
     UserTypeModule,
@@ -63,6 +66,10 @@ import { DocentesModule } from './docentes/docentes.module';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: AvaliadorExternoGuard,
     },
   ],
 })

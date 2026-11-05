@@ -10,13 +10,16 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { PermitirAvaliadorExterno } from '../auth/decorators/permitir-avaliador-externo.decorator';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { DistribuicaoService } from './distribuicao.service';
 import { AtribuicaoRespostaDto, AtribuicaoAvaliadorDto } from './dto/distribuicao-response.dto';
 import { RecusaAtribuicaoDto } from './dto/recusa-atribuicao.dto';
 
+// Convites do próprio avaliador: também disponíveis para avaliadores externos (acesso por link)
 @ApiBearerAuth('bearer')
 @ApiTags('Distribuição')
+@PermitirAvaliadorExterno()
 @Controller('distribuicao/atribuicoes')
 export class AtribuicaoController {
   constructor(private readonly distribuicaoService: DistribuicaoService) {}

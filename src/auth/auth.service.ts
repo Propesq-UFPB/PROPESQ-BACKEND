@@ -8,6 +8,7 @@ import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
+import { FUNCAO_AVALIADOR_EXTERNO } from './funcoes';
 
 @Injectable()
 export class AuthService {
@@ -26,7 +27,8 @@ export class AuthService {
       }
     }
 
-    if (user?.senha !== loginDto.password) {
+    // Avaliadores externos só acessam pelo link; o usuário de sistema deles não faz login
+    if (user?.senha !== loginDto.password || user.funcao.nome === FUNCAO_AVALIADOR_EXTERNO) {
       throw new UnauthorizedException('E-mail ou senha inválidos.');
     }
 

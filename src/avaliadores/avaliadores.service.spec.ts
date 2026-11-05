@@ -378,7 +378,7 @@ describe('AvaliadoresService', () => {
   });
 
   describe('findUsuariosElegiveis', () => {
-    it('lists non-ALUNO users without avaliador, with their docente area', async () => {
+    it('lists users without avaliador (never ALUNO or AVALIADOR_EXTERNO), with their docente area', async () => {
       prismaMock.usuario.findMany.mockResolvedValue([
         {
           id: 10,
@@ -396,7 +396,7 @@ describe('AvaliadoresService', () => {
         expect.objectContaining({
           where: {
             avaliador: { is: null },
-            funcao: { nome: { notIn: ['ALUNO'], mode: 'insensitive' } },
+            funcao: { nome: { notIn: ['ALUNO', 'AVALIADOR_EXTERNO'], mode: 'insensitive' } },
           },
           take: 20,
         }),

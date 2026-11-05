@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { TipoAvaliador, TitulacaoMin } from '@prisma/client';
 
 export class AreaConhecimentoDto {
   @ApiProperty({ example: 345 })
@@ -34,12 +35,48 @@ export class AvaliadorUsuarioDto {
   email!: string;
 }
 
+/** Dados de cadastro do avaliador externo. */
+export class AvaliadorExternoDadosDto {
+  @ApiProperty({ example: 'Universidade Federal de Pernambuco' })
+  instituicao!: string;
+
+  @ApiProperty({ enum: TitulacaoMin, nullable: true })
+  titulacao!: TitulacaoMin | null;
+
+  @ApiProperty({ nullable: true, example: '12345678909' })
+  cpf!: string | null;
+
+  @ApiProperty({ nullable: true, example: 'Brasil' })
+  pais!: string | null;
+
+  @ApiProperty({ nullable: true })
+  telefone!: string | null;
+
+  @ApiProperty({ nullable: true })
+  lattes_url!: string | null;
+
+  @ApiProperty({ nullable: true })
+  orcid!: string | null;
+
+  @ApiProperty({ nullable: true })
+  observacao!: string | null;
+}
+
 export class AvaliadorResponseDto {
   @ApiProperty({ example: 1 })
   id!: number;
 
   @ApiProperty({ type: AvaliadorUsuarioDto })
   usuario!: AvaliadorUsuarioDto;
+
+  @ApiProperty({
+    enum: TipoAvaliador,
+    description: 'EXTERNO: não é usuário do sistema; acessa só pelo link.',
+  })
+  tipo!: TipoAvaliador;
+
+  @ApiProperty({ type: AvaliadorExternoDadosDto, nullable: true, description: 'Só em EXTERNO.' })
+  externo!: AvaliadorExternoDadosDto | null;
 
   @ApiProperty({ type: AreaConhecimentoDto })
   area_principal!: AreaConhecimentoDto;

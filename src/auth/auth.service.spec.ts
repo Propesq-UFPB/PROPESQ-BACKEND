@@ -88,6 +88,16 @@ describe('AuthService', () => {
       });
     });
 
+    it('recusa o login do usuário de sistema de um avaliador externo, mesmo com a senha certa', async () => {
+      usersService.findByEmail.mockResolvedValue({
+        ...mockUser,
+        funcao: { nome: 'AVALIADOR_EXTERNO' },
+      });
+
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      expect(jwtService.signAsync).not.toHaveBeenCalled();
+    });
+
     it('deve lançar UnauthorizedException se o usuário não for encontrado', async () => {
       usersService.findByEmail.mockRejectedValue(new NotFoundException('User not found'));
       // Nota: Seu auth.service usa .catch(() => null), então o mock deve refletir que o serviço retorna null ou lança erro capturado

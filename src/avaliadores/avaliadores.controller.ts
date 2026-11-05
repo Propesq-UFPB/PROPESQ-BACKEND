@@ -7,7 +7,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseBoolPipe,
   ParseIntPipe,
   Patch,
   Post,
@@ -25,6 +24,7 @@ import {
 } from '@nestjs/swagger';
 import { AvaliadoresService } from './avaliadores.service';
 import { CreateAvaliadorDto } from './dto/create-avaliador.dto';
+import { ListAvaliadoresQueryDto } from './dto/list-avaliadores-query.dto';
 import { UpdateAvaliadorDto } from './dto/update-avaliador.dto';
 import { UpdateMinhasAreasDto } from './dto/update-minhas-areas.dto';
 import {
@@ -59,22 +59,14 @@ export class AvaliadoresController {
     return this.avaliadoresService.create(dto);
   }
 
-  @ApiOperation({ summary: 'Lista avaliadores com paginação' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
-  @ApiQuery({ name: 'offset', required: false, type: Number, example: 0 })
-  @ApiQuery({ name: 'ativo', required: false, type: Boolean })
-  @ApiQuery({ name: 'search', required: false, type: String, description: 'Nome ou e-mail.' })
+  @ApiOperation({ summary: 'Lista avaliadores com filtros e paginação' })
   @ApiResponse({ status: HttpStatus.OK, type: Paginated(AvaliadorResponseDto) })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Filtros inválidos.' })
   @Get()
   @UseGuards(RolesGuard)
   @Roles('GESTOR')
-  findAll(
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-    @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
-    @Query('ativo', new ParseBoolPipe({ optional: true })) ativo?: boolean,
-    @Query('search') search?: string,
-  ): Promise<PaginatedResult<AvaliadorResponseDto>> {
-    return this.avaliadoresService.findAll(limit, offset, ativo, search);
+  findAll(@Query() query: ListAvaliadoresQueryDto): Promise<PaginatedResult<AvaliadorResponseDto>> {
+    return this.avaliadoresService.findAll(query);
   }
 
   @ApiOperation({ summary: 'Lista usuários que podem ser cadastrados como avaliador' })

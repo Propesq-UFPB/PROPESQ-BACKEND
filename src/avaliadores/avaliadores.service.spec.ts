@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { AvaliadoresService } from './avaliadores.service';
+import { ListAvaliadoresQueryDto } from './dto/list-avaliadores-query.dto';
 import { PrismaService } from '../prisma/prisma.service';
 
 const txMock = {
@@ -112,6 +114,17 @@ describe('AvaliadoresService', () => {
       });
     });
 
+    it('turns a concurrent duplicate (P2002) into ConflictException', async () => {
+      prismaMock.avaliador.create.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+          code: 'P2002',
+          clientVersion: 'test',
+        }),
+      );
+
+      await expect(service.create(dto)).rejects.toBeInstanceOf(ConflictException);
+    });
+
     it('uses the docente knowledge area when area_principal_id is omitted', async () => {
       prismaMock.usuario.findUnique.mockResolvedValue({
         funcao: { nome: 'COORDENADOR' },
@@ -170,10 +183,19 @@ describe('AvaliadoresService', () => {
       prismaMock.avaliador.count.mockResolvedValue(1);
       prismaMock.avaliador.findMany.mockResolvedValue([avaliadorRow()]);
 
-      const result = await service.findAll(10, 0, true, ' maria ');
+      const result = await service.findAll({
+        limit: 10,
+        offset: 0,
+        ativo: true,
+        search: ' maria ',
+      });
 
       const where = {
         ativo: true,
+        is_propesq: undefined,
+        is_voluntario: undefined,
+        is_cnpq: undefined,
+        area_principal_id: undefined,
         usuario: {
           OR: [
             { nome: { contains: 'maria', mode: 'insensitive' } },
@@ -186,6 +208,43 @@ describe('AvaliadoresService', () => {
         expect.objectContaining({ where, take: 10, skip: 0 }),
       );
       expect(result).toMatchObject({ total: 1, limit: 10, offset: 0, results: [{ id: 1 }] });
+    });
+
+    it('translates flag and area filters, using the same where for the count', async () => {
+      prismaMock.avaliador.count.mockResolvedValue(0);
+      prismaMock.avaliador.findMany.mockResolvedValue([]);
+
+      await service.findAll({
+        limit: 5,
+        offset: 10,
+        is_propesq: true,
+        is_voluntario: false,
+        is_cnpq: true,
+        area_principal_id: 100,
+        area_adicional_id: 101,
+      });
+
+      const where = {
+        ativo: undefined,
+        is_propesq: true,
+        is_voluntario: false,
+        is_cnpq: true,
+        area_principal_id: 100,
+        areas_adicionais: { some: { area_conhecimento_id: 101 } },
+      };
+      expect(prismaMock.avaliador.count).toHaveBeenCalledWith({ where });
+      expect(prismaMock.avaliador.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where, take: 5, skip: 10 }),
+      );
+    });
+
+    it('defaults to limit 10 and offset 0', async () => {
+      prismaMock.avaliador.count.mockResolvedValue(0);
+      prismaMock.avaliador.findMany.mockResolvedValue([]);
+
+      const result = await service.findAll({} as ListAvaliadoresQueryDto);
+
+      expect(result).toMatchObject({ limit: 10, offset: 0 });
     });
   });
 

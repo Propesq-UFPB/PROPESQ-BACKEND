@@ -8,6 +8,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaginatedResult } from '../common/dto/paginated.dto';
 import { CreateAvaliadorDto } from './dto/create-avaliador.dto';
+import { ListAvaliadoresQueryDto } from './dto/list-avaliadores-query.dto';
 import { UpdateAvaliadorDto } from './dto/update-avaliador.dto';
 import { UpdateMinhasAreasDto } from './dto/update-minhas-areas.dto';
 import {
@@ -69,34 +70,47 @@ export class AvaliadoresService {
     const adicionais = this.normalizarAdicionais(areaPrincipalId, dto.areas_adicionais_ids);
     await this.assertAreasExistem([areaPrincipalId, ...adicionais]);
 
-    const created = await this.prisma.avaliador.create({
-      data: {
-        usuario_id: dto.usuario_id,
-        area_principal_id: areaPrincipalId,
-        is_propesq: dto.is_propesq ?? false,
-        is_voluntario: dto.is_voluntario ?? false,
-        is_cnpq: dto.is_cnpq ?? false,
-        ativo: dto.ativo ?? true,
-        areas_atualizadas_em: new Date(),
-        areas_adicionais: {
-          create: adicionais.map(area_conhecimento_id => ({ area_conhecimento_id })),
+    try {
+      const created = await this.prisma.avaliador.create({
+        data: {
+          usuario_id: dto.usuario_id,
+          area_principal_id: areaPrincipalId,
+          is_propesq: dto.is_propesq ?? false,
+          is_voluntario: dto.is_voluntario ?? false,
+          is_cnpq: dto.is_cnpq ?? false,
+          ativo: dto.ativo ?? true,
+          areas_atualizadas_em: new Date(),
+          areas_adicionais: {
+            create: adicionais.map(area_conhecimento_id => ({ area_conhecimento_id })),
+          },
         },
-      },
-      include: avaliadorInclude,
-    });
+        include: avaliadorInclude,
+      });
 
-    return this.toResponseDto(created);
+      return this.toResponseDto(created);
+    } catch (error) {
+      // Dois cadastros simultâneos do mesmo usuário: a checagem acima não pega, o índice único sim
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException(
+          `O usuário ${dto.usuario_id} já está cadastrado como avaliador.`,
+        );
+      }
+      throw error;
+    }
   }
 
-  async findAll(
-    limit: number,
-    offset: number,
-    ativo?: boolean,
-    search?: string,
-  ): Promise<PaginatedResult<AvaliadorResponseDto>> {
-    const termo = search?.trim();
+  async findAll(query: ListAvaliadoresQueryDto): Promise<PaginatedResult<AvaliadorResponseDto>> {
+    const { limit = 10, offset = 0, area_adicional_id } = query;
+    const termo = query.search?.trim();
     const where: Prisma.avaliadorWhereInput = {
-      ...(ativo !== undefined && { ativo }),
+      ativo: query.ativo,
+      is_propesq: query.is_propesq,
+      is_voluntario: query.is_voluntario,
+      is_cnpq: query.is_cnpq,
+      area_principal_id: query.area_principal_id,
+      ...(area_adicional_id !== undefined && {
+        areas_adicionais: { some: { area_conhecimento_id: area_adicional_id } },
+      }),
       ...(termo && {
         usuario: {
           OR: [

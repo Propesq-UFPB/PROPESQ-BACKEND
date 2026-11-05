@@ -47,8 +47,9 @@ describe('Avaliador controllers', () => {
   });
 
   it('findAll repassa filtros ao service', async () => {
-    await avaliadoresController.findAll(10, 0, true, 'maria');
-    expect(mockService.findAll).toHaveBeenCalledWith(10, 0, true, 'maria');
+    const query = { limit: 10, offset: 0, ativo: true, search: 'maria', area_principal_id: 3 };
+    await avaliadoresController.findAll(query);
+    expect(mockService.findAll).toHaveBeenCalledWith(query);
   });
 
   it('set repassa o conjunto de avaliadores do edital', async () => {

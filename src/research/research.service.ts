@@ -32,7 +32,7 @@ import {
   TipoMembroProjetoMapper,
   TipoSexoMapper,
 } from '../common/mapper/membro-projeto.mapper';
-import { areasAtualizadasNoAno } from '../consultor/areas-atualizacao';
+import { areasAtualizadasNoAno } from '../avaliadores/areas-atualizacao';
 
 type UploadedResearchFile = {
   buffer?: Buffer;
@@ -912,12 +912,12 @@ export class ResearchService {
   }
 
   private async assertAreasAvaliacaoAtualizadas(usuarioId: number): Promise<void> {
-    const consultor = await this.prisma.consultor.findUnique({
+    const avaliador = await this.prisma.avaliador.findUnique({
       where: { usuario_id: usuarioId },
       select: { areas_atualizadas_em: true },
     });
 
-    if (!areasAtualizadasNoAno(consultor?.areas_atualizadas_em)) {
+    if (!areasAtualizadasNoAno(avaliador?.areas_atualizadas_em)) {
       throw new BadRequestException(
         `Atualize suas áreas de conhecimento CNPq de ${new Date().getFullYear()} antes de submeter um projeto.`,
       );

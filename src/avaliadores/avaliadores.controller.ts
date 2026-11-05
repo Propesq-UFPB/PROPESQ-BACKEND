@@ -23,15 +23,15 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { ConsultorService } from './consultor.service';
-import { CreateConsultorDto } from './dto/create-consultor.dto';
-import { UpdateConsultorDto } from './dto/update-consultor.dto';
+import { AvaliadoresService } from './avaliadores.service';
+import { CreateAvaliadorDto } from './dto/create-avaliador.dto';
+import { UpdateAvaliadorDto } from './dto/update-avaliador.dto';
 import { UpdateMinhasAreasDto } from './dto/update-minhas-areas.dto';
 import {
-  ConsultorResponseDto,
+  AvaliadorResponseDto,
   MinhasAreasResponseDto,
   UsuarioElegivelDto,
-} from './dto/consultor-response.dto';
+} from './dto/avaliador-response.dto';
 import { Paginated, PaginatedResult } from '../common/dto/paginated.dto';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -39,32 +39,32 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 
 @ApiBearerAuth('bearer')
-@ApiTags('Consultores')
-@Controller('consultores')
-export class ConsultorController {
-  constructor(private readonly consultorService: ConsultorService) {}
+@ApiTags('Avaliadores')
+@Controller('avaliadores')
+export class AvaliadoresController {
+  constructor(private readonly avaliadoresService: AvaliadoresService) {}
 
-  @ApiOperation({ summary: 'Cadastra um usuário como consultor' })
-  @ApiResponse({ status: HttpStatus.CREATED, type: ConsultorResponseDto })
+  @ApiOperation({ summary: 'Cadastra um usuário como avaliador' })
+  @ApiResponse({ status: HttpStatus.CREATED, type: AvaliadorResponseDto })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
     description: 'Dados inválidos, usuário inelegível ou área inexistente.',
   })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Usuário não encontrado.' })
-  @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Usuário já é consultor.' })
+  @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Usuário já é avaliador.' })
   @Post()
   @UseGuards(RolesGuard)
   @Roles('GESTOR')
-  create(@Body() dto: CreateConsultorDto): Promise<ConsultorResponseDto> {
-    return this.consultorService.create(dto);
+  create(@Body() dto: CreateAvaliadorDto): Promise<AvaliadorResponseDto> {
+    return this.avaliadoresService.create(dto);
   }
 
-  @ApiOperation({ summary: 'Lista consultores com paginação' })
+  @ApiOperation({ summary: 'Lista avaliadores com paginação' })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   @ApiQuery({ name: 'offset', required: false, type: Number, example: 0 })
   @ApiQuery({ name: 'ativo', required: false, type: Boolean })
   @ApiQuery({ name: 'search', required: false, type: String, description: 'Nome ou e-mail.' })
-  @ApiResponse({ status: HttpStatus.OK, type: Paginated(ConsultorResponseDto) })
+  @ApiResponse({ status: HttpStatus.OK, type: Paginated(AvaliadorResponseDto) })
   @Get()
   @UseGuards(RolesGuard)
   @Roles('GESTOR')
@@ -73,11 +73,11 @@ export class ConsultorController {
     @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
     @Query('ativo', new ParseBoolPipe({ optional: true })) ativo?: boolean,
     @Query('search') search?: string,
-  ): Promise<PaginatedResult<ConsultorResponseDto>> {
-    return this.consultorService.findAll(limit, offset, ativo, search);
+  ): Promise<PaginatedResult<AvaliadorResponseDto>> {
+    return this.avaliadoresService.findAll(limit, offset, ativo, search);
   }
 
-  @ApiOperation({ summary: 'Lista usuários que podem ser cadastrados como consultor' })
+  @ApiOperation({ summary: 'Lista usuários que podem ser cadastrados como avaliador' })
   @ApiQuery({ name: 'search', required: false, type: String, description: 'Nome ou e-mail.' })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
   @ApiResponse({ status: HttpStatus.OK, type: [UsuarioElegivelDto] })
@@ -88,7 +88,7 @@ export class ConsultorController {
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('search') search?: string,
   ): Promise<UsuarioElegivelDto[]> {
-    return this.consultorService.findUsuariosElegiveis(search, limit);
+    return this.avaliadoresService.findUsuariosElegiveis(search, limit);
   }
 
   @ApiOperation({ summary: 'Obtém as áreas de avaliação do usuário logado' })
@@ -97,12 +97,12 @@ export class ConsultorController {
   @UseGuards(RolesGuard)
   @Roles('GESTOR', 'COORDENADOR')
   findMinhasAreas(@CurrentUser() user: CurrentUserPayload): Promise<MinhasAreasResponseDto> {
-    return this.consultorService.findMinhasAreas(user.userId);
+    return this.avaliadoresService.findMinhasAreas(user.userId);
   }
 
   @ApiOperation({
     summary: 'Atualiza as áreas de avaliação do usuário logado',
-    description: 'Cria o cadastro de consultor caso o usuário ainda não possua.',
+    description: 'Cria o cadastro de avaliador caso o usuário ainda não possua.',
   })
   @ApiResponse({ status: HttpStatus.OK, type: MinhasAreasResponseDto })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Área inexistente.' })
@@ -113,46 +113,46 @@ export class ConsultorController {
     @CurrentUser() user: CurrentUserPayload,
     @Body() dto: UpdateMinhasAreasDto,
   ): Promise<MinhasAreasResponseDto> {
-    return this.consultorService.updateMinhasAreas(user.userId, dto);
+    return this.avaliadoresService.updateMinhasAreas(user.userId, dto);
   }
 
-  @ApiOperation({ summary: 'Obtém um consultor pelo ID' })
+  @ApiOperation({ summary: 'Obtém um avaliador pelo ID' })
   @ApiParam({ name: 'id', type: Number })
-  @ApiResponse({ status: HttpStatus.OK, type: ConsultorResponseDto })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Consultor não encontrado.' })
+  @ApiResponse({ status: HttpStatus.OK, type: AvaliadorResponseDto })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Avaliador não encontrado.' })
   @Get(':id')
   @UseGuards(RolesGuard)
   @Roles('GESTOR')
-  findOne(@Param('id', ParseIntPipe) id: number): Promise<ConsultorResponseDto> {
-    return this.consultorService.findOne(id);
+  findOne(@Param('id', ParseIntPipe) id: number): Promise<AvaliadorResponseDto> {
+    return this.avaliadoresService.findOne(id);
   }
 
-  @ApiOperation({ summary: 'Atualiza um consultor pelo ID' })
+  @ApiOperation({ summary: 'Atualiza um avaliador pelo ID' })
   @ApiParam({ name: 'id', type: Number })
-  @ApiResponse({ status: HttpStatus.OK, type: ConsultorResponseDto })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Consultor não encontrado.' })
+  @ApiResponse({ status: HttpStatus.OK, type: AvaliadorResponseDto })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Avaliador não encontrado.' })
   @Patch(':id')
   @UseGuards(RolesGuard)
   @Roles('GESTOR')
   update(
     @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateConsultorDto,
-  ): Promise<ConsultorResponseDto> {
-    return this.consultorService.update(id, dto);
+    @Body() dto: UpdateAvaliadorDto,
+  ): Promise<AvaliadorResponseDto> {
+    return this.avaliadoresService.update(id, dto);
   }
 
   @ApiOperation({
-    summary: 'Remove um consultor pelo ID',
-    description: 'Consultores com atribuições de avaliação são apenas desativados.',
+    summary: 'Remove um avaliador pelo ID',
+    description: 'Avaliadores com atribuições de avaliação são apenas desativados.',
   })
   @ApiParam({ name: 'id', type: Number })
-  @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'Consultor removido ou desativado.' })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Consultor não encontrado.' })
+  @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'Avaliador removido ou desativado.' })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Avaliador não encontrado.' })
   @Delete(':id')
   @UseGuards(RolesGuard)
   @Roles('GESTOR')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
-    await this.consultorService.remove(id);
+    await this.avaliadoresService.remove(id);
   }
 }

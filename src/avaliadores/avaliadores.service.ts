@@ -7,28 +7,28 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaginatedResult } from '../common/dto/paginated.dto';
-import { CreateConsultorDto } from './dto/create-consultor.dto';
-import { UpdateConsultorDto } from './dto/update-consultor.dto';
+import { CreateAvaliadorDto } from './dto/create-avaliador.dto';
+import { UpdateAvaliadorDto } from './dto/update-avaliador.dto';
 import { UpdateMinhasAreasDto } from './dto/update-minhas-areas.dto';
 import {
-  ConsultorResponseDto,
+  AvaliadorResponseDto,
   MinhasAreasResponseDto,
   UsuarioElegivelDto,
-} from './dto/consultor-response.dto';
+} from './dto/avaliador-response.dto';
 import { areasAtualizadasNoAno } from './areas-atualizacao';
-import { EditalConsultorResponseDto } from './dto/edital-consultor.dto';
+import { EditalAvaliadorResponseDto } from './dto/edital-avaliador.dto';
 
-// Funções de usuário que não podem ser consultores
+// Funções de usuário que não podem ser avaliadores
 const FUNCOES_INELEGIVEIS = ['ALUNO'];
 
-const consultorInclude = {
+const avaliadorInclude = {
   usuario: { select: { id: true, nome: true, email: true } },
   area_principal: true,
   areas_adicionais: {
     select: { area_conhecimento: true },
     orderBy: { area_conhecimento_id: 'asc' },
   },
-} satisfies Prisma.consultorInclude;
+} satisfies Prisma.avaliadorInclude;
 
 // Área de conhecimento do registro docente do usuário (docente é a única entidade de pessoa com área)
 const docenteAreaSelect = {
@@ -40,22 +40,22 @@ const docenteAreaSelect = {
   },
 } satisfies Prisma.usuarioSelect;
 
-type ConsultorComRelacoes = Prisma.consultorGetPayload<{ include: typeof consultorInclude }>;
+type AvaliadorComRelacoes = Prisma.avaliadorGetPayload<{ include: typeof avaliadorInclude }>;
 
 @Injectable()
-export class ConsultorService {
+export class AvaliadoresService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateConsultorDto): Promise<ConsultorResponseDto> {
+  async create(dto: CreateAvaliadorDto): Promise<AvaliadorResponseDto> {
     const areaDocenteId = await this.assertUsuarioElegivel(dto.usuario_id);
 
-    const existente = await this.prisma.consultor.findUnique({
+    const existente = await this.prisma.avaliador.findUnique({
       where: { usuario_id: dto.usuario_id },
       select: { id: true },
     });
     if (existente) {
       throw new ConflictException(
-        `O usuário ${dto.usuario_id} já está cadastrado como consultor (id ${existente.id}).`,
+        `O usuário ${dto.usuario_id} já está cadastrado como avaliador (id ${existente.id}).`,
       );
     }
 
@@ -69,7 +69,7 @@ export class ConsultorService {
     const adicionais = this.normalizarAdicionais(areaPrincipalId, dto.areas_adicionais_ids);
     await this.assertAreasExistem([areaPrincipalId, ...adicionais]);
 
-    const created = await this.prisma.consultor.create({
+    const created = await this.prisma.avaliador.create({
       data: {
         usuario_id: dto.usuario_id,
         area_principal_id: areaPrincipalId,
@@ -82,7 +82,7 @@ export class ConsultorService {
           create: adicionais.map(area_conhecimento_id => ({ area_conhecimento_id })),
         },
       },
-      include: consultorInclude,
+      include: avaliadorInclude,
     });
 
     return this.toResponseDto(created);
@@ -93,9 +93,9 @@ export class ConsultorService {
     offset: number,
     ativo?: boolean,
     search?: string,
-  ): Promise<PaginatedResult<ConsultorResponseDto>> {
+  ): Promise<PaginatedResult<AvaliadorResponseDto>> {
     const termo = search?.trim();
-    const where: Prisma.consultorWhereInput = {
+    const where: Prisma.avaliadorWhereInput = {
       ...(ativo !== undefined && { ativo }),
       ...(termo && {
         usuario: {
@@ -108,10 +108,10 @@ export class ConsultorService {
     };
 
     const [total, rows] = await this.prisma.$transaction([
-      this.prisma.consultor.count({ where }),
-      this.prisma.consultor.findMany({
+      this.prisma.avaliador.count({ where }),
+      this.prisma.avaliador.findMany({
         where,
-        include: consultorInclude,
+        include: avaliadorInclude,
         take: limit,
         skip: offset,
         orderBy: [{ ativo: 'desc' }, { usuario: { nome: 'asc' } }],
@@ -121,11 +121,11 @@ export class ConsultorService {
     return { total, limit, offset, results: rows.map(row => this.toResponseDto(row)) };
   }
 
-  async findOne(id: number): Promise<ConsultorResponseDto> {
+  async findOne(id: number): Promise<AvaliadorResponseDto> {
     return this.toResponseDto(await this.getOrFail(id));
   }
 
-  async update(id: number, dto: UpdateConsultorDto): Promise<ConsultorResponseDto> {
+  async update(id: number, dto: UpdateAvaliadorDto): Promise<AvaliadorResponseDto> {
     const atual = await this.getOrFail(id);
 
     const areaPrincipalId = dto.area_principal_id ?? atual.area_principal_id;
@@ -141,15 +141,15 @@ export class ConsultorService {
 
     const updated = await this.prisma.$transaction(async prisma => {
       if (adicionais !== undefined) {
-        await prisma.consultor_area_adicional.deleteMany({ where: { consultor_id: id } });
+        await prisma.avaliador_area_adicional.deleteMany({ where: { avaliador_id: id } });
       } else if (dto.area_principal_id !== undefined) {
         // A nova área principal não pode continuar listada como adicional
-        await prisma.consultor_area_adicional.deleteMany({
-          where: { consultor_id: id, area_conhecimento_id: dto.area_principal_id },
+        await prisma.avaliador_area_adicional.deleteMany({
+          where: { avaliador_id: id, area_conhecimento_id: dto.area_principal_id },
         });
       }
 
-      return prisma.consultor.update({
+      return prisma.avaliador.update({
         where: { id },
         data: {
           area_principal_id: dto.area_principal_id,
@@ -166,7 +166,7 @@ export class ConsultorService {
             },
           }),
         },
-        include: consultorInclude,
+        include: avaliadorInclude,
       });
     });
 
@@ -175,26 +175,26 @@ export class ConsultorService {
 
   /** Áreas de avaliação do próprio usuário, com a área do docente como sugestão. */
   async findMinhasAreas(usuarioId: number): Promise<MinhasAreasResponseDto> {
-    const [consultor, usuario] = await Promise.all([
-      this.prisma.consultor.findUnique({
+    const [avaliador, usuario] = await Promise.all([
+      this.prisma.avaliador.findUnique({
         where: { usuario_id: usuarioId },
-        include: consultorInclude,
+        include: avaliadorInclude,
       }),
       this.prisma.usuario.findUnique({ where: { id: usuarioId }, select: docenteAreaSelect }),
     ]);
 
     return {
-      consultor_id: consultor?.id ?? null,
-      area_principal: consultor?.area_principal ?? null,
-      areas_adicionais: consultor?.areas_adicionais.map(a => a.area_conhecimento) ?? [],
-      areas_atualizadas_em: consultor?.areas_atualizadas_em ?? null,
-      atualizado_no_ano: areasAtualizadasNoAno(consultor?.areas_atualizadas_em),
+      avaliador_cadastro_id: avaliador?.id ?? null,
+      area_principal: avaliador?.area_principal ?? null,
+      areas_adicionais: avaliador?.areas_adicionais.map(a => a.area_conhecimento) ?? [],
+      areas_atualizadas_em: avaliador?.areas_atualizadas_em ?? null,
+      atualizado_no_ano: areasAtualizadasNoAno(avaliador?.areas_atualizadas_em),
       area_sugerida: usuario?.docente[0]?.area_conhecimento ?? null,
     };
   }
 
   /**
-   * O próprio docente atualiza suas áreas. Se ainda não for consultor, o cadastro
+   * O próprio docente atualiza suas áreas. Se ainda não for avaliador, o cadastro
    * é criado já ativo para entrar na distribuição.
    */
   async updateMinhasAreas(
@@ -215,10 +215,10 @@ export class ConsultorService {
     };
 
     await this.prisma.$transaction(async prisma => {
-      await prisma.consultor_area_adicional.deleteMany({
-        where: { consultor: { usuario_id: usuarioId } },
+      await prisma.avaliador_area_adicional.deleteMany({
+        where: { avaliador: { usuario_id: usuarioId } },
       });
-      await prisma.consultor.upsert({
+      await prisma.avaliador.upsert({
         where: { usuario_id: usuarioId },
         create: { usuario_id: usuarioId, ...data },
         update: data,
@@ -229,29 +229,32 @@ export class ConsultorService {
   }
 
   /**
-   * Remove o consultor. Se ele já possui atribuições de avaliação, apenas desativa
+   * Remove o avaliador. Se ele já possui atribuições de avaliação, apenas desativa
    * para preservar o histórico.
    */
   async remove(id: number): Promise<void> {
-    await this.getOrFail(id);
+    const avaliador = await this.getOrFail(id);
 
-    const atribuicoes = await this.prisma.projeto_avaliacao.count({ where: { consultor_id: id } });
+    // Atribuições são do usuário avaliador (avaliador.usuario_id é único)
+    const atribuicoes = await this.prisma.projeto_avaliacao.count({
+      where: { avaliador_id: avaliador.usuario_id },
+    });
 
     if (atribuicoes > 0) {
-      await this.prisma.consultor.update({ where: { id }, data: { ativo: false } });
+      await this.prisma.avaliador.update({ where: { id }, data: { ativo: false } });
       return;
     }
 
-    await this.prisma.consultor.delete({ where: { id } });
+    await this.prisma.avaliador.delete({ where: { id } });
   }
 
-  /** Usuários que podem ser cadastrados como consultor e ainda não são. */
+  /** Usuários que podem ser cadastrados como avaliador e ainda não são. */
   async findUsuariosElegiveis(search?: string, limit = 20): Promise<UsuarioElegivelDto[]> {
     const termo = search?.trim();
 
     const rows = await this.prisma.usuario.findMany({
       where: {
-        consultor: { is: null },
+        avaliador: { is: null },
         funcao: { nome: { notIn: FUNCOES_INELEGIVEIS, mode: 'insensitive' } },
         ...(termo && {
           OR: [
@@ -280,86 +283,86 @@ export class ConsultorService {
 
   // --- Vínculo com o edital ---
 
-  async findByEdital(editalId: number): Promise<EditalConsultorResponseDto[]> {
+  async findByEdital(editalId: number): Promise<EditalAvaliadorResponseDto[]> {
     await this.assertEditalExiste(editalId);
 
     const [vinculos, cargas] = await Promise.all([
-      this.prisma.edital_consultor.findMany({
+      this.prisma.edital_avaliador.findMany({
         where: { edital_id: editalId },
-        include: { consultor: { include: consultorInclude } },
-        orderBy: { consultor: { usuario: { nome: 'asc' } } },
+        include: { avaliador: { include: avaliadorInclude } },
+        orderBy: { avaliador: { usuario: { nome: 'asc' } } },
       }),
       this.cargasNoEdital(editalId),
     ]);
 
     return vinculos.map(v => ({
-      ...this.toResponseDto(v.consultor),
-      carga: cargas.get(v.consultor.usuario_id) ?? 0,
+      ...this.toResponseDto(v.avaliador),
+      carga: cargas.get(v.avaliador.usuario_id) ?? 0,
       vinculado_em: v.criado_em,
     }));
   }
 
-  async addToEdital(editalId: number, consultorId: number): Promise<EditalConsultorResponseDto> {
+  async addToEdital(editalId: number, avaliadorId: number): Promise<EditalAvaliadorResponseDto> {
     await this.assertEditalExiste(editalId);
-    await this.assertConsultoresVinculaveis([consultorId]);
+    await this.assertAvaliadoresVinculaveis([avaliadorId]);
 
-    const vinculo = await this.prisma.edital_consultor.findUnique({
-      where: { edital_id_consultor_id: { edital_id: editalId, consultor_id: consultorId } },
+    const vinculo = await this.prisma.edital_avaliador.findUnique({
+      where: { edital_id_avaliador_id: { edital_id: editalId, avaliador_id: avaliadorId } },
       select: { id: true },
     });
     if (vinculo) {
-      throw new ConflictException(`O consultor ${consultorId} já está vinculado ao edital.`);
+      throw new ConflictException(`O avaliador ${avaliadorId} já está vinculado ao edital.`);
     }
 
-    await this.prisma.edital_consultor.create({
-      data: { edital_id: editalId, consultor_id: consultorId },
+    await this.prisma.edital_avaliador.create({
+      data: { edital_id: editalId, avaliador_id: avaliadorId },
     });
 
     const vinculados = await this.findByEdital(editalId);
-    return vinculados.find(v => v.id === consultorId)!;
+    return vinculados.find(v => v.id === avaliadorId)!;
   }
 
-  async removeFromEdital(editalId: number, consultorId: number): Promise<void> {
+  async removeFromEdital(editalId: number, avaliadorId: number): Promise<void> {
     await this.assertEditalExiste(editalId);
 
-    const vinculo = await this.prisma.edital_consultor.findUnique({
-      where: { edital_id_consultor_id: { edital_id: editalId, consultor_id: consultorId } },
+    const vinculo = await this.prisma.edital_avaliador.findUnique({
+      where: { edital_id_avaliador_id: { edital_id: editalId, avaliador_id: avaliadorId } },
       select: { id: true },
     });
     if (!vinculo) {
-      throw new NotFoundException(`O consultor ${consultorId} não está vinculado ao edital.`);
+      throw new NotFoundException(`O avaliador ${avaliadorId} não está vinculado ao edital.`);
     }
 
-    await this.assertSemAtribuicoesNoEdital(editalId, [consultorId]);
-    await this.prisma.edital_consultor.delete({ where: { id: vinculo.id } });
+    await this.assertSemAtribuicoesNoEdital(editalId, [avaliadorId]);
+    await this.prisma.edital_avaliador.delete({ where: { id: vinculo.id } });
   }
 
-  /** Substitui o conjunto de consultores vinculados ao edital. */
-  async setEditalConsultores(
+  /** Substitui o conjunto de avaliadores vinculados ao edital. */
+  async setEditalAvaliadores(
     editalId: number,
-    consultorIds: number[],
-  ): Promise<EditalConsultorResponseDto[]> {
+    avaliadorIds: number[],
+  ): Promise<EditalAvaliadorResponseDto[]> {
     await this.assertEditalExiste(editalId);
 
-    const atuais = await this.prisma.edital_consultor.findMany({
+    const atuais = await this.prisma.edital_avaliador.findMany({
       where: { edital_id: editalId },
-      select: { consultor_id: true },
+      select: { avaliador_id: true },
     });
-    const atuaisIds = new Set(atuais.map(a => a.consultor_id));
-    const desejados = new Set(consultorIds);
+    const atuaisIds = new Set(atuais.map(a => a.avaliador_id));
+    const desejados = new Set(avaliadorIds);
 
-    const adicionar = consultorIds.filter(id => !atuaisIds.has(id));
+    const adicionar = avaliadorIds.filter(id => !atuaisIds.has(id));
     const remover = [...atuaisIds].filter(id => !desejados.has(id));
 
-    await this.assertConsultoresVinculaveis(adicionar);
+    await this.assertAvaliadoresVinculaveis(adicionar);
     await this.assertSemAtribuicoesNoEdital(editalId, remover);
 
     await this.prisma.$transaction([
-      this.prisma.edital_consultor.deleteMany({
-        where: { edital_id: editalId, consultor_id: { in: remover } },
+      this.prisma.edital_avaliador.deleteMany({
+        where: { edital_id: editalId, avaliador_id: { in: remover } },
       }),
-      this.prisma.edital_consultor.createMany({
-        data: adicionar.map(consultor_id => ({ edital_id: editalId, consultor_id })),
+      this.prisma.edital_avaliador.createMany({
+        data: adicionar.map(avaliador_id => ({ edital_id: editalId, avaliador_id })),
       }),
     ]);
 
@@ -368,17 +371,17 @@ export class ConsultorService {
 
   // --- Auxiliares ---
 
-  private async getOrFail(id: number): Promise<ConsultorComRelacoes> {
-    const consultor = await this.prisma.consultor.findUnique({
+  private async getOrFail(id: number): Promise<AvaliadorComRelacoes> {
+    const avaliador = await this.prisma.avaliador.findUnique({
       where: { id },
-      include: consultorInclude,
+      include: avaliadorInclude,
     });
 
-    if (!consultor) {
-      throw new NotFoundException(`Consultor com id ${id} não encontrado.`);
+    if (!avaliador) {
+      throw new NotFoundException(`Avaliador com id ${id} não encontrado.`);
     }
 
-    return consultor;
+    return avaliador;
   }
 
   private normalizarAdicionais(areaPrincipalId: number, adicionais: number[] = []): number[] {
@@ -397,7 +400,7 @@ export class ConsultorService {
     }
     if (FUNCOES_INELEGIVEIS.includes(usuario.funcao.nome.toUpperCase())) {
       throw new BadRequestException(
-        `Usuários com a função ${usuario.funcao.nome} não podem ser consultores.`,
+        `Usuários com a função ${usuario.funcao.nome} não podem ser avaliadores.`,
       );
     }
 
@@ -431,41 +434,45 @@ export class ConsultorService {
     }
   }
 
-  private async assertConsultoresVinculaveis(ids: number[]): Promise<void> {
+  private async assertAvaliadoresVinculaveis(ids: number[]): Promise<void> {
     if (!ids.length) return;
 
-    const consultores = await this.prisma.consultor.findMany({
+    const avaliadores = await this.prisma.avaliador.findMany({
       where: { id: { in: ids } },
       select: { id: true, ativo: true },
     });
 
-    const naoEncontrados = ids.filter(id => !consultores.some(c => c.id === id));
+    const naoEncontrados = ids.filter(id => !avaliadores.some(c => c.id === id));
     if (naoEncontrados.length) {
-      throw new NotFoundException(`Consultor(es) não encontrado(s): ${naoEncontrados.join(', ')}.`);
+      throw new NotFoundException(`Avaliador(es) não encontrado(s): ${naoEncontrados.join(', ')}.`);
     }
 
-    const inativos = consultores.filter(c => !c.ativo).map(c => c.id);
+    const inativos = avaliadores.filter(c => !c.ativo).map(c => c.id);
     if (inativos.length) {
       throw new BadRequestException(
-        `Consultor(es) inativo(s) não podem ser vinculados: ${inativos.join(', ')}.`,
+        `Avaliador(es) inativo(s) não podem ser vinculados: ${inativos.join(', ')}.`,
       );
     }
   }
 
-  /** Impede desvincular consultores que já têm atribuições no edital. */
+  /** Impede desvincular avaliadores que já têm atribuições no edital. */
   private async assertSemAtribuicoesNoEdital(editalId: number, ids: number[]): Promise<void> {
     if (!ids.length) return;
 
+    // projeto_avaliacao.avaliador_id é o usuário; o cadastro vem por usuario.avaliador
     const comAtribuicoes = await this.prisma.projeto_avaliacao.findMany({
-      where: { consultor_id: { in: ids }, projeto_pesquisa: { edital_id: editalId } },
-      select: { consultor_id: true },
-      distinct: ['consultor_id'],
+      where: {
+        avaliador: { avaliador: { is: { id: { in: ids } } } },
+        projeto_pesquisa: { edital_id: editalId },
+      },
+      select: { avaliador: { select: { avaliador: { select: { id: true } } } } },
+      distinct: ['avaliador_id'],
     });
 
     if (comAtribuicoes.length) {
       throw new ConflictException(
-        `Consultor(es) com atribuições neste edital não podem ser desvinculados: ${comAtribuicoes
-          .map(a => a.consultor_id)
+        `Avaliador(es) com atribuições neste edital não podem ser desvinculados: ${comAtribuicoes
+          .map(a => a.avaliador.avaliador?.id)
           .join(', ')}. Remova as atribuições pela distribuição antes.`,
       );
     }
@@ -482,19 +489,19 @@ export class ConsultorService {
     return new Map(grupos.map(g => [g.avaliador_id, g._count._all]));
   }
 
-  private toResponseDto(consultor: ConsultorComRelacoes): ConsultorResponseDto {
+  private toResponseDto(avaliador: AvaliadorComRelacoes): AvaliadorResponseDto {
     return {
-      id: consultor.id,
-      usuario: consultor.usuario,
-      area_principal: consultor.area_principal,
-      areas_adicionais: consultor.areas_adicionais.map(a => a.area_conhecimento),
-      is_propesq: consultor.is_propesq,
-      is_voluntario: consultor.is_voluntario,
-      is_cnpq: consultor.is_cnpq,
-      ativo: consultor.ativo,
-      areas_atualizadas_em: consultor.areas_atualizadas_em,
-      criado_em: consultor.criado_em,
-      atualizado_em: consultor.atualizado_em,
+      id: avaliador.id,
+      usuario: avaliador.usuario,
+      area_principal: avaliador.area_principal,
+      areas_adicionais: avaliador.areas_adicionais.map(a => a.area_conhecimento),
+      is_propesq: avaliador.is_propesq,
+      is_voluntario: avaliador.is_voluntario,
+      is_cnpq: avaliador.is_cnpq,
+      ativo: avaliador.ativo,
+      areas_atualizadas_em: avaliador.areas_atualizadas_em,
+      criado_em: avaliador.criado_em,
+      atualizado_em: avaliador.atualizado_em,
     };
   }
 }

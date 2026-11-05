@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConsultorController } from './consultor.controller';
-import { EditalConsultorController } from './edital-consultor.controller';
-import { ConsultorService } from './consultor.service';
+import { AvaliadoresController } from './avaliadores.controller';
+import { EditalAvaliadoresController } from './edital-avaliadores.controller';
+import { AvaliadoresService } from './avaliadores.service';
 import { ROLES_KEY } from '../auth/decorators/roles.decorator';
 
 const mockService = {
@@ -12,33 +12,33 @@ const mockService = {
   update: jest.fn(),
   remove: jest.fn(),
   findByEdital: jest.fn(),
-  setEditalConsultores: jest.fn(),
+  setEditalAvaliadores: jest.fn(),
   addToEdital: jest.fn(),
   removeFromEdital: jest.fn(),
 };
 
-describe('Consultor controllers', () => {
-  let consultorController: ConsultorController;
-  let editalController: EditalConsultorController;
+describe('Avaliador controllers', () => {
+  let avaliadoresController: AvaliadoresController;
+  let editalController: EditalAvaliadoresController;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [ConsultorController, EditalConsultorController],
-      providers: [{ provide: ConsultorService, useValue: mockService }],
+      controllers: [AvaliadoresController, EditalAvaliadoresController],
+      providers: [{ provide: AvaliadoresService, useValue: mockService }],
     }).compile();
 
-    consultorController = module.get(ConsultorController);
-    editalController = module.get(EditalConsultorController);
+    avaliadoresController = module.get(AvaliadoresController);
+    editalController = module.get(EditalAvaliadoresController);
   });
 
   afterEach(() => jest.clearAllMocks());
 
   it.each([
     [
-      ConsultorController,
+      AvaliadoresController,
       ['create', 'findAll', 'findUsuariosElegiveis', 'findOne', 'update', 'remove'],
     ],
-    [EditalConsultorController, ['findAll', 'set', 'add', 'remove']],
+    [EditalAvaliadoresController, ['findAll', 'set', 'add', 'remove']],
   ] as const)('%p exige papel GESTOR em todas as rotas', (controller, methods) => {
     for (const method of methods) {
       const handler = (controller.prototype as unknown as Record<string, object>)[method];
@@ -47,16 +47,16 @@ describe('Consultor controllers', () => {
   });
 
   it('findAll repassa filtros ao service', async () => {
-    await consultorController.findAll(10, 0, true, 'maria');
+    await avaliadoresController.findAll(10, 0, true, 'maria');
     expect(mockService.findAll).toHaveBeenCalledWith(10, 0, true, 'maria');
   });
 
-  it('set repassa o conjunto de consultores do edital', async () => {
-    await editalController.set(1, { consultor_ids: [1, 2] });
-    expect(mockService.setEditalConsultores).toHaveBeenCalledWith(1, [1, 2]);
+  it('set repassa o conjunto de avaliadores do edital', async () => {
+    await editalController.set(1, { avaliador_cadastro_ids: [1, 2] });
+    expect(mockService.setEditalAvaliadores).toHaveBeenCalledWith(1, [1, 2]);
   });
 
-  it('remove desvincula o consultor do edital', async () => {
+  it('remove desvincula o avaliador do edital', async () => {
     await editalController.remove(1, 2);
     expect(mockService.removeFromEdital).toHaveBeenCalledWith(1, 2);
   });

@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { SituacaoProjeto, StatusAtribuicao } from '@prisma/client';
-import { AreaConhecimentoDto } from '../../consultor/dto/consultor-response.dto';
+import { AreaConhecimentoDto } from '../../avaliadores/dto/avaliador-response.dto';
 
 export class AtribuicaoPreviewDto {
   @ApiProperty()
@@ -9,14 +9,15 @@ export class AtribuicaoPreviewDto {
   @ApiProperty({
     type: Number,
     nullable: true,
-    description: 'Nulo apenas em atribuições antigas cujo avaliador não é consultor do edital',
+    description:
+      'Cadastro de avaliador do usuário (avaliador_id); nulo se o usuário não tem cadastro',
   })
-  consultor_id: number | null;
+  avaliador_cadastro_id: number | null;
 
   @ApiProperty({ description: 'Usuário avaliador' })
   avaliador_id: number;
 
-  @ApiProperty({ description: 'Afinidade de área entre consultor e projeto' })
+  @ApiProperty({ description: 'Afinidade de área entre avaliador e projeto' })
   score: number;
 
   @ApiProperty({ description: 'Convite já existente (pendente ou aceito), mantido pela prévia' })
@@ -36,13 +37,15 @@ export class PendenciaDto {
   @ApiProperty()
   projeto_id: number;
 
-  @ApiProperty({ description: 'Quantidade de consultores que faltam para o projeto' })
+  @ApiProperty({ description: 'Quantidade de avaliadores que faltam para o projeto' })
   faltando: number;
 }
 
-export class CargaConsultorDto {
-  @ApiProperty()
-  consultor_id: number;
+export class CargaAvaliadorDto {
+  @ApiProperty({
+    description: 'Id do cadastro de avaliador (diferente de avaliador_id, que é o usuário)',
+  })
+  avaliador_cadastro_id: number;
 
   @ApiProperty()
   total: number;
@@ -58,8 +61,8 @@ export class DistribuicaoPreviewDto {
   @ApiProperty({ type: [PendenciaDto] })
   pendencias: PendenciaDto[];
 
-  @ApiProperty({ type: [CargaConsultorDto] })
-  carga: CargaConsultorDto[];
+  @ApiProperty({ type: [CargaAvaliadorDto] })
+  carga: CargaAvaliadorDto[];
 }
 
 export class DistribuicaoConfirmResultDto {
@@ -74,8 +77,10 @@ export class DistribuicaoConfirmResultDto {
 }
 
 export class CandidatoDto {
-  @ApiProperty()
-  consultor_id: number;
+  @ApiProperty({
+    description: 'Id do cadastro de avaliador (diferente de avaliador_id, que é o usuário)',
+  })
+  avaliador_cadastro_id: number;
 
   @ApiProperty()
   nome: string;
@@ -83,10 +88,10 @@ export class CandidatoDto {
   @ApiProperty()
   score: number;
 
-  @ApiProperty({ description: 'Projetos já atribuídos ao consultor neste edital' })
+  @ApiProperty({ description: 'Projetos já atribuídos ao avaliador neste edital' })
   carga: number;
 
-  @ApiProperty({ description: 'Consultor já atribuído a este projeto' })
+  @ApiProperty({ description: 'Avaliador já atribuído a este projeto' })
   atribuido: boolean;
 }
 
@@ -120,8 +125,13 @@ export class AtribuicaoPanoramaDto {
   @ApiProperty()
   projeto_id: number;
 
-  @ApiProperty({ type: Number, nullable: true })
-  consultor_id: number | null;
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description:
+      'Cadastro de avaliador do usuário (avaliador_id); nulo se o usuário não tem cadastro',
+  })
+  avaliador_cadastro_id: number | null;
 
   @ApiProperty()
   avaliador_id: number;
@@ -211,8 +221,13 @@ export class ProjetoAtribuicaoDto {
   @ApiProperty()
   id: number;
 
-  @ApiProperty({ type: Number, nullable: true })
-  consultor_id: number | null;
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description:
+      'Cadastro de avaliador do usuário (avaliador_id); nulo se o usuário não tem cadastro',
+  })
+  avaliador_cadastro_id: number | null;
 
   @ApiProperty()
   avaliador_id: number;

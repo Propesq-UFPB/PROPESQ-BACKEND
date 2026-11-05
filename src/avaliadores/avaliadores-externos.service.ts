@@ -223,8 +223,8 @@ export class AvaliadoresExternosService {
     throw new ConflictException(
       existente.funcao.nome === FUNCAO_AVALIADOR_EXTERNO
         ? `Já existe um avaliador externo com o e-mail ${email}.`
-        : `O e-mail ${email} pertence a um usuário do sistema (id ${existente.id}); ` +
-          'cadastre-o como avaliador interno em POST /avaliadores.',
+        : `O e-mail ${email} pertence a um usuário do sistema; ` +
+          'cadastre-o como avaliador interno (Novo avaliador).',
     );
   }
 

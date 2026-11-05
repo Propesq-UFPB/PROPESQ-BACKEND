@@ -91,9 +91,10 @@ describe('ResearchController', () => {
 
       mockResearchService.create.mockResolvedValue({ id: 1 });
 
-      const result = await controller.create(dto);
+      const user = { userId: 7, email: 'c@example.com', nome: 'C', funcao: 'COORDENADOR' };
+      const result = await controller.create(dto, user);
 
-      expect(service.create).toHaveBeenCalledWith(dto);
+      expect(service.create).toHaveBeenCalledWith(dto, user);
       expect(result).toEqual({ id: 1 });
     });
   });
